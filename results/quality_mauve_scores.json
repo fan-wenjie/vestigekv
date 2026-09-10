@@ -1,0 +1,8 @@
+{
+ "n_ctx": 16,
+ "gen_tokens": 256,
+ "mauve_eng": 0.9303921838025286,
+ "mauve_vk": 0.9994624160042961,
+ "verdict": "PASS",
+ "code": "PR 09c39628 (sigma+operand fused, spec-conformant prefill), serving path"
+}

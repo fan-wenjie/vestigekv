@@ -1,0 +1,65 @@
+[
+ {
+  "layer": 3,
+  "score_er": 394.06781005859375,
+  "score_r90": 361,
+  "value_er": 316.5464172363281,
+  "value_r90": 319,
+  "rot_over_content": 1.1990528106689453,
+  "qrot_overlap": 0.044316138268538544
+ },
+ {
+  "layer": 7,
+  "score_er": 422.8271484375,
+  "score_r90": 385,
+  "value_er": 343.467041015625,
+  "value_r90": 347,
+  "rot_over_content": 0.9151697754859924,
+  "qrot_overlap": 0.0882622562442726
+ },
+ {
+  "layer": 11,
+  "score_er": 422.11590576171875,
+  "score_r90": 391,
+  "value_er": 389.5588684082031,
+  "value_r90": 386,
+  "rot_over_content": 1.1173503398895264,
+  "qrot_overlap": 0.12640601581604702
+ },
+ {
+  "layer": 15,
+  "score_er": 389.95721435546875,
+  "score_r90": 376,
+  "value_er": 416.2978820800781,
+  "value_r90": 395,
+  "rot_over_content": 1.5086055994033813,
+  "qrot_overlap": 0.10566657178212828
+ },
+ {
+  "layer": 19,
+  "score_er": 286.75946044921875,
+  "score_r90": 326,
+  "value_er": 320.5802001953125,
+  "value_r90": 330,
+  "rot_over_content": 1.9479317665100098,
+  "qrot_overlap": 0.16319386866751068
+ },
+ {
+  "layer": 23,
+  "score_er": 314.3191833496094,
+  "score_r90": 378,
+  "value_er": 290.3139343261719,
+  "value_r90": 309,
+  "rot_over_content": 2.3421242237091064,
+  "qrot_overlap": 0.287858524183262
+ },
+ {
+  "layer": 26,
+  "score_er": 341.5746765136719,
+  "score_r90": 366,
+  "value_er": 312.2041015625,
+  "value_r90": 359,
+  "rot_over_content": 3.4896562099456787,
+  "qrot_overlap": 0.05544592900156614
+ }
+]

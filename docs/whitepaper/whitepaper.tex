@@ -1,0 +1,1055 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+
+\lstset{basicstyle=\ttfamily\small,columns=fullflexible,frame=single,
+  framerule=0.2pt,breaklines=true,postbreak=\mbox{\(\hookrightarrow\)\space}}
+
+\newtheorem{property}{Property}
+\newtheorem{corollary}{Corollary}
+\newcommand{\keep}{\mathrm{keep}}
+\newcommand{\kept}{\mathrm{kept}}
+
+\title{VestigeKV: An Implementation White Paper\\
+\large Training-free sparse attention for NoPE-MLA caches ---\\
+a from-zero guide for operator engineers}
+\author{VestigeKV project}
+\date{2026-09-06 \quad (v1, English; algorithm spec frozen against
+\texttt{sglang} port commit \texttt{c3e2612})}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This document specifies, at implementation depth, the VestigeKV sparse
+attention for NoPE-MLA key--value caches: the mathematics of the selection
+signal, every data structure, every per-step algorithm, the contract the
+fused attention kernel must satisfy, and the validation protocol. It is
+written so that an operator engineer holding only this document and stock
+model weights can reproduce the method from zero on a new hardware platform
+(GPU, NPU, or other accelerators). Everything stated as measured comes from
+the pre-registered experimental record of the VestigeKV project; everything
+stated as a contract was validated in a production \texttt{sglang} port.
+No training, no quantization, no weight or kernel-math changes are involved:
+the method is purely a change of \emph{which rows attention reads}.
+\end{abstract}
+
+\tableofcontents
+
+%======================================================================
+\section{Scope and preconditions}
+
+\subsection{Deliverable scope}
+A drop-in replacement for the \emph{decode-time} attention of a NoPE-MLA
+transformer layer. Prefill attention, all projections, all other layers, and
+the sampling head are untouched. The replacement attends, per decode step,
+over a small selected subset of the KV cache instead of all $T$ rows:
+\[
+\mathrm{attended}(t) \;=\;
+\underbrace{\kept}_{\text{frozen at prefill}}
+\;\cup\;
+\underbrace{\mathrm{tail}(t)}_{\text{rows decoded so far}}
+\;\cup\;
+\underbrace{\mathrm{recalled}(t)}_{\text{standard, per-step}}
+\]
+with $|\kept| \approx \rho T$ ($\rho = 1/32$ recommended). Evicted rows are
+\emph{never deleted}: they move, bit-exact, to an archive reachable by the
+recall tier (Section~\ref{sec:tier2}; the standard configuration, necessary at long context). The deployed invariant is a
+\emph{partition} of the cache, not a truncation --- and the partition is
+only meaningful if the archive is consulted, so \textbf{the recall tier is
+required implementation scope}: a port that implements tier 1 alone is an
+incomplete state of this method, not a configuration of it, and must not
+expose a switch that disables recall (the only recall knob is the explicit
+fetch cap).
+
+\subsection{Architectural preconditions}
+\begin{enumerate}[itemsep=1pt]
+\item \textbf{MLA (multi-head latent attention) cache.} The per-token cache
+row is a single latent vector shared by all heads (MQA-style single KV
+head). For Kimi Linear 48B: row width $576 = 512 + 64$, layout
+\[
+\tilde C_u = [\; \hat c_u \in \mathbb{R}^{512} \;|\; r_u \in \mathbb{R}^{64} \;],
+\]
+where $\hat c_u$ is the RMS-normalized content latent (\emph{also the value}:
+$V$ is read from the first 512 dims) and $r_u$ is the decoupled
+``rope branch''.
+\item \textbf{NoPE: the branch is never rotated.} In the target model the
+rotary call is absent (\texttt{mla\_use\_nope} in the config); $r_u$ is
+cached as produced. This is the load-bearing precondition: under RoPE the
+identical operator collapses (measured $0.89 \to 0.08$ needle retrieval at
+$32\times$), because the selection signal of Section~\ref{sec:signal} exists
+only when training has repurposed the positional channel. \emph{A port onto
+a RoPE model is unsupported; the collapse is a measured result, not a
+hypothesis.} The backend enforces this itself: registration refuses any MLA
+config that is not NoPE (and refuses \texttt{page\_size}${\neq}1$ and
+speculative decoding), raising rather than degrading silently.
+\item \textbf{bf16 cache rows, never quantized.} Both tiers keep the
+576-dim latents bit-exact, so every quality effect attributes to selection
+and scheduling (a controlled-variable rule). The scan's \emph{index
+metadata} is stored 16-bit (side bf16, sketch fp16), calibrated after
+rounding; a port that quantizes the cache rows themselves has left the
+validated envelope.
+\end{enumerate}
+
+\subsection{Mathematical soundness of frozen selection under NoPE}
+\label{sec:nope-math}
+Write one decode step's attention over cache rows $\{\tilde C_u\}_{u<t}$ with
+expanded query $q_t$ (after the standard MLA absorb):
+\[
+o_t \;=\; \sum_{u} \mathrm{softmax}_u\!\big( s\, q_t \cdot \tilde C_u \big)\, \hat c_u .
+\]
+Under NoPE both the score map $u \mapsto q_t \cdot \tilde C_u$ and the value
+map $u \mapsto \hat c_u$ depend on $u$ \emph{only through the row content}
+$\tilde C_u$ --- no term depends on the position index itself.
+
+\begin{property}[Permutation/multiset invariance]
+The NoPE-MLA attention output is a function of the \emph{multiset}
+$\{\!\{\tilde C_u\}\!\}$ of cache rows (plus the query). Reordering,
+re-timing, or re-addressing rows never changes $o_t$.
+\end{property}
+
+\begin{corollary}[Ranking stationarity]\label{cor:stat}
+Any selection rule that is a function of row contents only can be computed
+\emph{once}, at any time after the rows exist, and never goes stale: the
+kept set chosen at prefill end equals the kept set that would be chosen at
+any later step. Frozen rankings are exact, not approximate.
+\end{corollary}
+
+Two engineering consequences follow directly and shape the whole
+implementation: (a)~selection can run \emph{off} the decode critical path
+(at prefill / block close); (b)~the per-step sparse pattern is a
+\emph{constant} of the decode graph, so it is compatible with
+graph-capture execution (CUDA graphs and their equivalents) at zero
+per-step host cost. Under RoPE neither holds: scores depend on the
+query--key \emph{distance}, so any frozen pattern goes stale at the rate of
+the rotary frequency bands.
+
+%======================================================================
+\section{The selection signal (tier 1)}\label{sec:signal}
+
+\subsection{Definition}
+Selection reads \emph{only} the 64-dim branch slice $r_u$ (11\% of the row;
+one contiguous read). For a closed prefix of $T$ rows, stack the branches
+$r \in \mathbb{R}^{T\times 64}$ along the sequence axis and score each row by
+its residual against a low-pass reconstruction along that axis:
+\begin{equation}\label{eq:sigma}
+\sigma_u \;=\; \big\lVert\, r_u - \big(\mathcal{F}^{-1}\,
+\mathbb{1}_{[0,\kappa)}\, \mathcal{F}\, r\big)_u \,\big\rVert_2 ,
+\qquad \kappa = 16,
+\end{equation}
+where $\mathcal{F}$ is the real FFT along the sequence dimension (applied
+independently to each of the 64 channels), $\mathbb{1}_{[0,\kappa)}$ zeroes
+all but the lowest $\kappa$ frequency bins, and $\mathcal{F}^{-1}$ inverts at
+length $T$. Intuition: under NoPE, training repurposes the positionless
+branch into a \emph{salience channel}; rows that carry retrieval-critical
+content are spectral anomalies against the smooth background. The signal is
+query-independent --- this is what Corollary~\ref{cor:stat} needs.
+
+\subsection{Selection rule}
+\begin{equation}\label{eq:select}
+\keep \;=\; \mathrm{top\text{-}}m(\sigma)
+\;\cup\; \{0,\dots,\text{sinks}-1\}
+\;\cup\; \{T - W,\dots,T-1\},
+\qquad m = \max(1, \mathrm{round}(\rho\,T)),
+\end{equation}
+with $\text{sinks}=4$ (always keep the first rows) and recent window
+$W=256$ (always keep the tail; admittedly arbitrary --- tune by quality).
+Top-$m$ is a single \emph{global} selection over the whole prefix
+(constant-$m$ rebalance), licensed by Corollary~\ref{cor:stat}. The rule is
+applied per layer, independently; only the full-attention (MLA) layers
+participate (in Kimi Linear, 7 of 27 layers; the linear-attention layers
+have constant-size state and are untouched).
+
+\begin{algorithm}[h]
+\caption{Tier-1 selection at prefill end / block close (per MLA layer)}
+\begin{algorithmic}[1]
+\State $r \gets \text{pool\_rows}[\text{slots of this request}][:, 512{:}576]$
+  \Comment{contiguous slice, $[T,64]$}
+\State $f \gets \mathrm{rfft}(r.\mathrm{float}(), \mathrm{dim}=0)$;
+  $f[\kappa{:}] \gets 0$;
+  $\ell \gets \mathrm{irfft}(f, n{=}T, \mathrm{dim}=0)$
+\State $\sigma \gets \lVert r - \ell \rVert_2 \ \text{over dim} -1$
+  \Comment{$[T]$}
+\State $\keep \gets$ boolean mask from Eq.~\eqref{eq:select}
+\State write $\mathrm{kept\_buf}[\mathrm{slot}, 0{:}n] \gets$ pool indices of
+  $\keep$ rows (ascending); $\mathrm{kept\_len}[\mathrm{slot}] \gets n$
+\State invalidate any per-slot decode-side state cached for a previous
+  occupant of this slot \Comment{slot-reuse; see Section~\ref{sec:pitfalls}}
+\end{algorithmic}
+\end{algorithm}
+
+Numerical notes: compute $\sigma$ in fp32 (the branch is bf16 in the pool);
+the rFFT length is the true prefix length $T$, not a padded power of two;
+ties in top-$m$ may break arbitrarily (any tie-break is valid by
+Property~1).
+
+\paragraph{Implementation path: this stays framework \texttt{torch}, and
+should.} The selection above (\texttt{rfft}/\texttt{irfft} for $\sigma$,
+\texttt{topk} for $\keep$) runs at prefill end and at each block close ---
+once per $4096$ generated tokens per request, off the per-token decode
+path --- so it amortizes to $O(\log B)$ per token, a $10^{-6}$ fraction of
+step time. It is therefore left as stock \texttt{torch.fft} /
+\texttt{torch.topk}, deliberately: (i)~\texttt{rfft} dispatches to cuFFT,
+which a hand-written Triton FFT would only make slower and more
+error-prone; (ii)~the per-block loop is what keeps $\sigma$
+\emph{bit-identical} to the reference implementation --- cuFFT's batched
+and single-transform plans differ by ${\sim}10^{-6}$, and two numerically
+divergent copies of the same statistic must never enter one global
+top-$m$; (iii)~\texttt{torch.topk} is already an $O(n)$ radix-select, so a
+Triton top-$m$ would not beat it. The seven fused Triton kernels of
+Section~\ref{sec:count} are the \emph{decode-hot-path} recall step (per
+token, per layer); this selection path is a different regime, and
+Triton-izing it would be a negative optimization.
+
+%======================================================================
+\section{Data structures and memory contract}\label{sec:data}
+
+All structures are per \emph{(request-slot, layer)}; a ``slot'' is the row
+index in the runtime's request-to-token table.
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+name & shape / dtype & written at & read at\\
+\midrule
+latent pool & $[N_{\mathrm{pool}}, 576]$ bf16 & every token append & attention kernel\\
+$\mathrm{r2t}$ & $[\mathrm{max\_reqs}, \mathrm{ctx}]$ int & runtime-owned & prefill selection\\
+$\mathrm{kept\_buf}$ & $[\mathrm{max\_reqs}, \mathrm{ctx}]$ int & prefill; $+1$/step & CSR build\\
+$\mathrm{kept\_len}$ & $[\mathrm{max\_reqs}]$ int64 & prefill; $+1$/step & CSR build\\
+CSR $(\mathrm{indptr}, \mathrm{indices})$ & $[B{+}1]$, $[\sum n_i]$ int & every decode step & attention kernel\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{CSR contract (this is what the kernel consumes).} For batch entry
+$i$, the kernel reads rows
+$\mathrm{indices}[\mathrm{indptr}[i] \,:\, \mathrm{indptr}[i{+}1]]$ as
+absolute pool indices. Boundaries are shared
+($\mathrm{end}_i = \mathrm{start}_{i+1}$), so the packed indices must be
+contiguous with no gaps. Row order within a request is irrelevant
+(Property~1) --- keep ascending order anyway for coalescing.
+
+\textbf{Pad-row convention.} Graph-capture runtimes pad the batch to a
+captured bucket size. Every padded CSR slot must point at exactly one
+reserved pad row (pool row 0) so its softmax is non-empty; the padded lanes'
+outputs are discarded by the runtime. Never let a padded lane read another
+request's rows and never leave it an empty range.
+
+\textbf{Growth.} $\mathrm{kept\_len}$ grows by exactly 1 per decode step
+(the just-written token's pool slot is appended --- the ``tail''). Size
+$\mathrm{kept\_buf}$'s second dim to the context limit; overflow is then
+impossible by construction.
+
+%======================================================================
+\section{The decode path}\label{sec:decode}
+
+\subsection{Single-request (batch 1): in-graph $O(1)$ append}
+With batch 1 the CSR is two scalars, and the per-step state change is one
+append. Both are expressible as fixed-shape tensor ops on fixed-address
+buffers, so they can be \emph{recorded inside the capture} and replayed with
+zero host work:
+
+\begin{algorithm}[h]
+\caption{Per-step in-graph refresh, batch 1 (all MLA layers)}
+\begin{algorithmic}[1]
+\State $\mathrm{slot} \gets \mathrm{req\_pool\_indices}[0{:}1]$;\quad
+       $\mathrm{loc} \gets \mathrm{out\_cache\_loc}[0{:}1]$
+\For{each local MLA layer $\ell$}
+\State $n \gets \mathrm{kept\_len}_\ell.\mathrm{gather}(0, \mathrm{slot})$
+\State $\mathrm{flat} \gets \mathrm{slot}\cdot \mathrm{cap} + n$
+\State $\mathrm{kept\_buf}_\ell.\mathrm{view}(-1).\mathrm{scatter\_}(0, \mathrm{flat}, \mathrm{loc})$
+\State $\mathrm{kept\_len}_\ell.\mathrm{scatter\_}(0, \mathrm{slot}, n{+}1)$
+\State $\mathrm{indptr}_\ell[0{:}1] \gets \mathrm{slot}\cdot\mathrm{cap}$;\quad
+       $\mathrm{indptr}_\ell[1{:}2] \gets \mathrm{flat}+1$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+The kernel is then bound (at capture time) to
+$\mathrm{indices} = \mathrm{kept\_buf}_\ell.\mathrm{view}(-1)$ and
+$\mathrm{indptr} = \mathrm{indptr}_\ell$: with batch~1 the request's rows
+are already contiguous in its own $\mathrm{kept\_buf}$ row, so no packing is
+needed at all.
+
+\textbf{Capture-safety rule (portable).} Inside a capture region, never
+extract a scalar from device memory (\texttt{t[0]}-style indexing performs a
+hidden device$\to$host sync and invalidates stream capture on CUDA; the
+analogous restriction exists on other platforms' graph capture). Use 1-D
+gather/scatter/copy with tensor indices only. This restriction is a hard rule
+for all graph-capture platforms; the reference port records the corresponding
+capture-invalidation failure.
+
+\subsection{Batched decode: out-of-graph vectorized repack}
+With batch $>1$, boundaries are shared so a contiguous pack is required each
+step. Run it \emph{outside} the captured region (in the runtime's per-step
+metadata-refresh hook), fully vectorized --- a per-request loop of small ops
+costs milliseconds at batch 16 and was measured to erase the method's gain:
+
+\begin{algorithm}[h]
+\caption{Per-step out-of-graph refresh, batch $B$ padded to bucket $B_g$ (per MLA layer)}
+\begin{algorithmic}[1]
+\State $\mathrm{slots} \gets \mathrm{req\_pool\_indices}[0{:}B]$
+  \Comment{$B$ real requests; $\mathrm{out\_cache\_loc}$ has exactly $B$ entries}
+\State $n \gets \mathrm{kept\_len}.\mathrm{gather}(0,\mathrm{slots})$;\quad
+  append $\mathrm{loc}$ at $(\mathrm{slots}\cdot\mathrm{cap}+n)$;\quad
+  $\mathrm{lens} \gets n{+}1$; scatter back
+\State $k_{\max} \gets \max(\mathrm{lens})$ \Comment{one small D2H sync}
+\State $\mathrm{grid} \gets \mathrm{kept\_buf}.\mathrm{view}(-1).\mathrm{gather}
+  \big(0, (\mathrm{slots}[:,\mathrm{None}]\cdot\mathrm{cap} +
+  \mathrm{arange}(k_{\max})[\mathrm{None},:])\big)$
+\State $\mathrm{valid} \gets \mathrm{arange}(k_{\max})[\mathrm{None},:] < \mathrm{lens}[:,\mathrm{None}]$;\quad
+  $\mathrm{total} \gets \mathrm{sum}(\mathrm{lens})$ \Comment{second D2H sync}
+\State $\mathrm{indices}[0{:}\mathrm{total}] \gets \mathrm{grid}[\mathrm{valid}]$
+  \Comment{masked select = the pack}
+\State pad slots $B..B_g{-}1$: one pad row each (row 0);\quad
+  $\mathrm{indptr} \gets [0, \mathrm{cumsum}(\mathrm{lens}), \mathrm{total}{+}1, \dots]$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Padding trap (measured crash).} The runtime may pad
+$\mathrm{seq\_lens}$/$\mathrm{req\_pool\_indices}$ to the captured bucket
+while $\mathrm{out\_cache\_loc}$ keeps only the real entries. Derive the real
+batch from $\mathrm{out\_cache\_loc}$'s length, never from the padded shape;
+indexing the padded lanes overruns.
+
+\subsection{Prefill and lifecycle}
+\begin{enumerate}[itemsep=1pt]
+\item \textbf{Below an activation threshold} (short contexts): selection is
+off; attended = everything; byte-identical to stock decode.
+\item \textbf{Chunked prefill}: run Algorithm~1 at each chunk end (or once at
+prefill end); the last write wins and is the frozen kept set.
+\item \textbf{Decode}: Algorithms~2/3 per step; the fused kernel runs
+unmodified over fewer rows.
+\item \textbf{Slot reuse}: a new request occupying a slot must not see any
+predecessor state --- invalidate at prefill (see Section~\ref{sec:pitfalls}).
+\end{enumerate}
+
+%======================================================================
+\section{The attention-kernel contract}\label{sec:kernel}
+
+VestigeKV \emph{reuses} the platform's fused MLA decode kernel; nothing in
+the kernel math changes. The port therefore reduces to guaranteeing that the
+target platform's kernel satisfies the following contract:
+
+\begin{enumerate}[itemsep=1pt]
+\item \textbf{Indexed gather}: keys/values are fetched by absolute pool
+indices from the CSR (Section~\ref{sec:data}); rows are \emph{not}
+contiguous in the pool. On the validated GPU port the scattered gather cost
+is within the measurement noise; on platforms with strong
+contiguity requirements, stage the gather through scratch memory.
+\item \textbf{MLA absorb decode form}: single shared KV head; per-head
+query $q = [q_{\mathrm{nope}}W_{kc} \,|\, q_{\mathrm{rope}}]
+\in \mathbb{R}^{576}$; score $= s\, q \cdot \tilde C_u$ with
+$s = d^{-1/2}$ per the model config; value $= \tilde C_u[0{:}512]$;
+output re-projected by $W_{vc}$ outside the kernel. (This is stock MLA; a platform
+already serving DeepSeek-style MLA decode satisfies this item.)
+\item \textbf{Split-KV two-stage reduction}: stage 1 computes partial
+softmax accumulators + log-sum-exp (LSE) per KV split; stage 2 merges by
+LSE. \emph{Required behavior}: empty splits (zero rows) merge out as
+$-\infty$ LSE. This is what makes a grid sized for the full context correct
+when the CSR shrinks the row count $32\times$: extra splits are empty, not
+wrong. Do not resize the grid per step in graph mode; rely on empty-split
+correctness.
+\item \textbf{Graph capture}: the kernel must read $\mathrm{indptr}$ /
+$\mathrm{indices}$ \emph{contents} at execution time from fixed addresses
+(the buffers of Section~\ref{sec:data}), so a replayed graph sees each
+step's refreshed values. Any metadata precomputed at capture into
+registers/immediates breaks the scheme.
+\item \textbf{Splice for recall}: the fetched rows join as one extra
+split-KV partition (merged by the same LSE path); no kernel change. Graph capture
+requires a \emph{fixed fetch-buffer width} $W$, not a cap: the algorithm is
+uncapped, and a safety width (default $4096 >$ the observed worst fire of
+$3{,}983$) serves its semantics unchanged inside the graph, with overflow
+surfaced by telemetry. The cap is merely one policy for choosing $W$.
+\end{enumerate}
+
+\textbf{Non-requirements (for tier-1 attention)}: the attention over the
+kept+fired rows needs no new kernel, no custom softmax, no changes to
+$W_{kc}/W_{vc}$, no rope handling (there is none under NoPE), and no
+quantized cache paths. The tier-2 \emph{recall scan} is a separate,
+self-contained set of fused kernels (Section~\ref{sec:count}); it touches
+the index metadata only, never the attention math or the cache rows.
+
+%======================================================================
+\section{The recall tier (tier 2, the standard configuration)}
+\label{sec:tier2}
+At long context the tier is necessary, not optional: at $S{=}512$k the
+reference deployment measures a $99.8\%$ per-step trigger rate with
+end-to-end quality passing --- nearly every decode step consults the
+archive. A port that stops at tier 1 serves a performance floor, not the
+method.
+
+Eviction discards rows whose importance arrives later. The recall tier keeps
+every evicted row reachable per step at bounded cost. All thresholds
+self-calibrate from the prefix; nothing is trained.
+
+\subsection{The selection principle: certified competition, and why the
+fired set is variable}\label{sec:whyvar}
+
+The fired set's size varies per step because selection is not a quota but a
+\emph{competition against the query's own attended-tier optimum}. The
+complete decision, per head $h$, per archived row $a$:
+
+\begin{enumerate}[itemsep=1pt]
+\item \textbf{The standard to beat.} $\mathrm{max}_1^{(h)}$ = the best
+attention score this head's query achieves over the \emph{kept} rows. This
+is the only quantity an archived row must exceed to matter: a row scoring
+below it would receive negligible softmax mass next to what the attended
+tier already offers. Everything downstream is query-dependent because this
+standard is.
+\item \textbf{The gate (skip whole scans).} If the kept-tier softmax is
+already confident --- entropy below $\theta_g$ --- the answer is in the
+attended tier and the scan is skipped for this head. $\theta_g$ is
+self-calibrated as the 3\%-quantile of entropy over \emph{hard}
+calibration queries (those whose true causal-argmax target is archived), so
+at most $\sim$3\% of known-hard queries are wrongly gated off; if that
+threshold would pass more than 60\% of all queries the gate cannot separate
+and disables itself.
+\item \textbf{The proxy score.} The true score $s\,q\cdot\tilde C_a$ cannot
+be afforded against every archived row; the index stores an exact part and
+a sketch: $\mathrm{idx}_a = s\,(q_{\mathrm{rope}}\!\cdot\!\mathrm{side}_a +
+q_{\mathrm{sk}}\!\cdot\!\mathrm{csk}_a)$ --- exact on the 64-dim branch,
+rank-$r$ on the content.
+\item \textbf{The certificate (why a proxy can be trusted).} The truncated
+part of the true score is $\langle q_\perp, c_\perp\rangle$, the inner
+product of the query's and the row's components outside the sketch
+subspace. By Cauchy--Schwarz it is at most
+$\lVert q_\perp\rVert\,\lVert c_\perp\rVert = q_{\mathrm{res}}\varrho_a$;
+scaled by $1/\sqrt{512-r}$ it becomes an expected-magnitude (isotropic)
+correction rather than the worst case, and $z$ dials how much of it to
+credit: $\mathrm{score}_a = \mathrm{idx}_a + z\,s\,q_{\mathrm{res}}
+\varrho_a/\sqrt{512-r}$.
+\item \textbf{$z$ self-calibration (the recall guarantee, in closed form).}
+The tier has one quality parameter, $\tau$ (default $0.90$); everything else
+is derived from it. Split the miss budget $1-\tau$ evenly between the two
+stages that can lose a target: the entropy gate may falsely close on a hard
+query with probability at most $\alpha = (1-\tau)/2$, so the scan itself must
+recover at level $\tau_s = \tau/(1-\alpha)$, giving overall recall
+$(1-\alpha)\,\tau_s = \tau$.
+
+For a hard calibration query $q$ the archived target wins exactly when
+$\mathrm{idx}_t + z\,\mathrm{cert}_t > \mathrm{max}_1$, i.e.\ when
+$z > z_q := (\mathrm{max}_1 - \mathrm{idx}_t)/\mathrm{cert}_t$. Over $n$
+exchangeable hard samples, take the order statistics
+$z_{(1)} \le \cdots \le z_{(n)}$ and set
+\[ z \;=\; z_{(k)}, \qquad k \;=\; \lceil (n{+}1)\,\tau_s \rceil . \]
+This is the conformal quantile: by exchangeability alone --- no distributional
+assumption on queries or rows --- a fresh hard query's required inflation
+falls at or below $z_{(k)}$ with probability at least $\tau_s$, so
+$P(\text{target recovered}) \ge \tau_s$ marginally. The quantile exists iff
+$n \ge \tau_s/(1-\tau_s)$ (18 samples at $\tau=0.9$), which \emph{derives}
+the calibration sample size: collect decode queries, doubling the window,
+until that many hard samples exist (or a bounded cap is hit, in which case
+$z$ clamps to a safety maximum $z_{\max}$ and errs toward over-fetching,
+never under-recall). An earlier implementation searched an 11-rung ladder
+for the smallest passing $z$; the ladder was a discretization of this same
+quantile that could also undershoot its own target between rungs, and is
+gone --- along with the ladder itself, its fallback rung, the fixed
+calibration count, and the separate minimum-hard-sample knob, all of which
+this one formula replaces.
+\item \textbf{Fire and fetch.} Row $a$ fires iff
+$\mathrm{score}_a > \mathrm{max}_1^{(h)}$ and the gate is open; the fetch
+is the union over heads (per-head top-$j$ capped first when the cap is
+set --- capped selection is thus ``the top-$j$ among certified winners'',
+keeping the competition's precision while bounding volume).
+\end{enumerate}
+
+The variability now has a one-line explanation: \emph{the fired count is
+the number of rows that certifiably might beat what the attended tier
+already gives this query}. A well-served query fires zero (high
+$\mathrm{max}_1$, closed gate); a query whose target was evicted fires the
+few rows that plausibly hold it; at $S{=}512$k nearly every step fires
+something (the measured $99.8\%$ trigger rate) because at that length the
+kept tier alone rarely dominates. A fixed quota cannot reproduce this: set
+below a query's need it misses targets, set above it fetches rows that
+lose the competition anyway. The variable set is the smallest set
+maintaining the calibrated recall target per query; the explicit cap then
+trades a bounded slice of that guarantee for a hard latency bound
+(Section~\ref{sec:params}).
+
+\subsection{Index build (once, at prefill end; per layer)}
+Inputs: pool rows $C \in \mathbb{R}^{T\times 576}$ (fp32 for the build), the
+tier-1 mask $\keep$, and $n$ \emph{calibration queries}
+$q^{\mathrm{cal}} \in \mathbb{R}^{n\times H\times 576}$ (the last $n$
+prefill positions' expanded queries; $H$ heads), with their positions.
+
+\begin{enumerate}[itemsep=1pt]
+\item Archive $\mathcal{A} = \{u : \neg\keep_u\}$; $A = |\mathcal{A}|$.
+\item \textbf{Sketch basis}: center the calibration queries' content part
+and take the top-$r$ right singular vectors
+($r=64$ recommended GPU-resident):
+$V \in \mathbb{R}^{r\times 512} \gets \mathrm{SVD}_r\big(q^{\mathrm{cal}}_{:, :512}
+- \overline{q^{\mathrm{cal}}_{:, :512}}\big)$.
+\item \textbf{Per-row index entries}, for $a \in \mathcal{A}$:
+sketch $\mathrm{csk}_a = \hat c_a V^{\!\top} \in \mathbb{R}^{r}$;
+residual norm $\varrho_a = \lVert \hat c_a - \mathrm{csk}_a V\rVert$;
+branch $\mathrm{side}_a = r_a \in \mathbb{R}^{64}$.
+Index footprint per row: $r + 1 + 64$ floats.
+\item \textbf{Calibration labels}: for each calibration query, find its
+causal argmax row over the \emph{full} cache (chunk the key axis; the pool
+is complete by the partition invariant). A query is \emph{hard} iff its
+target is archived.
+\item \textbf{Calibration queries must be REAL queries.} The gate and $z$
+are calibrated on \emph{hard} queries --- those whose causal-argmax target is
+archived. Standing in cache rows for queries (an attractive shortcut, since a
+row and an expanded query share the 576-dim space in the absorbed form) is
+degenerate, not merely biased: a cache row used as its own query has itself as
+causal argmax, and its own position always lies inside the recent window, which
+tier~1 always keeps. So \emph{no} sample is ever hard, by construction. Measured
+on the \texttt{sglang} port: $n_{\mathrm{hard}}=0$ on every build, $z$ falling
+back to an uncalibrated constant, and firing on $1.31\%$ of the archive against
+the reference record's $0.024\%$ --- a $60{\times}$ inflation of the fetch
+volume, invisible in any output, visible only as latency.
+
+Where an engine can reach real prefill queries, use the last
+$n_{\mathrm{cal}}$ of them. Where it cannot --- an attention backend sees MLA
+prefill on the un-absorbed path, $[\,\cdot\,,H,192]$, and absorbing to the
+576-dim index needs $W_{kc}$, a model weight --- calibrate instead on the
+request's first $n_{\mathrm{cal}}$ \emph{decode} queries, which arrive already
+absorbed. Recall stays inactive for those steps, which is the price. On the
+port this restored $n_{\mathrm{hard}}$ to $3$--$63$ per layer, per-layer
+calibrated $z \in \{0, 0.5, 1, 1.5\}$, and firing on $0.021\%$ of the archive
+--- the reference's regime. Decode queries are arguably the better calibration
+set regardless: they are the distribution recall actually serves.
+\item \textbf{Entropy gate}: over kept rows only, per query compute
+$\mathrm{ent} = H(\mathrm{softmax}(s\,q\,C_{\kept}^{\!\top}))$. Set the gate
+threshold $\theta_g$ to the 3\%-quantile of $\mathrm{ent}$ over hard queries
+(if $>5$ hard queries exist); if the resulting gate would pass $>60\%$ of
+all queries, disable the gate ($\theta_g=-\infty$). The gate exists to skip
+scans when the kept-set softmax is already confident.
+\item \textbf{Certificate weight $z$}: for hard queries, with
+$q_{\mathrm{sk}} = q_{:512}V^{\!\top}$,
+$q_{\mathrm{res}} = \lVert q_{:512} - q_{\mathrm{sk}}V\rVert$, target-row
+proxy score
+$\mathrm{idx}_t = s\,(q_{512:}\!\cdot\!\mathrm{side}_t +
+q_{\mathrm{sk}}\!\cdot\!\mathrm{csk}_t)$ and certificate
+$\mathrm{cert}_t = s\, q_{\mathrm{res}}\varrho_t / \sqrt{512-r}$,
+choose the smallest
+$z \in \{0, 0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 8\}$ such that
+$\Pr[\,\mathrm{idx}_t + z\,\mathrm{cert}_t > \mathrm{max}_1\,] \ge 0.90$,
+where $\mathrm{max}_1$ is the query's best kept-row score. ($z$ inflates the
+proxy by a Cauchy--Schwarz-style bound on the sketch truncation error, so a
+true target is not missed for lack of sketch rank.)
+\end{enumerate}
+
+\subsection{Per-step query (each decode step; per layer)}
+Given the step's expanded queries $q \in \mathbb{R}^{H\times 576}$:
+\begin{align}
+\mathrm{max}_1, \mathrm{ent} &\gets \text{from } s\,q\,C_{\kept}^{\!\top}
+&&\text{(the kernel's own LSE pass can supply this)}\notag\\
+\mathrm{gate} &\gets \mathrm{ent} > \theta_g &&[H]\notag\\
+\mathrm{score} &\gets s\big(q_{512:}\mathrm{side}^{\!\top} +
+q_{\mathrm{sk}}\,\mathrm{csk}^{\!\top}\big) +
+z\, s\,\frac{q_{\mathrm{res}}\,\varrho^{\!\top}}{\sqrt{512-r}}
+&&[H,A] \;\;\text{(one GEMV-shaped scan)}\notag\\
+\mathrm{fire} &\gets (\mathrm{score} > \mathrm{max}_1) \wedge \mathrm{gate}
+&&[H,A]\notag\\
+\mathrm{fetch} &\gets \mathrm{fire} \wedge \mathrm{topj\text{-}cap}(\mathrm{score})
+&&\text{per head, if } \mathrm{topj}>0\notag
+\end{align}
+Fetch the union over heads of fired archive rows and splice them into this
+step's attention as one extra split-KV partition. Complexity: one
+$[H \times A] \cdot (r{+}65)$ scan per layer per step.
+
+\subsection{Fused in-graph implementation (the shipped scan)}
+The per-step query above is one GEMV-shaped scan \emph{mathematically};
+the shipped kernel realizes the whole recall step --- prologue, scan,
+compaction, and CSR pack --- as \textbf{seven fused Triton kernels baked
+into the decode CUDA graph itself}, so it costs one \texttt{cudaGraphLaunch}
+per step with no second graph and no VestigeKV-triggered recapture:
+\begin{enumerate}[itemsep=1pt]
+\item \textbf{prologue (2 kernels)}: an online-softmax pass over the kept
+rows (forked from the platform's decode-attention accumulation) supplies
+$\mathrm{max}_1$ and the entropy gate; a split-NK layout restores occupancy
+(one CTA per (pair, head-block)), and the merge kernel folds in the
+$q_{\mathrm{sk}}/q_{\mathrm{side}}/q_{\mathrm{res}}$ projections. Queries
+are read in place from the stacked \texttt{qbuf}; no materialized gather.
+\item \textbf{scan (1 kernel)}: native bf16/fp16 tensor-core dots with
+fp32-ieee accumulation over a worst-case-capacity pack; each program covers
+one 1024-row compact bucket and emits its fired count as a plain store.
+\item \textbf{compaction (2 kernels)}: an exclusive prefix over buckets
+(self-zeroing for the next replayed step) then an ordered fired-row write
+--- deterministic by construction, so the fired layout is identical across
+replays (a bit-parity requirement).
+\item \textbf{CSR pack (2 kernels)}: forked from the platform's
+kv-indices builder; a single-program-per-layer prep applies the step's
+append and writes indptr from pre-step state only (no cross-program
+visibility race), then a (layers $\times$ lanes) gather streams kept+fired
+rows into the CSR the attention kernel reads.
+\end{enumerate}
+Correctness rests on three invariants: (i) the pack and every baked buffer
+are sized for the worst case at startup, so contents refresh in place and
+the model graph never recaptures for VestigeKV reasons; (ii) placeholder
+pairs and padded lanes carry zero lengths and point at a trash slot, so the
+always-running kernels fire nothing and write where nothing reads --- and
+the grid is clipped per batch-size class to the live pair count, so
+placeholders are not even launched; (iii) the scan uses the
+\emph{previous} step's query (stale-by-one), so it can run at the top of
+the captured step before any layer overwrites \texttt{qbuf}. Every kernel
+retains its pre-fusion implementation in-tree as a bit-parity oracle, and
+the fused pipeline's 2048-token greedy output is token-identical to the
+unfused one. A kill-switch env var falls back to a separately captured
+scan graph.
+
+\subsection{How the per-step recall count arises}\label{sec:count}
+The most-asked implementation question is how the number of recalled rows
+is computed. The precise answer: it is not computed --- it \emph{emerges}
+as the cardinality of a union of per-head threshold sets,
+\[
+N_{\mathrm{step}} \;=\; \Big|\, \bigcup_{h\,:\,\mathrm{gate}_h}
+\big(\{a \in \mathcal{A} : \mathrm{score}_{h,a} > \mathrm{max}_1^{(h)}\}
+\;\cap\; \underbrace{\mathrm{top}\text{-}j_h}_{\text{optional clip}}\big) \Big| ,
+\]
+produced by a six-stage pipeline per layer per step (shapes in brackets):
+(1)~kept-tier scores give per-head $\mathrm{max}_1$ and entropy $[H]$ (the
+kernel's LSE pass supplies both); (2)~the gate selects the scanning heads,
+$H' = |\{h : \mathrm{ent}_h > \theta_g\}|$ --- the first source of
+variation; (3)~one GEMV-shaped scan scores $[H' \times A]$;
+(4)~thresholding against each head's own $\mathrm{max}_1$ yields per-head
+crossing counts $F_h$ --- the second source; (5)~the cap clips each head to
+$\min(F_h, j)$; (6)~the union over heads deduplicates --- the third source
+(head overlap).
+
+There is deliberately no closed-form count: $N_{\mathrm{step}}$ is the
+measure of the score distribution's level set above a query-dependent
+threshold --- data, not configuration. What \emph{is} configured is the
+distribution's shape, through exactly two knobs. The calibration target
+(via $z$, the conformal quantile of required inflations at the 90\%
+recall criterion) sets the operating point, making $N_{\mathrm{step}}$ the
+size of the smallest certified set at that point --- one row more is
+waste, one fewer breaks the guarantee; raising the target shifts the whole
+distribution up. The cap then clips the tail at $j \times H'$.
+
+Measured shape at $S{=}512$k (reference record): trigger rate $99.8\%$ of
+steps ($N \ge 1$), mean fetch $0.024\%$ of the archive ($\approx$120 rows),
+uncapped worst observation $3{,}983$, capped worst $296$. The distribution
+is frequent-and-small with a heavy tail --- which is precisely what the cap
+exists to clip, and how a serving SLO should quote it (mean plus hard
+bound). A port should expose an $N_{\mathrm{step}}$ histogram counter from
+day one; it is the single most informative health signal of the tier.
+
+\subsection{Is tier 1 still necessary at long context, and does recall
+depend on it?}\label{sec:tier1need}
+A $99.8\%$ trigger rate invites the question whether tier 1 still matters
+at long context. It does, and recall is structurally defined in terms of
+it.
+
+\textbf{Trigger frequency is not workload share.} At $S{=}512$k a step
+attends $\approx\!16{,}384$ tier-1 rows and fetches $\approx\!120$
+recalled ones ($0.024\%$ of the archive): tier 1 supplies over $99\%$ of
+the attended rows and essentially all of the attention mass; recall is the
+patch, not the payload. The correct mental model is a cache hierarchy ---
+tier 1 is the \emph{hit path} (query-independent, prefetched at prefill,
+riding the fixed in-graph channel at zero per-step cost), recall is the
+\emph{miss path} (query-dependent, riding the variable channel). ``At
+least one miss on $99.8\%$ of steps, at $0.024\%$ miss volume'' describes
+a healthy cache, not a redundant one. Removing tier 1 forces every
+relevant row through the variable scan-and-fetch path every step ---
+the fired set balloons from $\sim$120 rows to the entire important set,
+converting cheap fixed reads into scanned fetches in every regime.
+
+\textbf{Recall depends on tier 1 three times over.} (a)~The fire criterion
+is $\mathrm{score}_a > \mathrm{max}_1$, and $\mathrm{max}_1$ \emph{is}
+tier 1's content --- without the kept set the competition standard does
+not exist. (b)~The entropy gate is computed over the kept-tier softmax.
+(c)~Calibration defines a hard query as one whose target is
+\emph{archived}, i.e.\ relative to the tier-1 partition. The
+counterfactual was run and rejected in the pre-registered record:
+trigger designs without the kept-max competition either recalled poorly
+(recall@4 $=0.489$) or fired on $99.5\%$ of rows --- it is precisely the
+competition against tier 1's optimum that tames firing from $99.5\%$ to
+$0.024\%$. Remove tier 1 and the mechanism collapses back to the
+similarity top-$k$ shape this design supersedes.
+
+\subsection{Relation to ArkVale}
+ArkVale (Chen et al., 2024) is the closest prior design --- evict, summarize,
+recall on demand --- and a port team should know exactly where this tier
+departs from it:
+\begin{enumerate}[itemsep=1pt]
+\item \textbf{Unit and summary.} ArkVale summarizes evicted \emph{pages}
+with lossy bounding digests and recalls whole pages. This tier indexes
+individual \emph{rows} with an exact 64-dim branch summand, a rank-$r$
+content sketch, and a scalar residual certificate; recalled rows are
+bit-exact (no lossy digest exists anywhere, per the no-quantization rule).
+\item \textbf{Why digests cannot be tight under RoPE.} A page digest must
+cover its keys; rotation spreads a page's keys across phases, so the cover
+is structurally loose --- measured digest layer-uniformity $0.672$ (NoPE)
+vs.\ $0.024$ (RoPE) in the reference record. ArkVale operates in the loose
+regime; this tier is built for the NoPE regime where per-row summaries are
+meaningful at all.
+\item \textbf{Certified competition vs.\ similarity scoring.} ArkVale
+admits pages by digest-similarity ranking. Here a row fires only when its
+certified score beats the query's own kept-tier maximum
+(Section~\ref{sec:whyvar}), with $z$ self-calibrated to a 90\% recall
+target from the prefix --- an admission \emph{criterion with a guarantee},
+not a similarity heuristic.
+\item \textbf{Eviction signal.} ArkVale's eviction relies on
+query-history importance; tier-1 eviction here is query-independent
+($\sigma$ over the branch), so the whole partition exists before any query
+does --- the setting ArkVale cannot serve.
+\item \textbf{Scan economy (design intent, with a measured caveat).} The
+entropy gate is meant to skip whole scans when the kept tier is already
+confident, where ArkVale scans per step. On the \texttt{sglang} port the gate
+is \emph{off} even after calibration is repaired --- with $3$--$63$ hard
+queries per layer the fitted threshold would pass more than $60\%$ of queries,
+so the self-disable rule of Section~\ref{sec:tier2} correctly declines to
+install a filter that filters nothing. The conformal $z$, which shares the
+same hard set, does calibrate. Budget a full scan per head per step; the gate is an
+optimization the port does not currently collect.
+\end{enumerate}
+
+\paragraph{NoPE-specific optimizations in the recall path.} Each of the
+departures above is enabled by a specific NoPE property, with a RoPE
+counterfactual explaining why ArkVale cannot adopt it:
+(i)~\emph{build-once, never-stale row index} --- scores are fixed bilinear
+forms of row content, so per-row entries computed at the compression event
+stay valid for the whole decode; under RoPE the effective key drifts with
+query--key distance, which is exactly why ArkVale must fall back to loose
+per-page bounding digests.
+(ii)~\emph{a free exact summand} --- the never-rotated 64-dim branch makes
+$q_{\mathrm{rope}}\!\cdot\!\mathrm{side}_a$ an exact component of the
+true score at 11\% of the row read; rotation leaves no exact sub-component
+to precompute.
+(iii)~\emph{a static certificate} --- the sketch-truncation error is a
+per-row constant $\varrho_a$ only because the content form is fixed; a
+rotating subspace admits no static bound, hence similarity heuristics
+instead of certified admission.
+(iv)~\emph{one-shot calibration} --- $z$ and the gate threshold are
+calibrated once from the prefix and remain valid because score
+distributions are position-stationary; under RoPE prefix calibration
+drifts as the rotary bands sweep.
+(v)~\emph{zero positional fix-up on recall} --- fetched rows splice into
+the same softmax with no re-rotation, which is what lets the stock kernel
+serve the merged partition unmodified.
+
+\paragraph{Memory placement: no paging.} Eviction here is a partition
+of \emph{indices}, never a movement of data: in the standard (GPU-resident)
+configuration every row --- kept and archived alike --- stays in place in
+the one GPU pool, and a recall adds \emph{indices} to the step's attended
+set; the kernel gathers the rows where they lie. There is no page, no
+resident set, no replacement, and therefore no thrashing, by construction
+(the compression benefit in this configuration is bandwidth and compute,
+not VRAM). The host-offload variant does move archived rows to host memory
+once, at the compression event, off the critical path; a fire then costs a
+one-way, row-granular fetch (rows are immutable: no dirty state, no
+write-back, no displacement of anything resident), bounded under the cap by
+$\mathrm{topj}\times H$ rows per step per layer. Neither configuration
+performs swap-in/swap-out in ArkVale's sense.
+
+\paragraph{The degeneration duality.} The two designs fail in opposite
+directions, and the contrast is the sharpest way to state the difference.
+A fixed page budget never inflates per-step attention --- ArkVale does
+\emph{not} degenerate to naive MLA on recall --- but under pressure it
+degrades \emph{quality}: pages beyond the budget are simply absent (plus
+transfer thrashing when the relevant set churns), and the only cure is
+inflating the budget toward the full cache, which un-does the compression.
+The certified competition degrades in the dual direction: uncapped, a
+pathological step can attend everything (naive MLA plus scan;
+Section~\ref{sec:whyvar}) while quality never degrades --- the fetched
+rows are exact. The explicit cap is what turns this into an operator
+choice: quota designs hard-wire the degradation onto the quality side
+silently; here the side and the bound are stated.
+
+
+\subsection{The fetch cap: an optional deployment optimization (not part of the algorithm)}
+\textbf{The serving default is uncapped} ($\mathrm{topj}=-1$): fetch the
+whole fired set. A cap must be \emph{stated explicitly} by the operator; the
+recommended value is $\mathrm{topj}=16$, which buys the bounded-fetch
+guarantee
+\[
+\text{fetch} \;\le\; \mathrm{topj} \times H \ \text{rows / step / layer}
+\]
+(worst-case observed fire $3{,}983$ rows $\to$ capped $296$; a $13\times$
+tightening) at measured-zero quality cost: generation bit-identical,
+$\Delta$bpb $= 0.04$\,pp inside the pre-registered neutral band, needle
+recovery identical. Rationale for explicitness: the cap is the one knob
+trading recall completeness against a worst-case latency/PCIe bound, and the
+engineer setting it should know which side they are buying.
+
+%======================================================================
+\section{Parameters}\label{sec:params}
+
+\textbf{One quality knob.} The deployment exposes exactly one quality
+parameter, the recall target $\tau=0.90$; the rest of the trigger
+calibration is a closed-form chain, not tuned:
+\[
+\alpha=\tfrac{1-\tau}{2},\quad
+\tau_s=\tfrac{\tau}{1-\alpha},\quad
+z_p=z_{(k)}\;\text{with}\;k=\lceil(n{+}1)\tau_s\rceil,\quad
+\mathrm{min\_hard}=\lceil\tfrac{\tau_s}{1-\tau_s}\rceil=18,
+\]
+plus an $8\!\to\!64$ adaptive calibration window and a $Z_{\max}=8$ clamp.
+
+\textbf{Structural constants} (not tuned per deployment; each with a stated
+reason):
+\begin{center}\small
+\begin{tabular}{@{}llp{7.1cm}@{}}
+\toprule
+constant & value & rationale / provenance\\
+\midrule
+$\rho$ & $1/32$ & compression ratio; the only ratio measured flat in context length (an experimental axis, not a runtime knob)\\
+$\kappa$ & 16 & low-pass bandwidth of Eq.~\eqref{eq:sigma}; counts frequency bins, so a fixed block window keeps its meaning scale-invariant\\
+$\mathrm{CLOSE\_BLOCK}$ & 4096 & the $\sigma$ transform window and close granularity; anchors $\kappa$'s scale invariance and makes $\sigma$ incremental\\
+$r$ (sketch) & 64 & index rank; minimizes per-step scan bytes (the archive is GPU-resident, so fetches are free and larger $r$ only buys a lower fire rate)\\
+sinks & 4 & always-kept head rows\\
+$W$ (recent) & 256 & always-kept tail; admitted arbitrary\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Optional optimization.} \texttt{topj} (fetch cap) defaults to $-1$
+(uncapped, the deployed form); a bounded fetch (16 recommended) is an
+optional worst-case-latency optimization, adopted from ArkVale's budgeted
+admission and applied to the certified scores.
+
+Operational values (partition, prefill chunking, backends, transport tuning)
+are deployment-specific; the reference deployment records them, one file,
+each entry carrying its value, rationale, and provenance, in \texttt{config/recommended.json} of the
+experiment repository. \textbf{Fool-proof rule}: a default may do the whole
+thing or nothing, never a fraction nobody typed --- which is why the cap
+defaults off and algorithm knobs are typed explicitly at launch.
+
+%======================================================================
+\section{Cost model and validation targets}\label{sec:cost}
+
+Throughout, \emph{k} denotes $1024$ tokens (4k${=}4096$, 64k${=}65536$, 512k${=}524288$).
+
+\textbf{Per-token attention volume is not a fixed budget} --- a property
+classic sparse attention does not have, so it must enter the port's latency
+contract explicitly. The tier-1 attended count is \emph{proportional}
+($m + |\mathrm{tail}|$ with $m = \mathrm{round}(\rho T)$; a constant-$m$
+schedule exists via \texttt{m\_fixed} but the proportional schedule is the
+only one measured quality-flat in context length), and the recall tier makes
+the per-step count \emph{query-dependent}: the fired set ranges from zero to
+a measured worst case of $3{,}983$ rows. The algorithm itself is uncapped; the optional cap hard-bounds the
+per-step fetch at $\mathrm{topj}\times H$ (the non-degeneration
+guarantee) as a deployment optimization. Uncapped, the theoretical worst
+case is full fire: that step attends the entire cache, i.e.\ naive MLA plus the scan
+overhead (quality unharmed --- the fetched rows are exact; steps are
+independent); the measured worst fire of $3{,}983$ rows is an observation,
+not a bound. Kernel consequence: size the launch grid for
+the maximum and rely on empty-split correctness
+(Section~\ref{sec:kernel}); never re-derive the grid from the per-step
+count in graph mode.
+
+All validation targets in this section are \emph{tier-1 ablation}
+figures. They are an ablation floor, not a deployable baseline: without the
+recall tier, quality collapses at long context ($S \gtrsim 256$k), so
+tier-1-only throughput must never be quoted as the configuration recall is
+``slower than''. The only legitimate speed comparison is recall-on against
+the uncompressed baseline.
+
+\paragraph{Honest cost model, and where the speedup lives.} Decode step time
+decomposes as
+\[
+t(S) \;=\; C_0 \;+\; T_{\mathrm{net}} \;+\; A(S),
+\]
+with $C_0$ the context-independent remainder (MoE experts, linear-attention
+layers, sampling, host), $T_{\mathrm{net}}$ the pipeline-parallel transfer
+cost (zero on a single device), and $A(S)$ the attention term --- the ONLY
+term this method can shrink. Under the dense baseline
+$A_{\mathrm{dense}}(S) = k\,S$ with $k$ the per-row read cost
+($1152$\,B/row at bf16). Under VestigeKV,
+\[
+A_{\mathrm{vk}}(S) \;=\; \underbrace{k\,\rho S}_{\text{kept attention}}
+\;+\; \underbrace{k_s (1-\rho) S}_{\text{archive scan}} \;+\; R,
+\]
+where $k_s$ is the scan's per-row cost ($260$\,B/row with the shipped
+16-bit index: side bf16, sketch fp16, residual scalar fp32) and $R$ a
+small fixed residual (the fused seven-kernel pipeline's per-step engineering
+adder, ${\sim}68\,\mu$s by kernel-level profiling, batch-independent). Three consequences, stated
+plainly:
+
+\begin{enumerate}
+\item \textbf{The advantage is speed, not memory.} Both tiers are
+GPU-resident and the partition invariant deletes no row: the full latent
+pool stays in device memory and the wrapper adds index buffers on top.
+Memory savings would require host-offloading the archive (the $r{=}192$
+variant of Section~\ref{sec:params}), which this implementation does not do.
+\item \textbf{The $S$-slope does not vanish; it shrinks by
+$\rho + k_s/k \approx 0.26$ with the shipped 16-bit index.} The scan must
+touch every archived row every step --- that is what the recall guarantee
+costs --- so the method cuts the attention slope to roughly a quarter
+rather than eliminating it. (The fire-set stability gate that licensed the
+16-bit scan operands has since passed; see Section~\ref{sec:params}.)
+\item \textbf{Short-context speedup is bounded by attention's share of the
+step.} On the reference deployment (two nodes over ethernet,
+$T_{\mathrm{net}} \approx 2.0$\,ms measured, $C_0 \approx 5.5$\,ms,
+$A_{\mathrm{dense}} \approx 0.57$\,ms at $S{=}64$k by measured-slope
+calibration), attention is $7\%$ of the step at $64$k, so no selection
+scheme --- this one or any other --- can win much there.
+\end{enumerate}
+
+\textbf{This is a long-context method.} Measured on the reference
+deployment (final fused build, bs=1 continuous decode), the vestigekv
+step-time slope is ${\sim}0.5$\,ns/token against dense $6.3$\,ns/token;
+the crossover sits at ${\sim}48$k and the end-to-end ratio grows with $S$:
+$1.07\times$ (128k), $1.20\times$ (272k), $1.39\times$ (496k), extrapolating
+toward the attention-only asymptote as $S$ grows (the saved term is linear
+while $C_0 + T_{\mathrm{net}}$ is constant). The measured slope is
+\emph{below} the byte account because the dense arm's own long-$S$ slope
+exceeds its bandwidth floor (split-count growth and length-scaled kernel
+inefficiencies), which vestigekv sidesteps by holding its attended set near
+$\rho S$. The crossover is deployment-dependent in the honest direction:
+the reference testbed's $C_0$ (MoE with 3B active parameters) and
+$T_{\mathrm{net}}$ (ethernet pipeline) are LARGE, which suppresses the
+ratio; a single-device or NVLink deployment moves the crossover earlier and
+lifts every entry. Each arm's curve is collected within a single launch so
+the fixed launch-state terms cancel; cross-arm claims read the same
+statistic (median per 4k-token bucket) on both, and above ${\sim}240$k the
+server-side decode log is the per-token authority.
+
+Throughput (64k prefill + 4k decode, batch sweep): the attention share of
+the step grows with batch (attention cannot batch while the shared weights
+amortize), so the vestigekv advantage grows with it, against the dense
+\texttt{triton} baseline: within launch-noise of even at bs=1 (attention is
+a few percent of the step there), then $+7.7\%$ at bs=8 and $+8.3\%$ at
+bs=12. The per-step engineering adder of the fused pipeline is
+${\sim}68\,\mu$s (kernel-level profiling), batch-independent.
+
+%======================================================================
+\section{Validation protocol}
+\label{sec:validate}
+
+\begin{enumerate}[itemsep=2pt]
+\item \textbf{Kill-switch parity}: with the wrapper disabled, outputs must
+be call-for-call identical to stock. This isolates plumbing bugs from
+algorithm effects.
+\item \textbf{Full-arm parity}: with selection forced to keep \emph{all}
+rows, per-step outputs must match stock bit-for-bit. (The reference A/B
+harness switches arms on a live server this way; both arms then share one
+graph and code path, which is also the honest benchmark protocol.)
+\item \textbf{Selector equivalence}: $\sigma$ and $\keep$ must match the
+reference implementation bit-exactly on shared inputs
+(the project keeps a GPU test asserting exactly this).
+\item \textbf{Quality gates} (uncapped, $\rho{=}1/32$): needle retrieval
+1.00 at $8\times$--$32\times$ / 8k--65k; teacher-forced $\Delta$bpb vs the
+uncompressed engine $\le 0.15\%$; generation under the cap bit-identical.
+\item \textbf{Recall-tier gates}: with the index built from the prefix
+(no training), recovery at $1/128$ compression must reach $1.00$ in the
+serving loop at 8k--32k, and the long-context necessity signature must
+reproduce: a high per-step trigger rate at $S{\sim}512$k with quality
+passing (the reference measures $99.8\%$).
+\item \textbf{Scan-precision gates} (the 16-bit index): fire-set
+stability --- the fired row set under the 16-bit operands must match the
+fp32 arm (Jaccard $\ge 0.99$, top-8 coverage unchanged), each arm
+calibrated independently, since the conformal threshold is refit after
+rounding --- plus a serving-level greedy + needle A/B.
+\item \textbf{Fusion parity}: every fused kernel keeps its pre-fusion
+implementation as a bit-parity oracle (fire/fetch sets and CSR contents
+identical on shared inputs); end-to-end, the fused pipeline's 2048-token
+greedy output must be token-identical to the unfused one.
+\item \textbf{Regression tests worth porting} (each caught a real bug):
+padded-batch refresh must not overrun the unpadded
+$\mathrm{out\_cache\_loc}$; a re-used slot must not inherit the previous
+request's kept state; the guard of each test must \emph{fail} on the broken
+form (a check must be demonstrated to fail before it is trusted).
+\end{enumerate}
+
+%======================================================================
+\section{Observed defect classes and mitigations}
+\label{sec:pitfalls}
+
+\begin{enumerate}[itemsep=2pt]
+\item \textbf{Stale per-slot state on slot reuse.} Runtime request slots are
+recycled. Any decode-side cache keyed by slot (the kept tables, tier-2
+index) must be invalidated when a new request prefills the slot ---
+otherwise the new request attends the \emph{previous} request's rows. This
+bug produced ``compression enabled but attention time unchanged'' and was
+only caught by a stage-separated kernel profile.
+\item \textbf{Selection work inside the decode window.} Building indices
+lazily at the first decode step put $B \times L_{\mathrm{MLA}}$ rFFTs into
+one step and erased the measured gain at $B{=}16$. All $\sigma$ work belongs
+at prefill / block close (Corollary~\ref{cor:stat} guarantees this is
+exact).
+\item \textbf{Per-request host loops on the step path.} A Python-level loop
+of tiny copies ($\sim$100 ops/step at $B{=}16$) costs milliseconds; the
+vectorized pack of Algorithm~3 replaces it with $\sim$12 ops.
+\item \textbf{Hidden device sync inside graph capture.} See the
+capture-safety rule in Section~\ref{sec:decode}.
+\item \textbf{Padded-lane overruns.} See the padding trap in
+Section~\ref{sec:decode}; also give every padded lane a pad row, never an
+empty range.
+\item \textbf{Arch-specific JIT of unrelated ops.} On new hardware,
+auxiliary ops (e.g.\ sampling kernels) may fail platform checks and kill
+the server at first generate --- pin arch-agnostic fallbacks for everything
+outside the attention path before debugging the attention path.
+\item \textbf{Graph-replay reality: a backend's \texttt{forward\_*}
+python does not run on the replay path.} Only the metadata hooks execute;
+anything a per-step algorithm needs must live in the fixed-address buffers
+those hooks can touch. Placing a per-step tensor copy inside the forward
+call either invalidates the graph (silent fall back to eager) or replays a
+stale capture-time value. The reference port measured the former:
+$138 \to 94$ tok/s from one such copy, with the profiler showing GPU busy
+$6.4$\,ms against a $279$\,ms step. Design the per-step data flow around
+this constraint before writing the recall path, not after.
+\item \textbf{Isolate with a configuration matrix before attributing
+anything.} A performance investigation on this port spent ten successive
+hypotheses --- each reasoned from the code, each microbenchmarked, each
+falsified --- because the comparison itself was never validated first. The
+baseline had been measured on one upstream revision and the regression on
+another; the two were not comparable at all. Two cheap moves prevent this
+class of waste: reproduce the baseline on the \emph{current} tree before
+calling anything a regression, and fill a small matrix (stock backend vs.\
+wrapper-with-feature-off vs.\ wrapper-with-feature-on) $\times$ (old
+revision vs.\ new) so the failing cell names the variable. Record the
+upstream commit next to every serving number; never compare across a rebase.
+\item \textbf{Host-side cost is invisible to isolated microbenchmarks.}
+Five hypotheses (scan GEMV, index pack, bookkeeping, extra attended rows,
+device-to-host syncs) were each measured in isolation, each came back
+cheap, and each was wrong about the whole: a single-call microbenchmark has
+no pipeline to stall. Only a stage-separated trace of the live server
+(busy-vs-gap) located the cost. Use microbenchmarks to price kernels, never
+to exonerate a host-side path.
+\item \textbf{Benchmark hygiene.} Warm each graph bucket before measuring
+(first-use capture cost is large); interleave A/B arms on one live server;
+never compare across server restarts; measure with the serving framework's
+own benchmark tool and state the one exception if any. Two corollaries the
+port learned the hard way: (a) the client's inter-token timestamps degrade
+under stream batching above ${\sim}240$k context, so the server-side decode
+log is the per-token authority there; (b) launch-to-launch network variance
+($\pm 15\%$ on the fixed terms) can invert a small cross-launch ratio ---
+collect each arm's curve within a single launch and read cross-arm claims
+as $\Delta$-vs-4k, and never switch the baseline itself when reducing
+noise --- a same-launch full-arm A/B removes launch variance but compares
+against a \emph{different} (faster) baseline than the stock backend, which
+silently inflates the ratio.
+\item \textbf{Second-graph launch tax (fixed, batch-independent).} An
+earlier build replayed the recall scan as a \emph{second} CUDA graph per
+step; its host-side \texttt{cudaGraphLaunch} waited a full GIL slice and
+cost ${\sim}0.9$\,ms/step that did not scale with batch --- enough to sink
+bs=1 below $1.0\times$ on its own. The fix is structural, not a knob: bake
+the whole recall step into the decode model graph (Section~\ref{sec:count}),
+one launch per step. A knob-level attempt (shortening the GIL switch
+interval) helped the target microcost but regressed the process globally
+and was reverted; the lesson is that a per-step fixed cost is worth a
+structural fix, not a tuning band-aid.
+\item \textbf{Capacity-grid launch floor.} The in-graph kernels launch a
+grid sized for the worst-case context and batch, so at small live batch the
+placeholder pairs cost real launch time even though they compute nothing.
+Two mitigations, both content-independent: give each program a whole
+1024-row compact bucket (a $16\times$ smaller grid than one-block
+programs), and clip the grid per batch-size class to the live pair count so
+placeholders are not launched at all. What remains is the platform's own
+per-batch-class graph overhead, which the dense arm pays too.
+\end{enumerate}
+
+\vspace{1em}
+\noindent\textbf{Provenance.} Selection math and quality numbers: the
+pre-registered VestigeKV experimental record (PREREG series; RoPE control
+measured on DeepSeek-V2-Lite). Engineering contract and performance:
+the production port to standard \texttt{sglang}
+(branch \texttt{vestigekv}), dual-GPU pipeline deployment of
+Kimi Linear 48B-A3B; all changes outside the attention backend are
+enumerated in that repository's port audit. This document froze against
+commit \texttt{c3e2612}.
+
+\end{document}

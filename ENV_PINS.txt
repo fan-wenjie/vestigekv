@@ -1,0 +1,6 @@
+accelerate==1.14.0
+fla-core==0.4.0
+flash-linear-attention==0.4.0
+torch==2.13.0+cu130
+transformers==4.57.1
+triton==3.7.1

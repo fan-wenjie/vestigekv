@@ -1,0 +1,93 @@
+{
+  "_schema": {
+    "value": "the recommended setting",
+    "why": "one sentence: why this value, not what it is",
+    "evidence": "where the number was measured/frozen (PREREG / csv / log)",
+    "class": "algorithm = a record only, the engineer types it explicitly at launch (fool-proof rule); operational = launch scripts may read and apply it directly"
+  },
+  "rho": {
+    "value": 0.03125,
+    "why": "tier-1 eviction ratio 1/32: the only ratio measured flat in context length for constant-m schedules",
+    "evidence": "paper sec 'Recommended configuration'; PREREG curve legs",
+    "class": "algorithm"
+  },
+  "topj": {
+    "value": 16,
+    "why": "recall fetch cap: bounded-fetch guarantee fetch<=topj*num_heads rows/step/layer; worst-case fire 3983->296 rows (13x) at zero measured quality cost (generation bit-identical, bpb delta 0.04pp inside neutral band). SERVING DEFAULT IS UNCAPPED (-1): set SGLANG_VESTIGEKV_TOPJ=16 explicitly to enable",
+    "evidence": "PREREG33 (wall clock, recovery), PREREG34 (bpb/MAUVE), PREREG30 (fire telemetry)",
+    "class": "algorithm"
+  },
+  "index_rank": {
+    "value": 64,
+    "why": "tier-2 sketch rank r when the archive is GPU-resident (fetches cheap -> minimize scan bytes); use 192 under host offload (minimize triggers)",
+    "evidence": "paper sec 'Recommended configuration' [M]",
+    "class": "algorithm"
+  },
+  "sinks": {
+    "value": 4,
+    "why": "attention-sink rows always kept regardless of sigma",
+    "evidence": "select_kept contract; StreamingLLM lineage",
+    "class": "algorithm"
+  },
+  "recent_window": {
+    "value": 256,
+    "why": "recent tail always kept regardless of sigma; admitted arbitrary - no evidence this is the right threshold, safe to tune by quality",
+    "evidence": "vestigekv_mla_backend.py _RECENT_WINDOW comment (admission of arbitrariness)",
+    "class": "algorithm"
+  },
+  "attention_backend": {
+    "value": "vestigekv_mla",
+    "why": "the VestigeKV wrapper; wraps the Triton MLA backend on SM120 (flashinfer MLA JIT needs CUDA>=12.9 toolkit). Selecting this backend IS the enable switch: there is no SGLANG_ENABLE_VESTIGE knob, and the dense control arm is --attention-backend triton, which no env var can override",
+    "evidence": "VESTIGEKV_PORT.md bring-up log; wrapper overhead measured at ~1% (triton 137.2 vs algorithm-off wrapper 138.6/139.9, S=64k bs=1, 2026-09-06)",
+    "class": "operational"
+  },
+  "sampling_backend": {
+    "value": "pytorch",
+    "why": "SM120: flashinfer sampling JIT fails its arch check and SIGQUITs the PP group at first generate; pytorch sampling is arch-agnostic and identical for greedy",
+    "evidence": "part_node1.log 2026-09-05 crash; memory vestigekv-port-bs-gt-1-and-sm120-sampling",
+    "class": "operational"
+  },
+  "pp_partition": {
+    "value": "23,4",
+    "why": "largest KV pool (1,206,077 tokens, 2.3x the memory-driven 21/6) at equal decode speed - the two GB202 cards are near-equal, so the split only moves capacity",
+    "evidence": "out/partition_ab.csv sweep 2026-09-05",
+    "class": "operational"
+  },
+  "mem_fraction_static": {
+    "value": 0.88,
+    "why": "leaves activation headroom for 8192-token chunked prefill on the 32GB rank; not re-tuned since bring-up",
+    "evidence": "bring-up (no sweep - arbitrary within a working range)",
+    "class": "operational"
+  },
+  "chunked_prefill_size": {
+    "value": 8192,
+    "why": "bounds the 5090's prefill activation at large S (65536 one-shot OOMed by 256MB)",
+    "evidence": "VESTIGEKV_PORT.md 65536 OOM entry",
+    "class": "operational"
+  },
+  "context_length": {
+    "value": 262144,
+    "why": "curve/batch experiment config; capacity probes use 1048576 (pool shrinks to 525137 there)",
+    "evidence": "out/curve_ab.csv, out/batch64k_ab.csv configs",
+    "class": "operational"
+  },
+  "nccl_env": {
+    "value": {
+      "NCCL_SOCKET_IFNAME": "eth0",
+      "NCCL_IB_DISABLE": "1",
+      "NCCL_SOCKET_NTHREADS": "4",
+      "NCCL_NSOCKS_PERTHREAD": "4",
+      "NCCL_P2P_NET_CHUNKSIZE": "2097152",
+      "NCCL_BUFFSIZE": "8388608"
+    },
+    "why": "cross-machine activation transport tuning: 14.6 Gbit/s on the eth0 link; metadata deliberately stays on gloo (its own CPU communicator off the CUDA stream - the NCCL-object experiment deadlocked and was reverted)",
+    "evidence": "memory remote-5090-tmux; NCCL-object revert 2026-09-06",
+    "class": "operational"
+  },
+  "recall_tier": {
+    "value": "required",
+    "why": "necessary at long context: 99.8% per-step trigger at S=512k with quality passing; the partition invariant is only meaningful if the archive is consulted. NOT closeable; the only knob is the explicit fetch cap (topj)",
+    "evidence": "PREREG31/32; rule recorded 2026-09-06",
+    "class": "algorithm"
+  }
+}
