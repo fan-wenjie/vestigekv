@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+*.pt
+out/
+logs/
+qdir/
+queue.jsonl
+.health_highwater.json
+tmp_output_gsm8k.txt
+# latex build artifacts
+docs/whitepaper/*.aux
+docs/whitepaper/*.log
+docs/whitepaper/*.out
+docs/whitepaper/*.toc
+# regenerable token caches (fineweb/sanguo fillers; rebuilt on first run)
+results/needle_filler_*.json
+results/quality_cont64k_contexts_tokens.json
+results/quality_mauve64k*_ctx.json

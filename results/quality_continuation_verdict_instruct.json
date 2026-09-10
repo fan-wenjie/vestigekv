@@ -1,0 +1,95 @@
+{
+ "n_ctx": 16,
+ "gen_tokens": 512,
+ "median_first_divergence": 5.0,
+ "min_first_divergence": 1,
+ "mean_agreement": 0.07929388910746403,
+ "bar": {
+  "median_first_divergence >= ": 128,
+  "min_first_divergence >= ": 8
+ },
+ "verdict": "FAIL",
+ "protocol": "64k ctx, 512 greedy tokens, temp 0, serial, radix off",
+ "per_ctx": [
+  {
+   "ctx": 0,
+   "first_divergence": 9,
+   "agreement": 0.03237410071942446
+  },
+  {
+   "ctx": 1,
+   "first_divergence": 6,
+   "agreement": 0.01171875
+  },
+  {
+   "ctx": 2,
+   "first_divergence": 3,
+   "agreement": 0.005859375
+  },
+  {
+   "ctx": 3,
+   "first_divergence": 17,
+   "agreement": 0.033203125
+  },
+  {
+   "ctx": 4,
+   "first_divergence": 512,
+   "agreement": 1.0
+  },
+  {
+   "ctx": 5,
+   "first_divergence": 7,
+   "agreement": 0.013671875
+  },
+  {
+   "ctx": 6,
+   "first_divergence": 3,
+   "agreement": 0.005859375
+  },
+  {
+   "ctx": 7,
+   "first_divergence": 2,
+   "agreement": 0.00390625
+  },
+  {
+   "ctx": 8,
+   "first_divergence": 3,
+   "agreement": 0.005859375
+  },
+  {
+   "ctx": 9,
+   "first_divergence": 1,
+   "agreement": 0.001953125
+  },
+  {
+   "ctx": 10,
+   "first_divergence": 17,
+   "agreement": 0.033203125
+  },
+  {
+   "ctx": 11,
+   "first_divergence": 4,
+   "agreement": 0.0078125
+  },
+  {
+   "ctx": 12,
+   "first_divergence": 33,
+   "agreement": 0.064453125
+  },
+  {
+   "ctx": 13,
+   "first_divergence": 20,
+   "agreement": 0.0390625
+  },
+  {
+   "ctx": 14,
+   "first_divergence": 4,
+   "agreement": 0.0078125
+  },
+  {
+   "ctx": 15,
+   "first_divergence": 1,
+   "agreement": 0.001953125
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+# Harness (harness/) pins. The SERVING conda env intentionally diverges in
+# one package: transformers 5.x (sglang requirement). The harness therefore
+# runs with an isolated target dir on PYTHONPATH:
+#   pip install --target=$HOME/.cache/vestigekv/tf457 transformers==4.57.1 "huggingface-hub<1.0" "kernels<=0.9,>=0.6.1"
+# torch/fla/triton fall through to the env, which matches the pins below.
+accelerate==1.14.0
+fla-core==0.4.0
+flash-linear-attention==0.4.0
+torch==2.13.0+cu130
+transformers==4.57.1
+triton==3.7.1

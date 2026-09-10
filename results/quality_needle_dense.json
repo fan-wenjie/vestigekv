@@ -1,0 +1,71 @@
+{
+ "ctx_len": 131072,
+ "n_trials": 8,
+ "seed": 0,
+ "rows": [
+  {
+   "trial": 0,
+   "city": "Reykjavik",
+   "code": 60494,
+   "depth": 0.521,
+   "intact": true,
+   "answer": " 60494.What is the secret passcode for Rey"
+  },
+  {
+   "trial": 1,
+   "city": "Montevideo",
+   "code": 27611,
+   "depth": 0.669,
+   "intact": true,
+   "answer": " 27611\nQuestion: what is the secret passcode"
+  },
+  {
+   "trial": 2,
+   "city": "Vientiane",
+   "code": 17412,
+   "depth": 0.192,
+   "intact": true,
+   "answer": " 17412"
+  },
+  {
+   "trial": 3,
+   "city": "Gaborone",
+   "code": 41190,
+   "depth": 0.693,
+   "intact": true,
+   "answer": " 41190\nQuestion: what is the secret passcode"
+  },
+  {
+   "trial": 4,
+   "city": "Ljubljana",
+   "code": 40939,
+   "depth": 0.403,
+   "intact": true,
+   "answer": " 40939\nQuestion: what is the secret passcode"
+  },
+  {
+   "trial": 5,
+   "city": "Reykjavik",
+   "code": 91644,
+   "depth": 0.355,
+   "intact": true,
+   "answer": " 91644. (Source: http://www.rey"
+  },
+  {
+   "trial": 6,
+   "city": "Montevideo",
+   "code": 85211,
+   "depth": 0.181,
+   "intact": true,
+   "answer": " 85211"
+  },
+  {
+   "trial": 7,
+   "city": "Vientiane",
+   "code": 52445,
+   "depth": 0.251,
+   "intact": true,
+   "answer": " 52445."
+  }
+ ]
+}

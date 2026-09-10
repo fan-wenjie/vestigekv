@@ -1,0 +1,5 @@
+[submodule "sglang"]
+	branch = vestigekv
+	path = engine
+	url = https://github.com/fan-wenjie/sglang.git
+	shallow = true

@@ -1,0 +1,16 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/436 [00:00<?, ?it/s]Loading weights: 100%|██████████| 436/436 [00:00<00:00, 10338.80it/s]
+Featurizing p:   0%|          | 0/16 [00:00<?, ?it/s]Featurizing p:   6%|▋         | 1/16 [00:00<00:04,  3.44it/s]Featurizing p:  38%|███▊      | 6/16 [00:00<00:00, 18.19it/s]Featurizing p:  88%|████████▊ | 14/16 [00:00<00:00, 36.30it/s]Featurizing p: 100%|██████████| 16/16 [00:00<00:00, 29.72it/s]
+Featurizing q:   0%|          | 0/16 [00:00<?, ?it/s]Featurizing q:  38%|███▊      | 6/16 [00:00<00:00, 15.30it/s]Featurizing q:  75%|███████▌  | 12/16 [00:00<00:00, 26.59it/s]Featurizing q: 100%|██████████| 16/16 [00:00<00:00, 28.64it/s]
+WARNING clustering 32 points to 2 centroids: please provide at least 78 training points
+Featurizing p:   0%|          | 0/16 [00:00<?, ?it/s]Featurizing p:  50%|█████     | 8/16 [00:00<00:00, 74.05it/s]Featurizing p: 100%|██████████| 16/16 [00:00<00:00, 74.29it/s]Featurizing p: 100%|██████████| 16/16 [00:00<00:00, 74.20it/s]
+Featurizing q:   0%|          | 0/16 [00:00<?, ?it/s]Featurizing q:  50%|█████     | 8/16 [00:00<00:00, 73.47it/s]Featurizing q: 100%|██████████| 16/16 [00:00<00:00, 72.70it/s]Featurizing q: 100%|██████████| 16/16 [00:00<00:00, 72.76it/s]
+WARNING clustering 32 points to 2 centroids: please provide at least 78 training points
+{
+ "n_ctx": 16,
+ "gen_tokens": 256,
+ "mauve_eng": 0.93450721478803,
+ "mauve_vk": 0.9804778267245684,
+ "verdict": "PASS",
+ "code": "serving path (tree recorded at score time)"
+}

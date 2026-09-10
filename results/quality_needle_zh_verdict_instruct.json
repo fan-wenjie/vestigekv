@@ -1,0 +1,11 @@
+{
+ "ctx_len": 131072,
+ "n_trials": 8,
+ "vk_intact": 8,
+ "dense_intact": 8,
+ "vk_rate": 1.0,
+ "dense_rate": 1.0,
+ "trial_diffs": [],
+ "verdict": "PASS",
+ "protocol": "fixed-seed needle, greedy, radix off, serial"
+}

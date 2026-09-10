@@ -1,0 +1,58 @@
+/home/user/vestigekv/vestigekv/engine/python/sglang/bench_serving.py:13: FutureWarning: `sglang.bench_serving` is deprecated and will be removed in a future release; use `sglang.benchmark.serving` instead (e.g. `python -m sglang.benchmark.serving`).
+  warnings.warn(
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+benchmark_args=Namespace(backend='sglang', base_url=None, host='127.0.0.1', port=30000, ready_check_timeout_sec=60, dataset_name='random', dataset_path='', dataset_offset=0, agentic_max_turns=None, speed_bench_category=None, speed_bench_output_len=512, model='moonshotai/Kimi-Linear-48B-A3B-Base', served_model_name=None, tokenizer=None, num_prompts=1, sharegpt_output_len=None, sharegpt_context_len=None, random_input_len=4096, random_output_len=520192, random_range_ratio=1.0, image_count=1, image_resolution='1080p', random_image_count=False, image_format='jpeg', image_content='random', request_rate=inf, use_trace_timestamps=False, max_concurrency=1, output_file='results/latency_stream_4k-512k_vestigekv_base_v2.jsonl', output_details=True, print_requests=False, disable_tqdm=False, disable_stream=False, return_logprob=False, top_logprobs_num=0, token_ids_logprob=None, logprob_start_len=-1, return_routed_experts=False, cache_report=False, seed=42, disable_ignore_eos=False, temperature=0.0, top_p=1.0, extra_request_body=None, apply_chat_template=False, profile=False, plot_throughput=False, profile_activities=['CPU', 'GPU'], profile_start_step=None, profile_steps=None, profile_num_steps=None, profile_by_stage=False, profile_stages=None, profile_output_dir=None, profile_prefix=None, lora_name=None, lora_request_distribution='uniform', lora_zipf_alpha=1.5, prompt_suffix='', pd_separated=False, profile_prefill_url=None, profile_decode_url=None, flush_cache=False, flush_cache_timeout=60.0, warmup_requests=1, tokenize_prompt=False, gsp_num_groups=64, gsp_prompts_per_group=16, gsp_system_prompt_len=2048, gsp_question_len=128, gsp_output_len=256, gsp_range_ratio=1.0, gsp_fast_prepare=False, gsp_send_routing_key=False, gsp_num_turns=1, gsp_ordered=False, gsp_group_distribution='uniform', gsp_zipf_alpha=None, mooncake_slowdown_factor=1.0, mooncake_num_rounds=1, mooncake_workload='conversation', fake_prefill=False, tag=None, header=None)
+Waiting up to 60s for http://127.0.0.1:30000/v1/models to become ready...
+Server ready in 0.0s.
+Namespace(backend='sglang', base_url=None, host='127.0.0.1', port=30000, ready_check_timeout_sec=60, dataset_name='random', dataset_path='', dataset_offset=0, agentic_max_turns=None, speed_bench_category=None, speed_bench_output_len=512, model='moonshotai/Kimi-Linear-48B-A3B-Base', served_model_name=None, tokenizer=None, num_prompts=1, sharegpt_output_len=None, sharegpt_context_len=None, random_input_len=4096, random_output_len=520192, random_range_ratio=1.0, image_count=1, image_resolution='1080p', random_image_count=False, image_format='jpeg', image_content='random', request_rate=inf, use_trace_timestamps=False, max_concurrency=1, output_file='results/latency_stream_4k-512k_vestigekv_base_v2.jsonl', output_details=True, print_requests=False, disable_tqdm=False, disable_stream=False, return_logprob=False, top_logprobs_num=0, token_ids_logprob=None, logprob_start_len=-1, return_routed_experts=False, cache_report=False, seed=42, disable_ignore_eos=False, temperature=0.0, top_p=1.0, extra_request_body=None, apply_chat_template=False, profile=False, plot_throughput=False, profile_activities=['CPU', 'GPU'], profile_start_step=None, profile_steps=None, profile_num_steps=None, profile_by_stage=False, profile_stages=None, profile_output_dir=None, profile_prefix=None, lora_name=None, lora_request_distribution='uniform', lora_zipf_alpha=1.5, prompt_suffix='', pd_separated=False, profile_prefill_url=None, profile_decode_url=None, flush_cache=False, flush_cache_timeout=60.0, warmup_requests=1, tokenize_prompt=False, gsp_num_groups=64, gsp_prompts_per_group=16, gsp_system_prompt_len=2048, gsp_question_len=128, gsp_output_len=256, gsp_range_ratio=1.0, gsp_fast_prepare=False, gsp_send_routing_key=False, gsp_num_turns=1, gsp_ordered=False, gsp_group_distribution='uniform', gsp_zipf_alpha=None, mooncake_slowdown_factor=1.0, mooncake_num_rounds=1, mooncake_workload='conversation', fake_prefill=False, tag=None, header=None)
+
+#Input tokens: 4096
+#Output tokens: 520192
+Starting warmup with 1 sequences...
+Warmup completed with 1 sequences. Starting main benchmark run...
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [55:38<00:00, 3338.55s/it]100%|██████████| 1/1 [55:38<00:00, 3338.56s/it]
+Calling super().encode with {'add_special_tokens': False}
+
+============ Serving Benchmark Result ============
+Backend:                                 sglang    
+Traffic request rate:                    inf       
+Max request concurrency:                 1         
+Successful requests:                     1         
+Benchmark duration (s):                  3338.57   
+Total input tokens:                      4096      
+Total input text tokens:                 4096      
+Total generated tokens:                  520190    
+Total generated tokens (retokenized):    520196    
+Request throughput (req/s):              0.00      
+Input token throughput (tok/s):          1.23      
+Output token throughput (tok/s):         155.81    
+Peak output token throughput (tok/s):    9522.00   
+Peak concurrent requests:                1         
+Total token throughput (tok/s):          157.04    
+Concurrency:                             1.00      
+----------------End-to-End Latency----------------
+Mean E2E Latency (ms):                   3338550.55
+Median E2E Latency (ms):                 3338550.55
+P90 E2E Latency (ms):                    3338550.55
+P95 E2E Latency (ms):                    3338550.55
+P99 E2E Latency (ms):                    3338550.55
+---------------Time to First Token----------------
+Mean TTFT (ms):                          187.72    
+Median TTFT (ms):                        187.72    
+P90 TTFT (ms):                           187.72    
+P95 TTFT (ms):                           187.72    
+P99 TTFT (ms):                           187.72    
+-----Time per Output Token (excl. 1st token)------
+Mean TPOT (ms):                          6.42      
+Median TPOT (ms):                        6.42      
+P90 TPOT (ms):                           6.42      
+P95 TPOT (ms):                           6.42      
+P99 TPOT (ms):                           6.42      
+---------------Inter-Token Latency----------------
+Mean ITL (ms):                           6.42      
+Median ITL (ms):                         4.25      
+P90 ITL (ms):                            13.63     
+P95 ITL (ms):                            14.57     
+P99 ITL (ms):                            26.03     
+Max ITL (ms):                            867.97    
+==================================================

@@ -1,0 +1,32 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+HTTP Error 429 thrown while requesting GET https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu/resolve/87f09149ef4734204d70ed1d046ddc9ca3f2b8f9/sample/10BT/000_00000.parquet
+Retrying in 1s [Retry 1/5].
+HTTP Error 429 thrown while requesting GET https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu/resolve/87f09149ef4734204d70ed1d046ddc9ca3f2b8f9/sample/10BT/000_00000.parquet
+Retrying in 2s [Retry 2/5].
+HTTP Error 429 thrown while requesting GET https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu/resolve/87f09149ef4734204d70ed1d046ddc9ca3f2b8f9/sample/10BT/000_00000.parquet
+Retrying in 4s [Retry 3/5].
+HTTP Error 429 thrown while requesting GET https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu/resolve/87f09149ef4734204d70ed1d046ddc9ca3f2b8f9/sample/10BT/000_00000.parquet
+Retrying in 8s [Retry 4/5].
+HTTP Error 429 thrown while requesting GET https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu/resolve/87f09149ef4734204d70ed1d046ddc9ca3f2b8f9/sample/10BT/000_00000.parquet
+Retrying in 8s [Retry 5/5].
+HTTP Error 429 thrown while requesting GET https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu/resolve/87f09149ef4734204d70ed1d046ddc9ca3f2b8f9/sample/10BT/000_00000.parquet
+(Request ID: 01M2BHJQPCT93P46XC6AVM1VBW)
+
+429 Too Many Requests for url: https://us.aws.cdn.hf.co/xet-bridge-us/6655eb19d17e141dcb546ed5/75e3d0530e0153b1260904449807a6aca765eb899b669cf3d1da290e52eedae8?response-content-disposition=inline%3B+filename*%3DUTF-8%27%27000_00000.parquet%3B+filename%3D%22000_00000.parquet%22%3B&X-Xet-Cas-Uid=public&user_id=public&Expires=1789245017&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly91cy5hd3MuY2RuLmhmLmNvL3hldC1icmlkZ2UtdXMvNjY1NWViMTlkMTdlMTQxZGNiNTQ2ZWQ1Lzc1ZTNkMDUzMGUwMTUzYjEyNjA5MDQ0NDk4MDdhNmFjYTc2NWViODk5YjY2OWNmM2QxZGEyOTBlNTJlZWRhZThcXD9yZXNwb25zZS1jb250ZW50LWRpc3Bvc2l0aW9uPWlubGluZSUzQitmaWxlbmFtZSUyQSUzRFVURi04JTI3JTI3MDAwXzAwMDAwLnBhcnF1ZXQlM0IrZmlsZW5hbWUlM0QlMjIwMDBfMDAwMDAucGFycXVldCUyMiUzQiZYLVhldC1DYXMtVWlkPXB1YmxpYyZ1c2VyX2lkPXB1YmxpYyIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiRXBvY2hUaW1lIjoxNzg5MjQ1MDE3fX19XX0_&Signature=MEQCIHZAILOAVfPKBgLcj9OJKTKweSJUZmlzocPuuH1n8OEhAiBzXlf3pB58aNhbO4iMMevK-qVZvCe2oj5wLYbGaa9Wvw__&Key-Pair-Id=01KXEF4KZ1B6FV465MAWR4M21F.
+Got disconnected from remote data host. Retrying in 60sec [1/20]
+ctx 0: 1231 chars
+ctx 1: 1090 chars
+ctx 2: 975 chars
+ctx 3: 1018 chars
+ctx 4: 1411 chars
+ctx 5: 1199 chars
+ctx 6: 1122 chars
+ctx 7: 1217 chars
+ctx 8: 1115 chars
+ctx 9: 1228 chars
+ctx 10: 1300 chars
+ctx 11: 1454 chars
+ctx 12: 1293 chars
+ctx 13: 1172 chars
+ctx 14: 1371 chars
+ctx 15: 1384 chars

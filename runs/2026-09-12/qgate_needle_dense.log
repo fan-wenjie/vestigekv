@@ -1,0 +1,9 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+trial 0: depth=0.52 intact=True answer=' 60494.What is the secret passcode for R'
+trial 1: depth=0.67 intact=True answer=' 27611\nQuestion: what is the secret pass'
+trial 2: depth=0.19 intact=True answer=' 17412'
+trial 3: depth=0.69 intact=True answer=' 41190\nQuestion: what is the secret pass'
+trial 4: depth=0.40 intact=True answer=' 40939\nQuestion: what is the secret pass'
+trial 5: depth=0.36 intact=True answer=' 91644. (Source: http://www.rey'
+trial 6: depth=0.18 intact=True answer=' 85211'
+trial 7: depth=0.25 intact=True answer=' 52445.'

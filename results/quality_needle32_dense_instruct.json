@@ -1,0 +1,263 @@
+{
+ "ctx_len": 131072,
+ "n_trials": 32,
+ "seed": 0,
+ "rows": [
+  {
+   "trial": 0,
+   "city": "Reykjavik",
+   "code": 60494,
+   "depth": 0.521,
+   "intact": true,
+   "answer": " The secret passcode for Reykjavik is 60494"
+  },
+  {
+   "trial": 1,
+   "city": "Montevideo",
+   "code": 27611,
+   "depth": 0.669,
+   "intact": true,
+   "answer": " 27611"
+  },
+  {
+   "trial": 2,
+   "city": "Vientiane",
+   "code": 17412,
+   "depth": 0.192,
+   "intact": true,
+   "answer": " The secret passcode for Vientiane is 17412"
+  },
+  {
+   "trial": 3,
+   "city": "Gaborone",
+   "code": 41190,
+   "depth": 0.693,
+   "intact": true,
+   "answer": " 41190"
+  },
+  {
+   "trial": 4,
+   "city": "Ljubljana",
+   "code": 40939,
+   "depth": 0.403,
+   "intact": true,
+   "answer": " 40939"
+  },
+  {
+   "trial": 5,
+   "city": "Reykjavik",
+   "code": 91644,
+   "depth": 0.355,
+   "intact": true,
+   "answer": " 91644"
+  },
+  {
+   "trial": 6,
+   "city": "Montevideo",
+   "code": 85211,
+   "depth": 0.181,
+   "intact": true,
+   "answer": " The secret passcode for Montevideo is 85211"
+  },
+  {
+   "trial": 7,
+   "city": "Vientiane",
+   "code": 52445,
+   "depth": 0.251,
+   "intact": true,
+   "answer": " The secret passcode for Vientiane is 52445"
+  },
+  {
+   "trial": 8,
+   "city": "Gaborone",
+   "code": 39714,
+   "depth": 0.47,
+   "intact": true,
+   "answer": " 39714"
+  },
+  {
+   "trial": 9,
+   "city": "Ljubljana",
+   "code": 70687,
+   "depth": 0.713,
+   "intact": true,
+   "answer": " 70687"
+  },
+  {
+   "trial": 10,
+   "city": "Reykjavik",
+   "code": 84894,
+   "depth": 0.133,
+   "intact": true,
+   "answer": " 84894"
+  },
+  {
+   "trial": 11,
+   "city": "Montevideo",
+   "code": 69294,
+   "depth": 0.66,
+   "intact": true,
+   "answer": " The secret passcode for Montevideo is 69294"
+  },
+  {
+   "trial": 12,
+   "city": "Vientiane",
+   "code": 72202,
+   "depth": 0.369,
+   "intact": true,
+   "answer": " 72202"
+  },
+  {
+   "trial": 13,
+   "city": "Gaborone",
+   "code": 43948,
+   "depth": 0.391,
+   "intact": true,
+   "answer": " 43948"
+  },
+  {
+   "trial": 14,
+   "city": "Ljubljana",
+   "code": 24002,
+   "depth": 0.716,
+   "intact": true,
+   "answer": " 24002"
+  },
+  {
+   "trial": 15,
+   "city": "Reykjavik",
+   "code": 37391,
+   "depth": 0.112,
+   "intact": true,
+   "answer": " The secret passcode for Reykjavik is 37391"
+  },
+  {
+   "trial": 16,
+   "city": "Montevideo",
+   "code": 57385,
+   "depth": 0.569,
+   "intact": true,
+   "answer": " 57385"
+  },
+  {
+   "trial": 17,
+   "city": "Vientiane",
+   "code": 78417,
+   "depth": 0.514,
+   "intact": true,
+   "answer": " 78417"
+  },
+  {
+   "trial": 18,
+   "city": "Gaborone",
+   "code": 33758,
+   "depth": 0.223,
+   "intact": true,
+   "answer": " 33758"
+  },
+  {
+   "trial": 19,
+   "city": "Ljubljana",
+   "code": 98752,
+   "depth": 0.143,
+   "intact": true,
+   "answer": " The secret passcode for Ljubljana is 98752"
+  },
+  {
+   "trial": 20,
+   "city": "Reykjavik",
+   "code": 99948,
+   "depth": 0.251,
+   "intact": true,
+   "answer": " 99948"
+  },
+  {
+   "trial": 21,
+   "city": "Montevideo",
+   "code": 31620,
+   "depth": 0.518,
+   "intact": true,
+   "answer": " 31620"
+  },
+  {
+   "trial": 22,
+   "city": "Vientiane",
+   "code": 28398,
+   "depth": 0.343,
+   "intact": true,
+   "answer": " 28398"
+  },
+  {
+   "trial": 23,
+   "city": "Gaborone",
+   "code": 47999,
+   "depth": 0.184,
+   "intact": true,
+   "answer": " 47999"
+  },
+  {
+   "trial": 24,
+   "city": "Ljubljana",
+   "code": 60182,
+   "depth": 0.683,
+   "intact": true,
+   "answer": " 60182"
+  },
+  {
+   "trial": 25,
+   "city": "Reykjavik",
+   "code": 59409,
+   "depth": 0.115,
+   "intact": true,
+   "answer": " 59409"
+  },
+  {
+   "trial": 26,
+   "city": "Montevideo",
+   "code": 36575,
+   "depth": 0.759,
+   "intact": true,
+   "answer": " 36575"
+  },
+  {
+   "trial": 27,
+   "city": "Vientiane",
+   "code": 94999,
+   "depth": 0.58,
+   "intact": true,
+   "answer": " 94999"
+  },
+  {
+   "trial": 28,
+   "city": "Gaborone",
+   "code": 24805,
+   "depth": 0.231,
+   "intact": true,
+   "answer": " The secret passcode for Gaborone is 24805"
+  },
+  {
+   "trial": 29,
+   "city": "Ljubljana",
+   "code": 81843,
+   "depth": 0.176,
+   "intact": true,
+   "answer": " 81843"
+  },
+  {
+   "trial": 30,
+   "city": "Reykjavik",
+   "code": 80658,
+   "depth": 0.389,
+   "intact": true,
+   "answer": " The secret passcode for Reykjavik is 80658"
+  },
+  {
+   "trial": 31,
+   "city": "Montevideo",
+   "code": 11609,
+   "depth": 0.57,
+   "intact": true,
+   "answer": " The secret passcode for Montevideo is 11609"
+  }
+ ]
+}

@@ -1,0 +1,7 @@
+attention-only pseudo-decode  layers=7 bs=1
+       S  dense ms     vk ms  speedup
+    4096     0.286     0.285    1.00x
+   16384     0.323     0.322    1.00x
+   32768     0.431     0.364    1.18x
+  131072     1.631     0.444    3.68x
+  524288     5.912     1.070    5.52x

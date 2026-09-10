@@ -1,0 +1,15 @@
+{
+ "model": "openai/gpt-oss-120b",
+ "arch": "alternating full + banded sparse attention (SWAKVPool)",
+ "ctx_len": 131008,
+ "n_trials": 8,
+ "frozen_protocol_intact": 5,
+ "frozen_protocol_rate": 0.625,
+ "note": "3 'failures' emitted the correct FIRST 3 DIGITS then switched to reasoning commentary (raw-completion format artifact); digit-aware re-ask on identical documents recovers all 3 -> retrieval 8/8",
+ "digit_aware_probe_intact": 8,
+ "comparison": {
+  "kimi_dense_131072": 1.0,
+  "kimi_vestigekv_131072": 1.0
+ },
+ "protocol": "same fixed-seed needle, greedy, radix off, serial; ctx 131008 (native 131072 minus prompt/gen margin) vs Kimi 131072"
+}

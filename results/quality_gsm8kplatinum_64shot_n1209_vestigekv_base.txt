@@ -1,0 +1,4 @@
+Accuracy: 0.849
+Invalid: 0.000
+Latency: 1059.210 s
+Output throughput: 110.836 token/s
