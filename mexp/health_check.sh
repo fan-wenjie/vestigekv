@@ -17,7 +17,7 @@ while true; do
   daemon=$(pgrep -fc "^[^ ]*python[^ ]* -m sglang.srt.weight_cache.daemon")
   job=$(grep -a '"status": "running"' "$R/queue_state.jsonl" 2>/dev/null | tail -1 | python3 -c 'import sys,json; l=sys.stdin.read().strip(); print(json.loads(l)["id"] if l else "-")')
   done_n=$(grep -ac '"status": "done"' "$R/queue_state.jsonl" 2>/dev/null); fail_n=$(grep -ac '"status": "failed"' "$R/queue_state.jsonl" 2>/dev/null)
-  clog=$(ls -t "$R"/ruler_*_*.log "$R"/stream_*_*.log "$R"/replay_*_*.log 2>/dev/null | head -1)
+  clog=$(ls -t "$R"/ruler_*_*.log "$R"/stream_*_*.log "$R"/replay_*_*.log "$R"/longbench2_*_*.log 2>/dev/null | head -1)
   prog=$( [ -n "$clog" ] && tr '\r' '\n' < "$clog" | grep -a "Requesting API\|Prefill batch\|== RULER" | tail -1 | grep -oE "[0-9]+/[0-9]+ \[[^]]*\]|== RULER.*" | head -1 )
   stall=""; [ -n "$prog" ] && [ "$prog" = "$prev_prog" ] && [ "$job" != "-" ] && stall=" STALL(no client progress since last check)"
   prev_prog=$prog

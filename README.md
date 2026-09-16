@@ -345,13 +345,25 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       prefill"): the head needle and three saved 64k prompts with stats on; the server log's
 #       VKCAL lines show whether the prefill-time builds install before decode (async=True at a
 #       seq below the prompt length) and what they fire. Not a pre-registered measurement.
-#   longbench2-baseline, longbench2-vestigekv -> LongBench v2 on the 300 questions whose context is
-#       <= 120k Kimi tokens (mexp/kimi/longbench2/: lm-eval task longbench2_kimi_120k, official
-#       zero-shot prompt + answer regex, subset_120k.json from make_subset.py), raw prompts, serial,
-#       greedy, 128 tokens, CTX=135168 with one running request; results/kimi/longbench2/
-#       results_<arm>.json (accuracy overall and per domain/length/difficulty, parse rate) and
-#       samples_<arm>.json. longbench2-vestigekv-stats -> the same with stats on: must reproduce
-#       the stats-off answers exactly and gives the fetch/fallback figures on real documents.
+#   lb2-baseline, lb2-vestigekv -> LongBench v2 on the 300 questions whose context is
+#       <= 120k Kimi tokens (mexp/kimi/longbench2/: subset_120k.json from make_subset.py, the
+#       prompt of upstream lm-eval's longbench2 task ending at "Answer:"), serial, greedy,
+#       CTX=135168 with one running request; results/kimi/longbench2/results_<arm>_<tag>.json
+#       (accuracy overall and per domain/length/difficulty) and samples_<arm>_<tag>.json.
+#       lb2-vestigekv-stats -> the same with stats on: must reproduce the stats-off answers
+#       exactly and gives the fetch/fallback figures on real documents. The four choices
+#       A/B/C/D are scored at the "Answer:" position by ONE request per question
+#       (max_tokens=1, logprobs=20), not generated and not four echo requests -- the model
+#       does not reach an answer line inside 128 tokens (1% of 300 parsed), and lm-eval's
+#       echo shape pins logprob_start_len=0, which clamps the radix prefix match to zero and
+#       re-prefills the shared context four times. Deviations recorded in
+#       mexp/kimi/prereg3_realdoc_and_fallback.md, amendment 1.
+#         python mexp/kimi/run_longbench2.py --arm <baseline|vestigekv> --port 30000 --tag <job id>
+#       Scoring-equivalence check behind that change (one top-k request against four echo
+#       requests, argmax and logprob values, shortest subset documents):
+#         python mexp/kimi/lb2_scoring_equiv.py [--n 3] [--port 30000]
+#       The older generate-and-regex shape ran as longbench2-baseline / longbench2-vestigekv
+#       and is superseded; its results files are archived, not carried forward.
 #   ruler-vestigekv-nofallback -> the 13 tasks x 4k-64k, 10/cell, stats on, with
 #       --disable-vestigekv-recall-overflow-fallback: an overflowed scan attends its first 4096
 #       fired rows instead of the full row set, so this arm cannot escape to dense attention; the

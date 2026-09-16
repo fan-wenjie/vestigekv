@@ -81,3 +81,46 @@ the criterion argument predicts.
 The thresholds above, the subset file, the prompt template and the job list.
 A failed gate is reported as failed; the paper's text is changed to match
 the outcome, not the other way round.
+
+## Amendment 1 (2026-09-16): how A is scored, and why
+
+Three protocol deviations from section A, all of them about how an answer is
+read off the model and none about which questions are asked or which flags the
+engine runs. The subset, the prompt, the arms and every gate above are
+unchanged.
+
+**A-i. The answer is scored, not generated.** Section A says "greedy, 128
+tokens" with the official answer regex. Measured on the baseline arm: the
+model reasons before answering and does not reach the answer line inside 128
+tokens, so 1% of 300 answers parsed and both arms sat at the floor (acc
+0.003). Raising the budget makes the benchmark a reasoning-length measurement
+rather than a retrieval one. The task now uses upstream lm-eval's own
+LongBench v2 shape (`lm_eval/tasks/longbench2/_longbench_common_yaml`):
+`output_type: multiple_choice` over the four one-token choices A/B/C/D, with
+the prompt ending at "Answer:". Gate A1 and report A2 are unchanged except
+that the parse rate is no longer defined -- every question yields a choice, so
+the parse-rate clause of A2 is withdrawn rather than reported.
+
+**A-ii. The four choices are scored in one request, not four.** lm-eval's
+`local-completions` scores a choice with `echo=True, logprobs=1,
+max_tokens=1`, which sglang serves with `logprob_start_len=0`; that value
+clamps the radix prefix match to zero
+(`schedule_batch.py::_compute_max_prefix_len`), so the four requests of a
+question re-prefill the same shared context four times and prefix caching
+cannot help by construction -- measured as `#cached-token: 0` on all 562
+prefill batches of a radix-on run. For a single-token continuation lm-eval's
+score is exactly the next-token logprob at one position, so one
+`max_tokens=1, logprobs=20` request answers all four. The measurement is the
+same quantity; only the number of prefills changes. Verified before adoption
+on the shortest subset documents: the two scorings agree on the argmax and on
+the logprob values themselves. A choice absent from the top-20 is ranked
+below every present choice; the count of questions where that happens is
+reported.
+
+**A-iii. Both arms keep the prefix cache disabled.** It follows from A-ii:
+with one request per question there is no shared prefix between consecutive
+requests, so `RADIX=on` buys nothing and the arms stay on the quality line's
+default protocol.
+
+Both arms and the determinism twin A3 run under A-i through A-iii. Nothing
+measured under the generation shape is carried forward.

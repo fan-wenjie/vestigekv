@@ -165,7 +165,8 @@ def run_client(job, port):
             cmd.append("--ignore-eos")
         out = os.path.join(RESULTS, f"replay_{arm}_{job['id']}.log")
     elif client == "longbench2":
-        # LongBench v2, <= 120k-token subset (mexp/kimi/longbench2/): raw-prompt, serial, greedy.
+        # LongBench v2, <= 120k-token subset (mexp/kimi/longbench2/): serial, greedy,
+        # the four choices scored at the "Answer:" position, one request per question.
         cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "run_longbench2.py"), "--arm", arm, "--port", port,
                "--model", MODEL, "--out", os.path.join(RESULTS, "longbench2")]
         if "limit" in args:

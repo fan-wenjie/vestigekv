@@ -1,22 +1,19 @@
 task: longbench2_kimi_120k
 dataset_path: THUDM/LongBench-v2
 test_split: train
-output_type: generate_until
+# Upstream's own longbench2 shape (lm_eval/tasks/longbench2/_longbench_common_yaml):
+# four one-token choices scored by loglikelihood, not generation. A generated
+# answer needs the model to obey a format instruction; this model reasons first
+# and never reaches the answer line inside a usable token budget (measured: 1%
+# of 300 parsed). Scoring the choices removes the question.
+output_type: multiple_choice
 process_docs: !function utils.process_docs
 doc_to_text: !function utils.doc_to_text
+doc_to_choice: ["A", "B", "C", "D"]
 doc_to_target: !function utils.doc_to_target
-process_results: !function utils.process_results
-generation_kwargs:
-  do_sample: false
-  temperature: 0.0
-  max_gen_toks: 128
-  until: ["<|im_end|>"]   # the server stops at EOS anyway; lm-eval's default "\n\n" could cut a leading blank line
 metric_list:
   - metric: acc
     aggregation: mean
     higher_is_better: true
-  - metric: parsed
-    aggregation: mean
-    higher_is_better: true
 metadata:
-  version: 1.0
+  version: 2.0
