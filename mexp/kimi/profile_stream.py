@@ -28,7 +28,11 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 def post(port, path, body, timeout=60):
     req = urllib.request.Request(f"http://127.0.0.1:{port}{path}", data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json"})
-    return json.load(urllib.request.urlopen(req, timeout=timeout))
+    text = urllib.request.urlopen(req, timeout=timeout).read().decode(errors="replace")
+    try:
+        return json.loads(text)
+    except ValueError:  # /start_profile answers with plain text
+        return text.strip()
 
 
 def newest(pattern):
