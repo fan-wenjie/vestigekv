@@ -313,6 +313,12 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 # --random-seed 0, --sampling-backend pytorch, TP=2, NCCL_P2P_DISABLE=1; clients serial and
 # greedy, RULER data generation and lm-eval seeded 0; model moonshotai/Kimi-Linear-48B-A3B-Instruct.
 # Jobs (mexp/kimi/queue.jsonl, same runner as the GLM line with --line kimi):
+#   WRITING A JOB: copy an existing line of the same client and edit it. The client's `args`
+#       are not optional in the way they look -- `replay` raises KeyError without `samples`,
+#       `stream` silently runs to 128k without `output_len`, and `ruler` writes an UNTAGGED
+#       results file (overwriting the arm's canonical run) unless the job carries `server_args`,
+#       `tasks` or `lengths`. Each of those three cost a rerun; a hand-written job has hit all
+#       of them.
 #   ruler-baseline, ruler-vestigekv -> 13 RULER tasks x {4k,8k,16k,32k,64k}, 10 samples/cell
 #   stats-vestigekv-ruler-64k, stats-vestigekv-stream-128k -> the 13 tasks at 64k (10/cell) and a
 #       4k-prefill 126976-token decode on the vestigekv arm with SGLANG_DEBUG_VESTIGEKV_STATS=1:
