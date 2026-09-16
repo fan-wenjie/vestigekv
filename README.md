@@ -407,7 +407,14 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       head needle, the three saved 64k replay prompts) and td-ruler-64k is the 13 tasks at
 #       4k-64k, which must reproduce the default arm's answers: the row sets are unchanged, so a
 #       difference is a bug, not a quality result. All four run with
-#       ENGINE=/home/user/vestigekv-wt/engine-fused. td-profile-256k adds the per-kernel view
+#       ENGINE=/home/user/vestigekv-wt/engine-fused.
+#       td-stream-256k-nodense adds --disable-vestigekv-recall-overflow-fallback, which turns the
+#       fenced branch off: an overflowed scan then truncates to its fired rows, which is exactly
+#       what origin/vestigekv does. It is the like-for-like comparison against
+#       prod-stream-vestigekv-256k-origin, and it answers whether the forked stage 1 itself costs
+#       anything, with the overflow work removed from both sides. Not a quality arm: truncating
+#       is what pre-registration 3's C1 measured at -0.057 of the RULER mean.
+#       td-profile-256k adds the per-kernel view
 #       (200 profiled steps at 256k, diffed against profile-vestigekv-perf-256k with
 #       mexp/kimi/kernel_diff.py): it is what shows the gather kernel gone from the step rather
 #       than only a faster total.
