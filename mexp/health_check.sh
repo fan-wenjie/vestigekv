@@ -17,14 +17,17 @@ while true; do
   daemon=$(pgrep -fc "^[^ ]*python[^ ]* -m sglang.srt.weight_cache.daemon")
   job=$(grep -a '"status": "running"' "$R/queue_state.jsonl" 2>/dev/null | tail -1 | python3 -c 'import sys,json; l=sys.stdin.read().strip(); print(json.loads(l)["id"] if l else "-")')
   done_n=$(grep -ac '"status": "done"' "$R/queue_state.jsonl" 2>/dev/null); fail_n=$(grep -ac '"status": "failed"' "$R/queue_state.jsonl" 2>/dev/null)
+  slog=$(ls -t "$R"/server_*.log 2>/dev/null | head -1)
   clog=$(ls -t "$R"/ruler_*_*.log "$R"/stream_*_*.log "$R"/replay_*_*.log "$R"/longbench2_*_*.log 2>/dev/null | head -1)
   # a bare tqdm bar counts as progress too: run_longbench2.py writes one with no
   # description, and matching only the labelled clients reported stale progress
   # and a STALL on every check while it ran.
   prog=$( [ -n "$clog" ] && tr '\r' '\n' < "$clog" | grep -aE "Requesting API|Prefill batch|== RULER|[0-9]+/[0-9]+ \[" | tail -1 | grep -oE "[0-9]+/[0-9]+ \[[^]]*\]|== RULER.*" | head -1 )
+  # a stream job's bar reads 0/1 for its whole run (one request), so the decode
+  # token count in the server log is its only progress signal
+  case "$clog" in *"/stream_"*) prog=$(grep -a "Decode batch" "$slog" 2>/dev/null | tail -1 | grep -oE "#(full )?token: [0-9]+" | head -1);; esac
   stall=""; [ -n "$prog" ] && [ "$prog" = "$prev_prog" ] && [ "$job" != "-" ] && stall=" STALL(no client progress since last check)"
   prev_prog=$prog
-  slog=$(ls -t "$R"/server_*.log 2>/dev/null | head -1)
   # tracebacks in the newest server log, counted per file: a switch to a new log restarts
   # the count instead of differencing against the previous log's total
   [ "$slog" != "$prev_slog" ] && prev_err=0; prev_slog=$slog
