@@ -372,6 +372,7 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       the "--log-level info" server arg is sglang's default and only makes the runner tag the
 #       output file. A gap above the window spread is bisected with the same job at the
 #       intermediate commits.
+#   Findings and the method of this audit: mexp/kimi/perf_audit_origin_vs_current.md.
 #   profile-vestigekv-origin, profile-vestigekv-current -> kernel-level decode profiles of the two
 #       trees (origin/vestigekv via ENGINE, and the current tree) on the same stream protocol:
 #       mexp/kimi/profile_stream.py drives one 4k-in, ignore-eos request and, when the server's
