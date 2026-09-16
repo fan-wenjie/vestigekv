@@ -125,6 +125,17 @@ jobs repeat the 4k->256k timed stream under it for dense, the current tree,
 `origin/vestigekv` and the current tree with the fence disabled -- which
 separates "the branch costs something" from "the harness protocol differs".
 
+## A trap in the profile harness (fixed)
+
+The first `profile-vestigekv-origin-256k` run profiled its request's *prefill*,
+not a 256k decode window: the client watched the newest server log for the
+decode progress, the runner reuses a server between same-signature jobs, and
+that log therefore belonged to the previous job and still carried its finished
+256k stream. The client read 262129 tokens fifteen seconds in and opened the
+window immediately. The trace is discarded (its scan kernel reads 1.1 us and
+prefill kernels appear in it); the client now streams its own request and
+counts the tokens, so no server log is consulted at all.
+
 ## Pending
 - `stream-vestigekv-256k-origin`: origin's timed 4k->256k stream, the clean A/B
   against `stream-vestigekv-256k` at 64k/128k/256k.

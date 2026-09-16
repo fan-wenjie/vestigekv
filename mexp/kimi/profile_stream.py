@@ -4,7 +4,8 @@
         [--ctxs 131072,262144] [--steps 200] [--server-log-glob 'results/kimi/server_vestigekv_*.log']
 
 One request (4096 random tokens in, ignore_eos, decoded past the last context point)
-is driven in the background; when the server's decode log reaches each context, the
+is streamed in the background and its tokens counted here; when the count reaches each
+context, the
 built-in profiler is started for `steps` forward steps (POST /start_profile with
 num_steps: torch.profiler with CUPTI, kernels inside CUDA-graph replays included)
 and its chrome trace lands in --out as ctx<N>k-TP-<rank>.trace.json.gz. Two trees'
@@ -12,11 +13,9 @@ traces are diffed per kernel with mexp/kimi/kernel_diff.py.
 """
 
 import argparse
-import glob
 import json
 import os
 import random
-import re
 import threading
 import time
 import urllib.request
@@ -35,23 +34,6 @@ def post(port, path, body, timeout=60):
         return text.strip()
 
 
-def newest(pattern):
-    paths = glob.glob(pattern)
-    return max(paths, key=os.path.getmtime) if paths else None
-
-
-def decoded_tokens(log_path):
-    """The last '#full token: N' (or '#token: N') the scheduler logged."""
-    n = 0
-    with open(log_path, errors="replace") as f:
-        for line in f:
-            if "Decode batch" in line and "TP0]" in line:
-                m = re.search(r"#(?:full )?token: (\d+)", line)
-                if m:
-                    n = int(m.group(1))
-    return n
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", default="30000")
@@ -59,7 +41,6 @@ def main():
     ap.add_argument("--ctxs", default="131072,262144")
     ap.add_argument("--steps", type=int, default=200)
     ap.add_argument("--input-len", type=int, default=4096)
-    ap.add_argument("--server-log-glob", default=os.path.join(ROOT, "results", "kimi", "server_vestigekv_*.log"))
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
     ctxs = [int(x) for x in args.ctxs.split(",")]
@@ -71,23 +52,35 @@ def main():
     result = {}
 
     def generate():
+        # Streamed and counted here: the server log is not a usable progress
+        # signal because the runner reuses a server between same-signature jobs,
+        # and the log then belongs to the earlier job and still carries its
+        # decode history (a profile fired at step 0 of the new request).
         t0 = time.time()
+        body = json.dumps({"input_ids": ids, "stream": True, "sampling_params": {
+            "max_new_tokens": max_new, "ignore_eos": True, "temperature": 0}}).encode()
         try:
-            r = post(args.port, "/generate", {"input_ids": ids, "sampling_params": {
-                "max_new_tokens": max_new, "ignore_eos": True, "temperature": 0}}, timeout=6 * 3600)
-            result["completion_tokens"] = r.get("meta_info", {}).get("completion_tokens")
+            req = urllib.request.Request(f"http://127.0.0.1:{args.port}/generate", data=body,
+                                         headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=6 * 3600) as r:
+                for line in r:
+                    if line.startswith(b"data:") and b"meta_info" in line:
+                        try:
+                            meta = json.loads(line[5:].decode())["meta_info"]
+                        except (ValueError, KeyError):
+                            continue
+                        result["decoded"] = meta.get("completion_tokens", 0)
         except Exception as e:  # the request outlives the profiles; a failure is reported below
             result["error"] = repr(e)
         result["wall_s"] = time.time() - t0
 
+    result["decoded"] = 0
     th = threading.Thread(target=generate, daemon=True)
     th.start()
-    log = None
     for ctx in ctxs:
         target = ctx - 1024  # trigger a little early; the window then straddles the context point
         while True:
-            log = newest(args.server_log_glob)
-            n = decoded_tokens(log) if log else 0
+            n = args.input_len + result["decoded"]
             if n >= target or not th.is_alive():
                 break
             time.sleep(5)
@@ -106,7 +99,7 @@ def main():
     th.join()
     print(f"generation finished: {result}", flush=True)
     with open(os.path.join(out, "profile_run.json"), "w") as f:
-        json.dump({"ctxs": ctxs, "steps": args.steps, "input_len": args.input_len, "server_log": log, **result}, f, indent=2)
+        json.dump({"ctxs": ctxs, "steps": args.steps, "input_len": args.input_len, **result}, f, indent=2)
     if any(not os.path.exists(os.path.join(out, f"ctx{c // 1024}k-TP-0.trace.json.gz")) for c in ctxs):
         raise SystemExit(1)
 
