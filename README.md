@@ -370,9 +370,18 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       with CTX=1064960 (1M + 16k; SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 because the
 #       model's derived context is exactly 1048576), --max-running-requests 2, two mamba slots,
 #       --cuda-graph-max-bs-decode 2 (lm-eval's RULER generator is seeded 0 here too)
+# weight-cache daemon (one process per GPU holding the TP=2 bf16 shards; every server the
+# queue launches then loads its weights over CUDA IPC in seconds -- common.sh adds
+# --weight-cache-mode client whenever the daemon's ready files name live pids, and its GPU
+# guard then only refuses a second server; WEIGHT_CACHE=off forces disk loading; each
+# server log must show "[IpcModelLoader] Loaded model via IPC", a config mismatch falls
+# back to disk with a warning):
+nohup bash mexp/kimi/weight_daemon.sh > results/kimi/weight_daemon.log 2>&1 &
+bash mexp/kimi/weight_daemon.sh status     # or stop
 python mexp/glm53/queue_runner.py --line kimi
-# health monitor (read-only; one line per 30 min in results/kimi/health.log: runner/server
-# liveness, current job, client progress or STALL, new server errors, GPU, disk):
+# health monitor (read-only; one line per 30 min in results/kimi/health.log: runner/server/
+# daemon liveness, current job, client progress or STALL, new tracebacks in the newest
+# server log counted per file, GPU, disk):
 bash mexp/health_check.sh kimi 1800 &
 # regression bisection over engine commits on the needle tasks (serves each commit from a
 # throwaway worktree via ENGINE=<dir>, counts garbage answers; results/kimi/bisect.log):
