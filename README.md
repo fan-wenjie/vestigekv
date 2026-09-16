@@ -414,6 +414,14 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       prod-stream-vestigekv-256k-origin, and it answers whether the forked stage 1 itself costs
 #       anything, with the overflow work removed from both sides. Not a quality arm: truncating
 #       is what pre-registration 3's C1 measured at -0.057 of the RULER mean.
+#   origin-stats-stream-256k -> origin/vestigekv on the production 256k stream with
+#       SGLANG_DEBUG_VESTIGEKV_STATS=1. Origin's stats line predates the fetch percentiles and
+#       the fallback rate, but it carries fetched=<n>/call, the mean rows a scan fires, and that
+#       is the question: origin clamps to the same 4096 buffer and truncates silently, so
+#       whether it "never falls back" is a claim about how much its certificate fires, not about
+#       its capacity. The calibration differs -- origin solves z against the kept maximum, the
+#       current tree against the archived row's own true score -- so the current tree fires more
+#       by construction, and this measures by how much.
 #       td-profile-256k adds the per-kernel view
 #       (200 profiled steps at 256k, diffed against profile-vestigekv-perf-256k with
 #       mexp/kimi/kernel_diff.py): it is what shows the gather kernel gone from the step rather
