@@ -373,6 +373,11 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       output file. A gap above the window spread is bisected with the same job at the
 #       intermediate commits.
 #   Findings and the method of this audit: mexp/kimi/perf_audit_origin_vs_current.md.
+#   mexp/kimi/bench_gather.py reads N rows of 576 bf16 through an index list, contiguous
+#       against scattered (one row every 32, the attended tier's spacing) and against random,
+#       over a grid sweep: it says how much of the attended tier's ~88 GB/s is locality and
+#       how much is parallelism, i.e. whether a contiguous arena for the kept rows is worth
+#       building. Standalone GPU script, no server; run it when no timed job is measuring.
 #   mexp/kimi/rank_skew.py <trace prefix>... splits each rank's collective time (a sink that
 #       absorbs the wait for the slower rank) from its compute, which is what a code change
 #       actually costs; it is how the 256k fence cost was found.

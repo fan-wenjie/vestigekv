@@ -177,7 +177,10 @@ def run_client(job, port):
         # Kernel-level decode profiles at the given contexts (mexp/kimi/profile_stream.py).
         cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "profile_stream.py"), "--port", port,
                "--out", os.path.join(RESULTS, "profile", job["id"]),
-               "--ctxs", str(args.get("ctxs", "131072,262144")), "--steps", str(args.get("steps", 200))]
+               "--ctxs", str(args.get("ctxs", "131072,262144")), "--steps", str(args.get("steps", 200)),
+               # TODO(fan-wenjie): the client ignores this; drop both once the
+               # long-running runner has been restarted onto this file.
+               "--server-log-glob", os.path.join(RESULTS, f"server_{arm}_*.log")]
         out = os.path.join(RESULTS, f"profile_{arm}_{job['id']}.log")
     elif client == "gsm8k":
         cmd = [PY, "-m", "sglang.test.few_shot_gsm8k", "--num-shots", str(args.get("shots", 64)),

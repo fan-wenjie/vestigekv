@@ -42,6 +42,9 @@ def main():
     ap.add_argument("--steps", type=int, default=200)
     ap.add_argument("--input-len", type=int, default=4096)
     ap.add_argument("--seed", type=int, default=0)
+    # TODO(fan-wenjie): drop with the runner's matching argument once a runner
+    # restart has picked up the client that no longer reads a server log.
+    ap.add_argument("--server-log-glob", default="", help="accepted and ignored")
     args = ap.parse_args()
     ctxs = [int(x) for x in args.ctxs.split(",")]
     out = os.path.abspath(args.out)
