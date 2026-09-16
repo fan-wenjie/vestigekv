@@ -378,6 +378,29 @@ the forked stage 1's own overhead and has to be closed before the fenced
 branch is worth tuning. `td-profile-256k` then attributes whatever remains by
 kernel.
 
+### Two kinds of "do not run this kernel", and which one is legal
+
+A captured decode graph replays a fixed node list, so a launch cannot be
+skipped at replay, and deciding from a GPU-computed value would need a
+device-to-host read -- a sync on the token path, and not legal during capture
+at all. Anything data-driven therefore **launches every step and exits early**,
+which is what the code already does: a lane's fenced flag is read inside the
+kernel because "a captured graph cannot skip a launch, so an unfenced lane
+exits on one scalar load", and `PACK_GRID_CAP` sizes its grid for the hardware
+so that "programs past a lane's tile count exit on one scalar load".
+
+`gather=False` is the other kind: a startup flag read on the host at capture
+time, so the node is simply never recorded. No read-back, no sync, and
+strictly cheaper than an early return, which still pays a dispatch -- at 256k
+the gather's grid is `(L, bs, PACK_GRID_CAP)` = 224 blocks. The router's choice
+of tier against CSR is the same kind of decision. So: not launching where the
+decision is configuration, early return where it is data.
+
+One consequence that the measurement bears out. The gather is worth ~250 us on
+TP1 and 13.5 us on TP0, and the step is gated by the slower rank, so removing
+it should show about 250 us. It showed 128. The missing ~120 us is inside
+stage 1, which is where the fenced lane's row reading moved.
+
 ### Atomics, checked statically before the data
 
 Three `tl.atomic_*` calls exist in the VestigeKV kernels, and only one of them
