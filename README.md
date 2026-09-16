@@ -392,7 +392,7 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       shared-memory pressure); if it stays, the cost is elsewhere, and the next suspect is the
 #       eager path's per-step page-table materialization in _dense_rows. The stub arm's output
 #       is wrong on the steps that fence: it is a timing probe, never a quality arm.
-#   td-needle, td-replay-64k, td-stream-256k, td-ruler-64k -> the tier-decode router
+#   td-needle, td-replay-64k, td-stream-256k, td-ruler-64k, td-ruler-64k-off -> the tier-decode router
 #       (engine branch vestigekv-fused-fallback, --enable-vestigekv-tier-decode): stage 1 reads
 #       a lane's rows from the kept table and the fetch buffer, or from the page table when the
 #       lane is fenced, so the per-step CSR copy goes away while the overflow path stays. The
@@ -445,7 +445,11 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       For arms that must be identical (a stats-on twin, or a change that moves no row such as
 #       --enable-vestigekv-tier-decode) any differing answer is a bug and the tool names the task,
 #       the length and the document; exit status is 1 when they disagree, so a smoke job can gate
-#       on it. lm-eval scores only one length per record, so the per-question win counts cover the
+#       on it. The control has to be the SAME engine tree with the flag off (td-ruler-64k-off),
+#       not the default arm's run on engine/: the two trees differ by eight commits and a
+#       difference between them would not be the flag's.
+#       A job whose only difference is a server flag needs `args.lengths` or `args.tasks` as well,
+#       or the ruler client writes UNTAGGED and overwrites the arm's canonical results file. lm-eval scores only one length per record, so the per-question win counts cover the
 #       scored cells alone while the answer comparison covers all 65.
 #   The order of the whole line is fixed: every performance job, then the pre-registration 4
 #       candidate arms and their smoke, then the default is committed, and only then the
