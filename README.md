@@ -392,6 +392,16 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       shared-memory pressure); if it stays, the cost is elsewhere, and the next suspect is the
 #       eager path's per-step page-table materialization in _dense_rows. The stub arm's output
 #       is wrong on the steps that fence: it is a timing probe, never a quality arm.
+#   td-needle, td-replay-64k, td-stream-256k, td-ruler-64k -> the tier-decode router
+#       (engine branch vestigekv-fused-fallback, --enable-vestigekv-tier-decode): stage 1 reads
+#       a lane's rows from the kept table and the fetch buffer, or from the page table when the
+#       lane is fenced, so the per-step CSR copy goes away while the overflow path stays. The
+#       fence stub says 4.33 ms/token at 256k is what that is worth; td-stream-256k is the same
+#       production protocol and that is its gate. The first two are the correctness smoke (the
+#       head needle, the three saved 64k replay prompts) and td-ruler-64k is the 13 tasks at
+#       4k-64k, which must reproduce the default arm's answers: the row sets are unchanged, so a
+#       difference is a bug, not a quality result. All four run with
+#       ENGINE=/home/user/vestigekv-wt/engine-fused.
 #   Findings and the method of this audit: mexp/kimi/perf_audit_origin_vs_current.md.
 #   mexp/kimi/bench_dense_mla.py times the experimental page-table dense MLA decode
 #       (engine branch vestigekv-fused-fallback, module vestigekv/dense_mla.py) against a torch
