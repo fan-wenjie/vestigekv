@@ -343,6 +343,41 @@ rows from the kept table and the fetch buffer, or from the page table when the
 lane is fenced, so the CSR that the pack kernel builds -- and the arming work
 with it -- has no consumer left.
 
+## The tier-decode router measured: a third of the way, and not adopted
+
+Production protocol, 256k, server-side ms/token (`td-stream-256k`, wall 1422s):
+
+| arm | 64k | 128k | 256k | speedup at 256k |
+|---|---|---|---|---|
+| dense | 4.360 | 4.783 | 5.576 | 1.000 |
+| origin/vestigekv | 4.094 | 4.181 | 4.346 | 1.283 |
+| current default | 4.101 | 4.296 | 4.771 | 1.169 |
+| **tier-decode** | 4.105 | 4.232 | **4.643** | **1.201** |
+| fence stub | 4.088 | 4.155 | 4.328 | 1.288 |
+
+It removes the per-step copy and it is faster than the default, but it
+recovers only 0.128 of the 0.443 ms gap, 29%, and stays 0.297 ms behind
+origin. The gate was 4.33 and it measures 4.643, so **it is not adopted**.
+
+Two readings, and the arms that separate them.
+
+- **The window widened.** td-stream-256k spreads [4.495-4.805] where the
+  default spreads [4.751-4.786]. A cost that switches on and off got bigger,
+  not smaller, which is what moving a fenced lane's row reading out of a bulk
+  copy and into stage 1's inner loop looks like: one coalesced copy became a
+  dependent load per block, the indirect addressing the advisor named.
+- **The copy's saving is real but partly eaten.** The pack's fenced branch was
+  ~250 us/step and 0.128 ms of it survives to the total, so roughly half is
+  paid back inside stage 1.
+
+`td-stream-256k-nodense` runs the same build with
+`--disable-vestigekv-recall-overflow-fallback`, which truncates an overflowed
+scan exactly as origin does. With the overflow work gone from both sides it
+must be **no worse than origin's 4.346**; if it is worse, that difference is
+the forked stage 1's own overhead and has to be closed before the fenced
+branch is worth tuning. `td-profile-256k` then attributes whatever remains by
+kernel.
+
 ## Pending
 - `td-replay-64k` ran and its six answers are sane, five of six hit, but it is
   **not** a comparison: the only other replay on record used
