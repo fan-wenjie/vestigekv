@@ -52,6 +52,15 @@ fetch p50/p90/p99 = 0/180/2115, overflow 4846, fallback 0.00268; quality
 protocol 0/0/29, overflow 8, fallback 0.00000. The overflow count is
 back-loaded: 148 of the 4846 had happened by step 84750.
 
+**Correction (2026-09-16, later the same day): those are TP0's counters, not
+the job's.** Each rank keeps its own, and they differ by 20x: TP0 overflow
+4846 (rate 0.0027), TP1 overflow 99016 (rate 0.0548). The aggregate is about
+0.029, not 0.0027. This is the same asymmetry the profile found as rank skew
+(TP1's pack 264 us against TP0's 13.5 us): the ranks hold different heads, so
+they fire different row sets and overflow independently. Every statement below
+that reads a fallback rate off one rank understates it, and the reading that
+the fence "fires on 0.27% of scans" is TP0's alone.
+
 Three readings the arms below inherit.
 
 - **The branch costs nothing except the fence.** Disarming it reaches

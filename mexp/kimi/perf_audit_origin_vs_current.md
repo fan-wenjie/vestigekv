@@ -253,6 +253,51 @@ set"); implementation starts only after every queued measurement has run, and
 lands only if the measured gain justifies changing the algorithm this close to
 the deadline (2026-09-26).
 
+## Where the fallback actually fires: two regimes, and a rank asymmetry
+
+VKSTATS is per rank, and reading one rank understated the streaming rate by
+20x (corrected in pre-registration 4). Both regimes, both ranks:
+
+| workload | steps | index builds | fetch p50 | attended frac | fallback TP0 | fallback TP1 |
+|---|---|---|---|---|---|---|
+| stream 4k->256k | 258050 | 14 | 0 | 0.049 | 0.0027 | 0.0548 |
+| RULER 13 tasks @64k | 1850 | 889 | 1023 | 0.108 | 0.3596 | 0.3242 |
+
+Per RULER task over 4k-64k (fb-<task>, TP0): single_1 0.096, multikey_1 0.146,
+single_2 0.154, single_3 0.167, multikey_2 0.173, multikey_3 0.245.
+
+Three things separate the regimes, and they compound.
+
+- **Context at the moment of decoding.** The stream's first overflow is at
+  step 39650, context about 44k; below that the fired set cannot reach the
+  4096 capacity and the fence is unreachable by construction. Its rate then
+  grows monotonically with context (TP0, per 32k window): 0.0000 to 35k,
+  0.0001 at 66k, 0.0014 at 97k, 0.0022 at 129k, 0.0026 at 191k, 0.0054 at
+  222k, 0.0082 at 254k. RULER's prompt is 64k from the first decode step, so
+  every step is in the reachable region.
+- **Calibration amortized against calibration repaid.** The stream fits 14
+  indexes in 258050 steps, two per layer. RULER fits 889 in 1850 steps, which
+  is exactly one per request per layer, and 1850/130 = 14.2 steps per request:
+  the index is calibrated at about the point the answer ends, so most of a
+  RULER answer is served by the provisional identity-basis index with z at
+  Z_MAX, which is conservative and over-fires.
+- **What the query wants.** A needle is placed where tier-1's salience signal
+  does not keep it -- that is what makes it a needle -- so the recall tier has
+  to reach into the archive on every step. Free-running continuation wants
+  recent and globally salient rows, which tier-1 already keeps. fetch p50 1023
+  against 0, and attended_frac 0.108 against 0.049 at a quarter of the
+  context, are the same statement twice.
+
+What this costs is not hypothetical: pre-registration 3's C1 control turns the
+fallback off and RULER loses 0.0565 of the 65-cell mean, concentrated on the
+multi-key tasks. On those tasks a third of the scans cannot certify, and part
+of the quality is the fallback's rather than the criterion's.
+
+**The consequence for the paper.** The speedup is measured in the streaming
+regime and the RULER quality in the short-answer retrieval regime, and the two
+regimes have fallback rates two orders of magnitude apart. The two numbers do
+not hold simultaneously, and the text must not let a reader assume they do.
+
 ## Verdict: the cost is arming the fence, and removing it recovers all of it
 
 Production protocol (radix on, one running request), server-side ms/token from
