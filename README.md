@@ -332,6 +332,10 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       258048-token decode, stats off): the dense vs margin-0 gain at 64k/128k/256k that the
 #       pre-registered latency gate (give-back rate <= 0.25 of that gain) is measured against;
 #       python mexp/glm53/stream_curve.py --line kimi --output-len 258048 (results/kimi/latency_stream_*).
+#   stream-vestigekv-256k-m2, stats-vestigekv-stream-256k-m2 -> exploratory (outside the frozen
+#       rule): the 4k -> 256k stream at margin 2, timed and with stats, so the long-decode cost
+#       of a margin (gates 3 and 4 of the pre-registration) is on record even though the
+#       short-answer gate 2 failed every max-base candidate in the sweep.
 #   ruler-baseline-long, ruler-vestigekv-long -> the 13 tasks x {128k,256k,512k,1M}, 5 samples/cell,
 #       with CTX=1064960 (1M + 16k; SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 because the
 #       model's derived context is exactly 1048576), --max-running-requests 2, two mamba slots,

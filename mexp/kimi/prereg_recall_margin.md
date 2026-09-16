@@ -50,3 +50,27 @@ vestigekv RULER is rerun with it (gate: 65-cell mean >= 0.923 - 0.01, and the
 targeted tasks not below their sweep values by more than 0.05), and the
 128k-1M jobs run with the same default. Thresholds above are not revised after
 results are seen; anything that fails is reported as such.
+
+## Outcome (2026-09-16 05:30, results/kimi/ruler/results_vestigekv_n10_16384-32768-65536*.json and the margin-* server logs)
+
+| setting | multikey_2 | multikey_3 | qa_hotpot | fwe | single_1 | 15-cell mean | targeted mean | fetch p50 | fallback |
+|---|---|---|---|---|---|---|---|---|---|
+| max, 0 | 1.000 | 0.733 | 0.567 | 0.933 | 1.0 | 0.847 | 0.767 | 2137 | 0.448 |
+| max, 1 | 0.967 | 0.867 | 0.633 | 0.956 | 1.0 | 0.884 | 0.822 | 4096 | 0.603 |
+| max, 2 | 0.967 | 1.000 | 0.667 | 0.967 | 1.0 | 0.920 | 0.878 | 4096 | 0.747 |
+| max, 3 | 1.000 | 1.000 | 0.667 | 0.967 | 1.0 | 0.927 | 0.889 | 4096 | 0.846 |
+| lse, 2.3 | 0.933 | 0.967 | 0.667 | 0.967 | 1.0 | 0.907 | 0.856 | 4096 | 0.685 |
+| lse, 4.6 | 1.000 | 1.000 | 0.733 | 0.967 | 1.0 | 0.940 | 0.911 | 4096 | 0.912 |
+
+Gate 1 (no degradation): every candidate passes. Choice rule: max 2/3 and
+lse 4.6 beat margin 0's targeted mean by more than 0.05. Gate 2 (short-answer
+cost): no candidate passes -- every one has fetch p50 = 4096 (the capacity)
+and only max 1 keeps fallback under 1.5 x 0.448 = 0.672, while failing p50.
+Verdict under this pre-registration: negative; the default stays 0 and the
+128k-1M jobs run with it. Reason the gate binds: in a short-answer workload
+most decode steps are served by the provisional index (zp = Z_MAX, 8-step
+calibration window), and a margin on top of it pushes those steps into the
+dense fallback (0.45 -> 0.60-0.91); the quality gain is real but so is that
+cost. Not revised here. A second pre-registration may separate the regimes
+(cost measured on calibrated steps; margin not applied to the provisional
+index), with the exploratory margin-2 256k streams as its prior.
