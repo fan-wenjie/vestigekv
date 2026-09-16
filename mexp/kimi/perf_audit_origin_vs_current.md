@@ -136,6 +136,19 @@ window immediately. The trace is discarded (its scan kernel reads 1.1 us and
 prefill kernels appear in it); the client now streams its own request and
 counts the tokens, so no server log is consulted at all.
 
+## Decision on numerics (2026-09-16, owner's call)
+
+Mathematical equivalence is sufficient; a change may regroup the floating-point
+accumulation and stop the output matching the dense arm bit for bit. What stays
+fixed is the row set: which rows enter a step's softmax, which the registered
+tests pin bitwise (fetch sets, keep masks, sigma and basis) and which is what
+the paper's parity claims are about. No registered test asserts attention
+output numerics, so this unblocks three optimizations that were otherwise
+closed: the KV split count sized from the attended rows (done,
+--enable-vestigekv-attended-splits), a contiguous arena for the kept tier that
+may also reorder it, and an archive ordered into residual-norm bands so the
+scan can skip whole bands under a sound bound.
+
 ## Pending
 - `stream-vestigekv-256k-origin`: origin's timed 4k->256k stream, the clean A/B
   against `stream-vestigekv-256k` at 64k/128k/256k.
