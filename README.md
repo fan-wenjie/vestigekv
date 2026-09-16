@@ -372,6 +372,14 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       the "--log-level info" server arg is sglang's default and only makes the runner tag the
 #       output file. A gap above the window spread is bisected with the same job at the
 #       intermediate commits.
+#   prod-stream-vestigekv-256k-{fused-base,fencestub} -> the probe that splits arming a fence
+#       from running it (engine branch vestigekv-fused-fallback). Both arms are that branch
+#       under the production protocol; the second sets SGLANG_DEBUG_VESTIGEKV_FENCE_STUB=1,
+#       which compiles the gather's dense branch away while the rest of the fence stays armed.
+#       If the gap to the disarmed arm collapses, the cost is the branch existing (register and
+#       shared-memory pressure); if it stays, the cost is elsewhere, and the next suspect is the
+#       eager path's per-step page-table materialization in _dense_rows. The stub arm's output
+#       is wrong on the steps that fence: it is a timing probe, never a quality arm.
 #   Findings and the method of this audit: mexp/kimi/perf_audit_origin_vs_current.md.
 #   mexp/kimi/bench_dense_mla.py times the experimental page-table dense MLA decode
 #       (engine branch vestigekv-fused-fallback, module vestigekv/dense_mla.py) against a torch
