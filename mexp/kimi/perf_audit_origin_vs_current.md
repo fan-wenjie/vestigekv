@@ -149,6 +149,41 @@ closed: the KV split count sized from the attended rows (done,
 may also reorder it, and an archive ordered into residual-norm bands so the
 scan can skip whole bands under a sound bound.
 
+## The grid-strided pack recovers the regression, and locality is not the issue
+
+Timed 4k->256k streams, same box and protocol, server-side ms/token:
+
+| context | dense | origin | current branch | perf branch |
+|---|---|---|---|---|
+| 128k | 4.778 | 4.166 | 4.204 | 4.179 |
+| 252k | 5.550 | 4.343 [4.337-4.358] | 4.664 [4.523-4.744] | 4.391 [4.358-4.424] |
+| 256k | 5.564 | 4.360 [4.345-4.368] | 4.701 [4.531-4.778] | 4.395 [4.368-4.437] |
+
+The grid-strided gather alone takes the branch from 7.8% behind the paper's
+backend to 0.8% behind it at 256k (speedup over dense 1.184x -> 1.266x against
+origin's 1.276x), and the p10-p90 window narrows from 0.247 to 0.069 ms, which
+is the intermittent fence going away. 306 us of the 341 us gap was one
+serialized copy. The rebuild trigger and the attended splits are therefore
+optimizations past parity, not repairs.
+
+**A contiguous arena for the attended tier is not worth building.**
+`mexp/kimi/bench_gather.py`, 8192 rows of 576 bf16 out of a 262144-row pool:
+
+| grid | contiguous | scattered (every 32) | random |
+|---|---|---|---|
+| 8 | 25 GB/s | 25 | 25 |
+| 128 | 751 | 750 | 750 |
+| 1024 | 2255 | 2232 | 2232 |
+
+At every grid the three index distributions are within 1%, and the best
+scattered arm reaches 2232 GB/s against the contiguous arm's 2255. Row-granular
+scatter costs nothing at this row width (1152 B is 18 cache lines, and the
+pointer load amortizes 1:288); what the sweep does show is that the same read
+moves from 25 to 2255 GB/s on parallelism alone. So the attended tier's ~88
+GB/s in the decode kernel is a parallelism artifact, not a locality one, and
+the lever is the split count (--enable-vestigekv-attended-splits), not the
+layout. The arena idea is dropped.
+
 ## Queued behind every measurement: recall as search over a static set
 
 Exchangeability plus the frozen ranking make the archive a static point set and
