@@ -341,6 +341,31 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       prefill"): the head needle and three saved 64k prompts with stats on; the server log's
 #       VKCAL lines show whether the prefill-time builds install before decode (async=True at a
 #       seq below the prompt length) and what they fire. Not a pre-registered measurement.
+#   longbench2-baseline, longbench2-vestigekv -> LongBench v2 on the 300 questions whose context is
+#       <= 120k Kimi tokens (mexp/kimi/longbench2/: lm-eval task longbench2_kimi_120k, official
+#       zero-shot prompt + answer regex, subset_120k.json from make_subset.py), raw prompts, serial,
+#       greedy, 128 tokens, CTX=135168 with one running request; results/kimi/longbench2/
+#       results_<arm>.json (accuracy overall and per domain/length/difficulty, parse rate) and
+#       samples_<arm>.json. longbench2-vestigekv-stats -> the same with stats on: must reproduce
+#       the stats-off answers exactly and gives the fetch/fallback figures on real documents.
+#   ruler-vestigekv-nofallback -> the 13 tasks x 4k-64k, 10/cell, stats on, with
+#       --disable-vestigekv-recall-overflow-fallback: an overflowed scan attends its first 4096
+#       fired rows instead of the full row set, so this arm cannot escape to dense attention; the
+#       control for "the RULER quality is the fallback's, not the method's".
+#   fb-<task> (13 jobs) -> one stats-on RULER job per task (5 lengths, 10/cell) on a fresh server
+#       each (the VK_JOB env entry only breaks the runner's server-reuse signature), so each server
+#       log's last VKSTATS line is that task's fallback rate and fetch p50/p90/p99.
+#   ruler-baseline-n50, ruler-vestigekv-n50 -> the 13 tasks x 4k-64k at 50 samples/cell (one sample
+#       = 0.02), the numbers that replace the n=10 tables; compare with
+#       python mexp/glm53/compare_ruler.py --out results/kimi/ruler --n 50.
+#       Gates and interpretation rules for these three groups are pre-registered in
+#       mexp/kimi/prereg3_realdoc_and_fallback.md (frozen before any of them ran).
+#   pc-A{1,2,3}-{ruler,stats64k,stream256k-stats,stream256k} -> pre-registration 2
+#       (mexp/kimi/prereg2_prefill_calibration.md): arms A1 = --enable-vestigekv-prefill-calibration,
+#       A2 = A1 + --vestigekv-recall-margin 2, A3 = A1 + margin 4.6 with --vestigekv-recall-threshold
+#       lse; per arm the 13-task 4k-64k RULER (10/cell), the 64k stats run, and the stats-on and
+#       timed 4k->256k streams, read against the A0 (default) and dense records already on file.
+#       The default chosen by its rule is committed before ruler-vestigekv-long and the n=50 pair run.
 #   ruler-baseline-long, ruler-vestigekv-long -> the 13 tasks x {128k,256k,512k,1M}, 5 samples/cell,
 #       with CTX=1064960 (1M + 16k; SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 because the
 #       model's derived context is exactly 1048576), --max-running-requests 2, two mamba slots,

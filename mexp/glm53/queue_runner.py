@@ -164,6 +164,15 @@ def run_client(job, port):
         if args.get("ignore_eos"):
             cmd.append("--ignore-eos")
         out = os.path.join(RESULTS, f"replay_{arm}_{job['id']}.log")
+    elif client == "longbench2":
+        # LongBench v2, <= 120k-token subset (mexp/kimi/longbench2/): raw-prompt, serial, greedy.
+        cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "run_longbench2.py"), "--arm", arm, "--port", port,
+               "--model", MODEL, "--out", os.path.join(RESULTS, "longbench2")]
+        if "limit" in args:
+            cmd += ["--limit", str(args["limit"])]
+        if job.get("server_args") or "limit" in args or str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1":
+            cmd += ["--tag", job["id"]]  # a variant must not overwrite the arm's plain run
+        out = os.path.join(RESULTS, f"longbench2_{arm}_{job['id']}.log")
     elif client == "gsm8k":
         cmd = [PY, "-m", "sglang.test.few_shot_gsm8k", "--num-shots", str(args.get("shots", 64)),
                "--num-questions", str(args.get("n", 1209)),
