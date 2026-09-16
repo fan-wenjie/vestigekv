@@ -17,8 +17,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 
 
-def load(arm, prefill, out_len):
-    path = os.path.join(ROOT, "results", "glm53", f"latency_stream_{prefill // 1024}k-{out_len}_{arm}.jsonl")
+def load(arm, prefill, out_len, line="glm53"):
+    path = os.path.join(ROOT, "results", line, f"latency_stream_{prefill // 1024}k-{out_len}_{arm}.jsonl")
     with open(path) as f:
         d = json.loads(f.readlines()[-1])
     return [x * 1000.0 for x in d["itls"][0]], d["input_lens"][0]  # seconds -> ms
@@ -30,9 +30,10 @@ def main():
     ap.add_argument("--prefill", type=int, default=4096)
     ap.add_argument("--output-len", type=int, default=126976)
     ap.add_argument("--window", type=int, default=4096)
+    ap.add_argument("--line", default="glm53", help="results/<line>/ holds the stream files")
     args = ap.parse_args()
     arms = args.arms.split(",")
-    curves = {arm: load(arm, args.prefill, args.output_len) for arm in arms}
+    curves = {arm: load(arm, args.prefill, args.output_len, args.line) for arm in arms}
     points = [8192 * 2**i for i in range(0, 5)] + [args.prefill + args.output_len]
     points = sorted({p for p in points if p <= args.prefill + args.output_len})
     print(f"median inter-token latency (ms) over the {args.window} tokens ending at each context length")
