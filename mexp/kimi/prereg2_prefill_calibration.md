@@ -100,3 +100,38 @@ after these arms use it: ruler-vestigekv-long (128k-1M) and the n=50 4k-64k
 pair of pre-registration 3; the health of the long-context runs (fallback,
 fetch) is read from the same stats machinery. If no arm passes, the default
 stays A0 and those runs proceed with it.
+
+## Outcome (2026-09-16 17:30): A1 fails G1; the pre-registration ends negative
+
+The 13-task RULER at 4k-64k, 10 per cell, with prefill calibration the only
+change (`pc-A1-ruler`):
+
+| arm | 65-cell mean |
+|---|---|
+| dense | 0.941 |
+| vestigekv default | 0.923 |
+| A1, prefill calibration | **0.788** |
+
+Per task against the default, everything that moved by more than 0.05:
+niah_multikey_2 0.940 -> 0.360, niah_multikey_3 0.900 -> 0.320,
+niah_single_3 1.000 -> 0.780, ruler_fwe 0.907 -> 0.767,
+ruler_qa_squad 0.582 -> 0.475.
+
+G1 says A1 must not lose anything, since it changes only who calibrates. It
+loses 0.135 overall and 0.58 on both multi-key tasks, so A1 is rejected and
+A2/A3, which are A1 plus a margin, are not run.
+
+**Why it loses.** The cost side reads as a success and is the evidence: fetch
+p50 falls from 2137 to 0 and p90 to 3, and the fallback rate to zero. The
+certificate did not get sharper; it stopped firing. A conformal z is only
+valid under exchangeability between the calibration queries and the future
+ones, and prompt queries are not exchangeable with decode queries -- the
+argmax distribution at a prompt position is not the distribution at a decode
+position -- so the fitted z is too small and the certificate under-inflates.
+Rows that should fire no longer do, and the tasks that need a near-tied row
+recovered, the multi-key needles, are exactly the ones that collapse.
+
+That is what the original design was avoiding by calibrating on decode
+queries only; the module comment already said prefill queries reach the
+backend un-absorbed and that decode queries are the absorbed ones. The flag
+stays off and is not a candidate for any default.

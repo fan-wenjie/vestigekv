@@ -151,3 +151,28 @@ row, so it cannot move any number in this pre-registration.
 ## Not revised after the data
 
 The thresholds, the candidate list, the task list and the choice rule.
+
+## Outcome (2026-09-16 17:00): every candidate fails, and the package is why
+
+The four arms on the frozen package (prefill calibration, rebuild trigger
+0.05, capacity 16384), 5 targeted tasks at 16k/32k/64k, 10 per cell:
+
+| arm | mk2 | mk3 | hotpot | fwe | s1 | 15-cell | targeted | fetch p50/p90/p99 | fallback |
+|---|---|---|---|---|---|---|---|---|---|
+| pre-reg 1, margin 0 | 1.000 | 0.733 | 0.567 | 0.933 | 1.0 | 0.847 | 0.767 | 2137/-/- | 0.448 |
+| m0 | 0.200 | 0.067 | 0.567 | 0.789 | 1.0 | 0.524 | 0.278 | 0/3/656 | 0.000 |
+| m2 | 0.200 | 0.067 | 0.567 | 0.778 | 1.0 | 0.522 | 0.278 | 1/1444/3968 | 0.000 |
+| m3 | 0.200 | 0.100 | 0.633 | 0.878 | 1.0 | 0.562 | 0.311 | 11/3646/3968 | 0.000 |
+| lse 4.6 | 0.200 | 0.133 | 0.633 | 0.900 | 1.0 | 0.573 | 0.322 | 80/3146/3968 | 0.000 |
+
+Q1 (targeted >= 0.878) and Q2 (15-cell >= 0.920) fail by a wide margin on all
+four, so no candidate is adopted and the default keeps margin 0.
+
+The verdict is not about the margin. m0 and m2 have the same targeted mean
+(0.278), and m0 is the package with no margin at all yet already 0.489 below
+the pre-registration 1 arm it should reproduce. The package broke recall, and
+the component is prefill calibration -- see pre-registration 2's outcome,
+where it alone costs 0.135 of the 65-cell mean and 0.58 on both multi-key
+tasks. The margin question is therefore still open and has to be asked again
+on a package that does not include it; this pre-registration's thresholds are
+not reused, because its reference arm is not a valid reference.
