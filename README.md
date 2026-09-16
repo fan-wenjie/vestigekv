@@ -414,6 +414,14 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       prod-stream-vestigekv-256k-origin, and it answers whether the forked stage 1 itself costs
 #       anything, with the overflow work removed from both sides. Not a quality arm: truncating
 #       is what pre-registration 3's C1 measured at -0.057 of the RULER mean.
+#   stats-stream-64k-x130 -> the controlled counterpart of stats-vestigekv-ruler-64k: the same
+#       engine tree, the same env (CTX 73728, radix off, stats on), the same context (64k
+#       prefill), the same generated length (14 tokens) and the same number of requests (130,
+#       matching RULER's 13 tasks x 10 samples and its 1850 steps). The ONLY variable left is
+#       what the text is -- random continuation instead of a needle question. RULER measures
+#       fallback 0.360 at 64k while the long stream measures 0.00014 at the same context, and
+#       this says how much of that 2100x is the question rather than the short-answer regime.
+#         (queue job; the stream client takes args.num_prompts for this)
 #   origin-stats-stream-256k -> origin/vestigekv on the production 256k stream with
 #       SGLANG_DEBUG_VESTIGEKV_STATS=1. Origin's stats line predates the fetch percentiles and
 #       the fallback rate, but it carries fetched=<n>/call, the mean rows a scan fires, and that

@@ -146,9 +146,15 @@ def run_client(job, port):
         tag = "_stats" if str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1" else ""
         if job.get("server_args"):
             tag += "_" + job["id"]  # a flag sweep must not overwrite the arm's default run
-        out_jsonl = os.path.join(RESULTS, f"latency_stream_4k-{n_out}_{arm}{tag}.jsonl")
+        n_in = int(args.get("input_len", 4096))
+        n_req = int(args.get("num_prompts", 1))
+        shape = f"{n_in // 1024}k-{n_out}" + (f"-x{n_req}" if n_req > 1 else "")
+        out_jsonl = os.path.join(RESULTS, f"latency_stream_{shape}_{arm}{tag}.jsonl")
         cmd = [PY, "-m", "sglang.benchmark.serving", "--backend", "sglang", "--model", MODEL,
-               "--port", port, "--num-prompts", "1", "--dataset-name", "random",
+               # num_prompts > 1 makes this a controlled comparison against a
+               # short-answer benchmark: same context, same generated length,
+               # enough requests to accumulate steps. Default 1 = the latency curve.
+               "--port", port, "--num-prompts", str(args.get("num_prompts", 1)), "--dataset-name", "random",
                "--random-input-len", str(args.get("input_len", 4096)), "--random-output-len", str(n_out),
                "--random-range-ratio", "1", "--max-concurrency", "1", "--warmup-requests", "0",
                "--output-details", "--output-file", out_jsonl]
