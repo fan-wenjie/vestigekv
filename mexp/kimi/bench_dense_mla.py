@@ -26,7 +26,11 @@ import torch
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 sys.path.insert(0, os.path.join(os.environ.get("ENGINE", os.path.join(ROOT, "engine")), "python"))
 
-from sglang.srt.layers.attention.vestigekv.dense_mla import dense_mla_decode  # noqa: E402
+from sglang.srt.layers.attention.vestigekv.dense_mla import (  # noqa: E402
+    ADDR_AFFINE,
+    ADDR_PAGE_TABLE,
+    dense_mla_decode,
+)
 
 
 def timed(fn, iters=20):
@@ -61,6 +65,7 @@ def main():
     kbase = torch.tensor([pool.data_ptr()], dtype=torch.int64, device=dev)
     loc = torch.tensor([args.seq - 1], dtype=torch.int64, device=dev)
     seq = torch.tensor([args.seq], dtype=torch.int64, device=dev)
+    fenced = torch.tensor([1 << 30], dtype=torch.int32, device=dev)  # a fired count above any capacity
     scale = 1.0 / (args.row**0.5)
     payload = args.seq * args.row * 2
 
@@ -69,23 +74,36 @@ def main():
     ref = torch.softmax(ref_s, -1) @ rows[:, : args.row - 64].float()
 
     print(f"seq={args.seq} heads={args.heads} row={args.row}: {payload / 2**20:.0f} MiB of rows")
-    best = None
-    for ns in (int(x) for x in args.nsplit.split(",")):
-        for bn in (int(x) for x in args.block_n.split(",")):
-            out = dense_mla_decode(q, page, kbase, loc, seq, scale=scale, nsplit=ns, block_n=bn)
-            err = (out - ref).abs().max().item() / ref.abs().max().item()
-            us = timed(lambda: dense_mla_decode(q, page, kbase, loc, seq, scale=scale, nsplit=ns, block_n=bn), args.iters)
-            gbs = payload / (us * 1e-6) / 1e9
-            print(f"  dense_mla nsplit={ns:4d} block_n={bn:4d}  {us:8.1f} us  {gbs:7.0f} GB/s  rel err {err:.2e}")
-            if best is None or us < best[0]:
-                best = (us, ns, bn)
+    best = {}
+    for name, addr in (("page-table", ADDR_PAGE_TABLE), ("affine", ADDR_AFFINE)):
+        for ns in (int(x) for x in args.nsplit.split(",")):
+            for bn in (int(x) for x in args.block_n.split(",")):
+                run = lambda: dense_mla_decode(
+                    q, page, kbase, loc, seq, fenced, scale=scale, capacity=4096,
+                    addr=addr, nsplit=ns, block_n=bn,
+                )
+                err = (run() - ref).abs().max().item() / ref.abs().max().item()
+                us = timed(run, args.iters)
+                gbs = payload / (us * 1e-6) / 1e9
+                print(f"  {name:10s} nsplit={ns:4d} block_n={bn:4d}  {us:8.1f} us  {gbs:7.0f} GB/s  rel err {err:.2e}")
+                if name not in best or us < best[name][0]:
+                    best[name] = (us, ns, bn)
+    # the exit an unfenced lane pays: the launch happens either way in a graph
+    unfenced = torch.zeros(1, dtype=torch.int32, device=dev)
+    us = timed(lambda: dense_mla_decode(q, page, kbase, loc, seq, unfenced, scale=scale,
+                                        capacity=4096, addr=ADDR_PAGE_TABLE,
+                                        nsplit=best["page-table"][1], block_n=best["page-table"][2]), args.iters)
+    print(f"  not fenced (early exit, the cost every step pays)  {us:8.1f} us")
     csr = torch.empty(args.seq, dtype=torch.int64, device=dev)
     def materialize():
         csr.copy_(page.to(torch.int64))
     us = timed(materialize, args.iters)
     print(f"  materialize (the copy this replaces)      {us:8.1f} us  "
           f"{args.seq * 8 / (us * 1e-6) / 1e9:7.0f} GB/s written")
-    print(f"best dense_mla {best[0]:.1f} us at nsplit={best[1]} block_n={best[2]}")
+    for name, (us, ns, bn) in best.items():
+        print(f"best {name:10s} {us:8.1f} us at nsplit={ns} block_n={bn}")
+    if len(best) == 2:
+        print(f"affine / page-table at each best: {best['affine'][0] / best['page-table'][0]:.3f}x")
 
 
 if __name__ == "__main__":
