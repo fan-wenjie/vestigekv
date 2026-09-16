@@ -283,8 +283,15 @@ lane is fenced, so the CSR that the pack kernel builds -- and the arming work
 with it -- has no consumer left.
 
 ## Pending
-- Wire `TierDecodeRouter` into the backend behind a flag, then the same timed
-  256k stream: the gate is 4.33 ms/token with the overflow path intact.
+- `td-stream-256k`: the timed 256k stream with `--enable-vestigekv-tier-decode`
+  (wired, tested, registered). The gate is 4.33 ms/token with the overflow path
+  intact. `td-needle`, `td-replay-64k` and `td-ruler-64k` are its correctness
+  arms; the row sets do not move, so a RULER difference is a bug.
+- If it is adopted, two paper sentences stop being true and must be rewritten
+  from the new design, not edited: "The stock MLA-decode kernel is untouched"
+  (stage 1 is a fork of it, differing only in where a row id comes from) and
+  the kernel count, where the two-kernel CSR pack becomes the prep kernel
+  alone, so seven fused kernels become six.
 - `stream-vestigekv-256k-origin`: origin's timed 4k->256k stream, the clean A/B
   against `stream-vestigekv-256k` at 64k/128k/256k.
 - `profile-vestigekv-origin-256k` and the 256k window of
