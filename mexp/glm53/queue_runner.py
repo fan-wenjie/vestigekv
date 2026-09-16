@@ -220,10 +220,20 @@ def main():
                 append_state({"id": job["id"], "status": "failed", "note": "server did not start",
                               "end": time.strftime("%F %T")})
                 continue
-            if job.get("probe", False):
-                rc, out, tail = run_client({**job, "client": "needle", "id": job["id"] + "-probe"}, server.port)
-                log(f"probe: {tail[-1:] if tail else rc}")
-            rc, out, tail = run_client(job, server.port)
+            try:
+                if job.get("probe", False):
+                    rc, out, tail = run_client({**job, "client": "needle", "id": job["id"] + "-probe"}, server.port)
+                    log(f"probe: {tail[-1:] if tail else rc}")
+                rc, out, tail = run_client(job, server.port)
+            except Exception as e:
+                # A malformed job is that job's failure, not the queue's: a
+                # missing `args` key used to raise out of the loop and take
+                # every remaining job down with the runner.
+                log(f"{job['id']} failed to launch: {type(e).__name__}: {e}")
+                append_state({"id": job["id"], "status": "failed",
+                              "note": f"client not launched: {type(e).__name__}: {e}",
+                              "wall_s": round(time.time() - t0), "end": time.strftime("%F %T")})
+                continue
             status = "done" if rc == 0 else "failed"
             append_state({"id": job["id"], "status": status, "rc": rc, "log": out,
                           "wall_s": round(time.time() - t0), "end": time.strftime("%F %T"),
