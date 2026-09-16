@@ -283,6 +283,13 @@ lane is fenced, so the CSR that the pack kernel builds -- and the arming work
 with it -- has no consumer left.
 
 ## Pending
+- `td-replay-64k` ran and its six answers are sane, five of six hit, but it is
+  **not** a comparison: the only other replay on record used
+  `--enable-vestigekv-prefill-calibration`, so the two differ by that flag and
+  not by the router. The hit pattern matches, including the same qa_squad miss.
+  `td-ruler-64k` is the real correctness test, and it has a control (the
+  default arm's 650 answers) plus a tool that compares them question by
+  question (`mexp/kimi/ruler_diff.py`).
 - `td-stream-256k`: the timed 256k stream with `--enable-vestigekv-tier-decode`
   (wired, tested, registered). The gate is 4.33 ms/token with the overflow path
   intact. `td-needle`, `td-replay-64k` and `td-ruler-64k` are its correctness
