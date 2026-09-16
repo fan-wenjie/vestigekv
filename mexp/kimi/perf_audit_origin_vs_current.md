@@ -266,15 +266,19 @@ VKSTATS is per rank, and reading one rank understated the streaming rate by
 Per RULER task over 4k-64k (fb-<task>, TP0): single_1 0.096, multikey_1 0.146,
 single_2 0.154, single_3 0.167, multikey_2 0.173, multikey_3 0.245.
 
-Three things separate the regimes, and they compound.
+Three things separate the regimes, and **matched against each other at the
+same context, the first one explains almost none of it.**
 
 - **Context at the moment of decoding.** The stream's first overflow is at
-  step 39650, context about 44k; below that the fired set cannot reach the
-  4096 capacity and the fence is unreachable by construction. Its rate then
-  grows monotonically with context (TP0, per 32k window): 0.0000 to 35k,
-  0.0001 at 66k, 0.0014 at 97k, 0.0022 at 129k, 0.0026 at 191k, 0.0054 at
-  222k, 0.0082 at 254k. RULER's prompt is 64k from the first decode step, so
-  every step is in the reachable region.
+  step 39650, context 43746 tokens (TP1's at 43150, 47246 tokens); below that
+  the fired set cannot reach the 4096 capacity and the fence is unreachable by
+  construction. Its rate then grows monotonically with context (TP0, per 32k
+  window): 0.0000 to 35k, 0.0001 at 66k, 0.0014 at 97k, 0.0022 at 129k, 0.0026
+  at 191k, 0.0054 at 222k, 0.0082 at 254k. That is why the stream's early
+  steps are exactly zero, and it is the whole of the answer only there.
+  **At matched context it is not the explanation**: in the 57k-69k windows the
+  stream fires 0.00002, 0.00017 and 0.00014, against RULER's 0.360 at 64k --
+  a factor of about 2100 with context held fixed.
 - **Calibration amortized against calibration repaid.** The stream fits 14
   indexes in 258050 steps, two per layer. RULER fits 889 in 1850 steps, which
   is exactly one per request per layer, and 1850/130 = 14.2 steps per request:
@@ -287,6 +291,16 @@ Three things separate the regimes, and they compound.
   recent and globally salient rows, which tier-1 already keeps. fetch p50 1023
   against 0, and attended_frac 0.108 against 0.049 at a quarter of the
   context, are the same statement twice.
+
+So the 2100x at matched context is the other two, and the per-task spread
+says both are present: every RULER task pays the same one-build-per-request
+structure, yet they range from 0.096 (single_1) to 0.245 (multikey_3) over
+4k-64k. The common floor is the calibration regime, the spread on top is the
+task. `stats-stream-64kprefill` separates them directly -- 64k prefill,
+continuation text, 4096 decode steps, stats on -- because it holds the context
+at RULER's and amortizes the calibration the way the long stream does. Near
+0.0002 puts the weight on RULER's questions; near 0.3 puts it on the prefilled
+context itself.
 
 What this costs is not hypothetical: pre-registration 3's C1 control turns the
 fallback off and RULER loses 0.0565 of the 65-cell mean, concentrated on the
