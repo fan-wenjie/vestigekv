@@ -129,6 +129,8 @@ def run_client(job, port):
             cmd += ["--tasks", args["tasks"]]
         if "seed" in args:
             cmd += ["--seed", str(args["seed"])]
+        if job.get("server_args") or "tasks" in args or "lengths" in args:
+            cmd += ["--tag", job["id"]]  # a sweep job must not overwrite the arm's full run
         out = os.path.join(RESULTS, f"ruler_{arm}_{job['id']}.log")
     elif client == "stream":
         # README metric 1: bs=1, 4k prefill, continuous decode; per-token latency curve.

@@ -67,6 +67,7 @@ def main():
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "results", "ruler_glm53"))
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--model", default=MODEL, help="served model name (tokenizer too)")
+    ap.add_argument("--tag", default="", help="suffix for the result files (e.g. the queue job id)")
     args = ap.parse_args()
     lengths = [int(x) for x in args.lengths.split(",")]
     tasks = args.tasks.split(",")
@@ -98,7 +99,7 @@ def main():
         fewshot_random_seed=args.seed,
     )
     os.makedirs(args.out, exist_ok=True)
-    tag = f"{args.arm}_n{args.n}_{'-'.join(str(x) for x in lengths)}"
+    tag = f"{args.arm}_n{args.n}_{'-'.join(str(x) for x in lengths)}" + (f"_{args.tag}" if args.tag else "")
     with open(os.path.join(args.out, f"results_{tag}.json"), "w") as f:
         json.dump({"results": res["results"], "wall_s": time.time() - t0, "n_per_cell": args.n,
                    "lengths": lengths, "tasks": tasks, "seed": args.seed}, f, indent=2)

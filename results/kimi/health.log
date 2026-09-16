@@ -2,3 +2,7 @@
 2026-09-16_02:18:09 SERVER_ERRORS runner=0 servers=1 job=ruler-vestigekv-long done=2 failed=0 prog='== RULER vestigekv n=10 wall=1905s' new_err=2 gpu=89185/96% 88629/97%  disk_free=60G
 2026-09-16_02:48:09 STALL runner=0 servers=1 job=ruler-vestigekv-long done=2 failed=0 prog='== RULER vestigekv n=10 wall=1905s' new_err=0 gpu=89185/97% 88629/98%  disk_free=60G STALL(no client progress since last check)
 2026-09-16_03:18:09 OK runner=1 servers=1 job=ruler-vestigekv done=1 failed=0 prog='15/650 [02:08<1:30:53,  8.59s/it]' new_err=-2 gpu=89165/98% 88609/98%  disk_free=60G
+2026-09-16_03:48:09 OK runner=1 servers=1 job=stats-vestigekv-ruler-64k done=2 failed=0 prog='10/130 [01:25<17:11,  8.59s/it]' new_err=0 gpu=89023/98% 88467/99%  disk_free=60G
+2026-09-16_04:18:09 OK runner=1 servers=1 job=margin-0 done=4 failed=0 prog='' new_err=0 gpu=88707/0% 88151/0%  disk_free=60G
+2026-09-16_04:48:10 OK runner=1 servers=1 job=margin-2 done=6 failed=0 prog='64/150 [05:39<02:03,  1.44s/it]' new_err=0 gpu=89409/97% 88853/96%  disk_free=60G
+2026-09-16_05:18:10 OK runner=1 servers=1 job=margin-lse-4.6 done=9 failed=0 prog='' new_err=0 gpu=88707/0% 88151/0%  disk_free=60G
