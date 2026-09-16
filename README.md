@@ -364,6 +364,14 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       python mexp/glm53/compare_ruler.py --out results/kimi/ruler --n 50.
 #       Gates and interpretation rules for these three groups are pre-registered in
 #       mexp/kimi/prereg3_realdoc_and_fallback.md (frozen before any of them ran).
+#   stream-vestigekv-256k-origin -> the same timed 4k->256k stream served from origin/vestigekv
+#       (the paper's backend, ENGINE=~/vestigekv-wt/engine-origin, a detached worktree at
+#       281abac) on this box and this protocol: the per-step cost of every commit since (fence,
+#       int32 tables, int64 CSR, kernel tiles, margin argument, per-request basis) read as the
+#       server-side latency ratio against stream-vestigekv-256k (the current tree) at 64k/128k/256k;
+#       the "--log-level info" server arg is sglang's default and only makes the runner tag the
+#       output file. A gap above the window spread is bisected with the same job at the
+#       intermediate commits.
 #   pc-A{1,2,3}-{ruler,stats64k,stream256k-stats,stream256k} -> pre-registration 2
 #       (mexp/kimi/prereg2_prefill_calibration.md): arms A1 = --enable-vestigekv-prefill-calibration,
 #       A2 = A1 + --vestigekv-recall-margin 2, A3 = A1 + margin 4.6 with --vestigekv-recall-threshold
