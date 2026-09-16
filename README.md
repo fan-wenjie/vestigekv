@@ -397,6 +397,10 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #           results/kimi/profile/profile-vestigekv-current/ctx256k-TP-0.trace.json.gz --label-a origin --label-b current
 #       gives per-kernel GPU us/step for both trees sorted by the difference, which is what
 #       names the commit behind a latency gap (then bisected with the same job at that commit).
+#   The order of the whole line is fixed: every performance job, then the pre-registration 4
+#       candidate arms and their smoke, then the default is committed, and only then the
+#       quality jobs -- which all run under that default. Draft rule:
+#       mexp/kimi/prereg4_new_default.md (frozen once the performance line's numbers are in).
 #   pc-A{1,2,3}-{ruler,stats64k,stream256k-stats,stream256k} -> pre-registration 2
 #       (mexp/kimi/prereg2_prefill_calibration.md): arms A1 = --enable-vestigekv-prefill-calibration,
 #       A2 = A1 + --vestigekv-recall-margin 2, A3 = A1 + margin 4.6 with --vestigekv-recall-threshold
