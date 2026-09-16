@@ -318,8 +318,24 @@ work inside the pack kernel -- the branch itself, and the 443 commits in it,
 cost nothing. This agrees with the stats run, where the fence fires on 0.27%
 of scans and recaptures nothing.
 
-The stub is a debug switch, not an implementation: it drops the overflow path
-entirely. What it establishes is the ceiling, 4.33 ms/token at 256k, for a
+What the stub does and does not remove, read off the kernel: `FENCE_BODY=0`
+skips only the copy of the fenced lane's row set out of the page table, and the
+lane then runs the unfenced kept-plus-fetch copy instead. The prep kernel is
+untouched, so `indptr` still gives that lane `seq` rows and stage 1 still
+attends `seq` of them. The stub therefore removes the ~250 us copy and keeps
+the ~195 us attention, which is exactly the split the tier-decode router is
+aiming at, and 4.33 is the right ceiling for it.
+
+One caveat on reading that ceiling as achievable. A stubbed lane attends `seq`
+rows whose ids are whatever the previous step left in the buffer -- often zeros
+-- so its reads may collapse onto a few cached rows, where a correct
+implementation walks a real 256k-row page table. The stub can therefore be
+optimistic by however much that locality is worth, and the honest statement is
+that it bounds the copy's cost, not that a correct implementation must reach
+its total. `td-profile-256k` separates the two by kernel.
+
+The stub is a debug switch, not an implementation: its output is wrong on the
+steps that fence. What it establishes is the ceiling, 4.33 ms/token at 256k, for a
 correct design that keeps the overflow path but stops paying for it on every
 step. That design is the tier-decode router (engine
 `vestigekv/tier_decode.py` + `vestigekv/decode_fork.py`): it reads a lane's
