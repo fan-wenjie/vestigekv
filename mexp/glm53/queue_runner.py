@@ -59,6 +59,13 @@ def gpu_used_mib():
     return sum(int(x) for x in out.split())
 
 
+def client_pids():
+    out = subprocess.run(["ps", "-eo", "pid,comm,args"], capture_output=True, text=True).stdout
+    return [int(l.split()[0]) for l in out.splitlines()[1:]
+            if l.split()[1].startswith("python")
+            and any(k in l for k in ("run_ruler.py", "sglang.benchmark.serving", "needle.py", "replay_prompts.py"))]
+
+
 def server_pids():
     out = subprocess.run(["ps", "-eo", "pid,comm,args"], capture_output=True, text=True).stdout
     return [int(l.split()[0]) for l in out.splitlines()[1:]
@@ -173,8 +180,13 @@ def run_client(job, port):
 
 
 def main():
+    import signal
+
     os.makedirs(RESULTS, exist_ok=True)
     server = Server()
+    # SIGTERM (a restart) must run the finally below: Python's default handler
+    # exits without it and leaves the server and the client running as orphans.
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     try:
         while True:
             done = {r["id"] for r in read_jsonl(STATE) if r.get("status") in ("done", "failed")}
@@ -199,6 +211,8 @@ def main():
                           "tail": tail[-3:]})
             log(f"{job['id']} {status} rc={rc} wall={round(time.time() - t0)}s")
     finally:
+        for pid in client_pids():
+            subprocess.run(["kill", "-TERM", str(pid)])
         server.stop()
 
 
