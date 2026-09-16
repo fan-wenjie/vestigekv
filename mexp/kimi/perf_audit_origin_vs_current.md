@@ -253,7 +253,38 @@ set"); implementation starts only after every queued measurement has run, and
 lands only if the measured gain justifies changing the algorithm this close to
 the deadline (2026-09-26).
 
+## Verdict: the cost is arming the fence, and removing it recovers all of it
+
+Production protocol (radix on, one running request), server-side ms/token from
+the scheduler's gen-throughput lines, median over a +/-2048-token window:
+
+| context | dense | origin | current default | perf branch | fence stub |
+|---|---|---|---|---|---|
+| 64k  | 4.360 | 4.094 | 4.101 | 4.106 | 4.088 |
+| 128k | 4.783 | 4.181 | 4.296 | 4.325 | 4.155 |
+| 256k | 5.576 | 4.346 | 4.771 | 4.879 | 4.328 |
+| speedup at 256k | 1.000 | 1.283 | 1.169 | 1.143 | **1.288** |
+
+`prod-stream-vestigekv-256k-fencestub` runs the `vestigekv-fused-fallback`
+branch with `SGLANG_DEBUG_VESTIGEKV_FENCE_STUB=1`, which compiles the fence
+body out of the CSR gather and changes nothing else. It reaches 1.288x where
+origin measures 1.283x, so the entire 12% regression is the fence's *arming*
+work inside the pack kernel -- the branch itself, and the 443 commits in it,
+cost nothing. This agrees with the stats run, where the fence fires on 0.27%
+of scans and recaptures nothing.
+
+The stub is a debug switch, not an implementation: it drops the overflow path
+entirely. What it establishes is the ceiling, 4.33 ms/token at 256k, for a
+correct design that keeps the overflow path but stops paying for it on every
+step. That design is the tier-decode router (engine
+`vestigekv/tier_decode.py` + `vestigekv/decode_fork.py`): it reads a lane's
+rows from the kept table and the fetch buffer, or from the page table when the
+lane is fenced, so the CSR that the pack kernel builds -- and the arming work
+with it -- has no consumer left.
+
 ## Pending
+- Wire `TierDecodeRouter` into the backend behind a flag, then the same timed
+  256k stream: the gate is 4.33 ms/token with the overflow path intact.
 - `stream-vestigekv-256k-origin`: origin's timed 4k->256k stream, the clean A/B
   against `stream-vestigekv-256k` at 64k/128k/256k.
 - `profile-vestigekv-origin-256k` and the 256k window of

@@ -76,6 +76,43 @@ highest on the tasks with many near-tied distractors (multi-key, multi-value,
 cwe) and lowest on single-needle tasks; the pattern, not the level, is what
 the criterion argument predicts.
 
+## Outcome C1 (2026-09-16): the quality does depend on the fence
+
+65 cells, 13 tasks x 4k-64k at n=10, both vestigekv arms on the same engine
+and flags except `--disable-vestigekv-recall-overflow-fallback`:
+
+| arm | 65-cell mean |
+|---|---|
+| dense | 0.9413 |
+| vestigekv, default | 0.9226 |
+| vestigekv, no fallback | 0.8661 |
+
+The paired delta is **-0.0565**, past the -0.02 line, so C1 takes its second
+branch: on these prompts the provisional-index regime relies on the fallback,
+and the fallback is not a bounded-cost safety net that never matters. The
+cells it rescues, by the rule's >0.10 criterion, are almost exactly the
+multi-key family:
+
+| task | length | default | no fallback |
+|---|---|---|---|
+| niah_multikey_3 | 64k | 0.90 | 0.20 |
+| niah_multikey_3 | 32k | 0.80 | 0.20 |
+| niah_multikey_3 | 16k | 0.90 | 0.50 |
+| niah_multikey_2 | 64k | 0.80 | 0.40 |
+| niah_multikey_2 | 32k | 1.00 | 0.60 |
+| niah_multikey_2 | 16k | 0.90 | 0.60 |
+| ruler_qa_squad | 64k | 0.47 | 0.28 |
+| ruler_qa_squad | 16k | 0.57 | 0.44 |
+
+This corrects a performance-side reading, not just a quality one. The audit
+had noted that the fence fires on 0.27% of scans and recaptures nothing, and
+took from that the suggestion that disarming it is free. It is free in
+ms/token and it is not free in accuracy: the 0.27% of scans that fire are
+concentrated on the prompts the multi-key tasks are made of. Any design that
+removes the fence's *cost* has to keep the fence's *rows* -- which is the
+tier-decode router's premise and the reason the debug fence stub is not an
+implementation.
+
 ## What is not revised after the data
 
 The thresholds above, the subset file, the prompt template and the job list.
