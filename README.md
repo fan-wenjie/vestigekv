@@ -331,7 +331,11 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #   stream-baseline-256k, stream-vestigekv-256k -> metric 1 on this box (bs=1, 4k prefill,
 #       258048-token decode, stats off): the dense vs margin-0 gain at 64k/128k/256k that the
 #       pre-registered latency gate (give-back rate <= 0.25 of that gain) is measured against;
-#       python mexp/glm53/stream_curve.py --line kimi --output-len 258048 (results/kimi/latency_stream_*).
+#       python mexp/glm53/stream_curve.py --line kimi --output-len 258048 (results/kimi/latency_stream_*);
+#       the paper's metric is the server-side one, --source server (the scheduler's gen-throughput
+#       lines within +/-2k tokens of each context, median with p10-p90): the client curve's last
+#       window carries an end-of-stream artifact (dense 5.6 -> 12.7 ms at 256k on the client
+#       side, no such step in the server log) and is read only up to ~200k.
 #   stream-vestigekv-256k-m2, stats-vestigekv-stream-256k-m2 -> exploratory (outside the frozen
 #       rule): the 4k -> 256k stream at margin 2, timed and with stats, so the long-decode cost
 #       of a margin (gates 3 and 4 of the pre-registration) is on record even though the
@@ -366,11 +370,20 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       lse; per arm the 13-task 4k-64k RULER (10/cell), the 64k stats run, and the stats-on and
 #       timed 4k->256k streams, read against the A0 (default) and dense records already on file.
 #       The default chosen by its rule is committed before ruler-vestigekv-long and the n=50 pair run.
+#       Amendment before any pc-* run (prereg2 file): all arms run on engine commit "prefill-time
+#       calibrated builds at the first closed block, then at every doubling"; the pc-* jobs run
+#       right after longbench2-baseline, and every vestigekv-arm quality job of prereg 3 (LongBench
+#       v2 arms, nofallback, fb-*, n=50, ruler-vestigekv-long) is skip:true until the default is
+#       chosen, then unskipped and run under it: results taken while decode starts on the
+#       provisional index do not describe the method as served.
 #   ruler-baseline-long, ruler-vestigekv-long -> the 13 tasks x {128k,256k,512k,1M}, 5 samples/cell,
 #       with CTX=1064960 (1M + 16k; SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 because the
 #       model's derived context is exactly 1048576), --max-running-requests 2, two mamba slots,
 #       --cuda-graph-max-bs-decode 2 (lm-eval's RULER generator is seeded 0 here too)
-# weight-cache daemon (one process per GPU holding the TP=2 bf16 shards; a server launched
+# step 0 of the line: the RAM weights daemon holds the Instruct checkpoint in the page cache
+# and prints its WEIGHT-FP (same tool as the Base line's step 0; results/kimi/weight_daemon_ram.log):
+nohup python tools/weight_daemon.py --model moonshotai/Kimi-Linear-48B-A3B-Instruct > results/kimi/weight_daemon_ram.log 2>&1 &
+# GPU weight-cache daemon (one process per GPU holding the TP=2 bf16 shards; a server launched
 # while its ready files name live pids loads the weights over CUDA IPC -- common.sh adds
 # --weight-cache-mode client, and its GPU guard then only refuses a second server;
 # WEIGHT_CACHE=off forces disk loading). NOT USABLE for Kimi Linear on this tree: the IPC

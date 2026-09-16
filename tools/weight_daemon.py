@@ -7,18 +7,31 @@ fingerprint (index sha256 + shard listing sha256) once at startup; launch
 scripts print the same WEIGHT-FP line, so any run's log can be checked
 against the daemon's declaration.
 
-    python tools/weight_daemon.py &          # step 0, keep running
+    python tools/weight_daemon.py &          # step 0, keep running (Base checkpoint)
+    python tools/weight_daemon.py --model moonshotai/Kimi-Linear-48B-A3B-Instruct &   # the Kimi RULER line
 """
+import argparse
 import glob
 import hashlib
 import os
 import sys
 import time
 
-SNAP = os.path.expanduser(
+BASE_SNAP = os.path.expanduser(
     "~/.cache/huggingface/hub/models--moonshotai--Kimi-Linear-48B-A3B-Base/"
     "snapshots/3b171c17bfc4ee348599b6781a2ca8715c21c8dc"
 )
+SNAP = BASE_SNAP
+
+
+def snapshot_of(model):
+    """The HF-cache snapshot directory of a model id (one snapshot expected;
+    the pinned Base snapshot stays the default)."""
+    root = os.path.expanduser(f"~/.cache/huggingface/hub/models--{model.replace('/', '--')}/snapshots")
+    snaps = sorted(glob.glob(f"{root}/*"))
+    if len(snaps) != 1:
+        raise SystemExit(f"{model}: expected one snapshot under {root}, found {len(snaps)}")
+    return snaps[0]
 
 
 def fingerprint():
@@ -48,6 +61,11 @@ def touch_all():
 
 
 if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", default="", help="HF model id to hold instead of the pinned Base snapshot")
+    args = ap.parse_args()
+    if args.model:
+        SNAP = snapshot_of(args.model)
     print(f"WEIGHT-DAEMON snapshot={SNAP}", flush=True)
     print(f"WEIGHT-FP {fingerprint()}", flush=True)
     t0 = time.time()

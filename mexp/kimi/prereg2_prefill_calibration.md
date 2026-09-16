@@ -34,6 +34,31 @@ short-answer cost gate measured a regime dominated by the provisional index.
   calibration alone changes no per-step cost after calibration and is
   expected to pass G4 trivially.
 
+## Amendment (2026-09-16 08:00, before any pc-* job ran)
+The frozen A1 paced prefill-time builds every 16384 prompt tokens, so 4k-16k
+prompts (RULER's short cells) still started decode on the provisional index;
+the calibration diagnostics of the 64k stats runs show the calibrated
+certificate fires 0.05-0.2 rows per scan (p90 under 3) against a true need
+of 0-2 rows, i.e. every overflow came from the provisional phase. Engine
+commit "Prefill-time calibrated builds at the first closed block, then at
+every doubling" (on top of 5b7d0cb) builds at 4096, 8192, 16384, ... so every
+prompt with an archive is calibrated before decode. All pc-* arms run on that
+commit; the 16k-paced A1 is superseded, not run. Gates, thresholds and the
+choice rule are unchanged. One measurement source changes: L (gate G4) is
+read on the server-side metric the paper uses (python mexp/glm53/stream_curve.py
+--source server: the scheduler's gen-throughput lines within +/-2k tokens of
+each context, median), because the client-side ITL curve carries an
+end-of-stream artifact (dense 5.6 -> 12.7 ms at 256k on the client, 5.55 ->
+5.56 ms on the server). Server-side reference points, ms/token at 64k / 128k /
+256k: dense 4.354 / 4.778 / 5.564; A0 4.202 / 4.204 / 4.701; margin 2
+without prefill calibration 4.239 / 4.528 / 4.950, i.e. r = 0.24 / 0.56 /
+0.29 (fails G4 at 128k and 256k as it did on the client metric). The client
+curve is kept as a secondary record. The queue now runs the pc-* arms first; the
+vestigekv-arm quality jobs of pre-registration 3 (LongBench v2, n=50,
+no-fallback control, per-task fallback) are held until the default is chosen
+and then run under it, since results taken in the provisional regime do not
+describe the method as served.
+
 ## Arms (all vestigekv, Kimi Linear Instruct, quality-line flags; queue ids pc-A<k>-*)
 A0 prefill-cal off, margin 0 (today's default)  -- the reference, from the records above
 A1 prefill-cal on, margin 0
