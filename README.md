@@ -415,6 +415,12 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       candidate arms and their smoke, then the default is committed, and only then the
 #       quality jobs -- which all run under that default. Draft rule:
 #       mexp/kimi/prereg4_new_default.md (frozen once the performance line's numbers are in).
+#   p4-{m0,m2,m3,lse46} -> the pre-registration 4 candidate arms (mexp/kimi/prereg4_new_default.md,
+#       frozen with the performance line's numbers): the 5 targeted tasks at 16k/32k/64k, 10 per
+#       cell, stats on, all four on the same package (prefill calibration, rebuild trigger 0.05,
+#       capacity 16384) and differing only in the margin. The queue file drives the whole line
+#       unattended from here; jobs that need the chosen default carry skip:true and are unskipped
+#       in one edit once a candidate passes its gates.
 #   pc-A{1,2,3}-{ruler,stats64k,stream256k-stats,stream256k} -> pre-registration 2
 #       (mexp/kimi/prereg2_prefill_calibration.md): arms A1 = --enable-vestigekv-prefill-calibration,
 #       A2 = A1 + --vestigekv-recall-margin 2, A3 = A1 + margin 4.6 with --vestigekv-recall-threshold
