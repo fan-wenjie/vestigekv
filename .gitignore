@@ -16,3 +16,15 @@ docs/whitepaper/*.toc
 results/needle_filler_*.json
 results/quality_cont64k_contexts_tokens.json
 results/quality_mauve64k*_ctx.json
+# GLM-5.3 line: raw server logs, prompt dumps and allocator/calibration snapshots stay local
+results/glm53/server_*.log
+results/glm53/ruler/samples_*.json
+results/glm53/memtrace/
+results/glm53/caldump/
+results/glm53/dsadump/
+results/glm53/needle_*.log
+results/glm53/replay_*.log
+results/glm53/stream_*.log
+results/glm53/ruler_*.log
+results/glm53/gsm8k_*.log
+results/glm53/queue_runner.log

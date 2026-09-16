@@ -18,4 +18,11 @@ collection and (2) functionality sglang lacks.
 - `attn_only_bench.py` — attention-only pseudo-decode microbench (serving
   semantics: below D.ACTIVATION_MIN_TOKENS the vestigekv arm IS the dense
   step, mirroring the backend's activation threshold)
+- `glm53/` — GLM-5.3-Flash-NVFP4 on 2x RTX PRO 6000 (branch `vestigekv-pro6000x2`):
+  `common.sh` (quality/RULER line: CUDA graph on, radix off, `--random-seed`),
+  `baseline.sh` (the model as shipped: DSA), `vestigekv.sh` (DSA off +
+  vestigekv_mla, fp8 side pool), `dense_mla.sh` (the substrate vestigekv wraps;
+  an ablation, not the baseline), `run_ruler.py` (lm-eval RULER, N per cell,
+  seeded, /v1/completions), `needle.py` (10k-token head-needle probe),
+  `queue_runner.py` + `queue.jsonl` (the JSONL job queue that drives the line)
 - `_bootstrap.py` — path bootstrap

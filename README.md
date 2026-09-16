@@ -300,6 +300,80 @@ bash mexp/quality/run_quality.sh vestigekv
 bash mexp/quality/run_quality.sh dense
 bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 
+# --- GLM-5.3-Flash-NVFP4 on 2x RTX PRO 6000 Blackwell (SM120; branch vestigekv-pro6000x2) ---
+# Arms: baseline = the model as shipped (DSA: indexer top-k 2048 + KPool 4:1, Triton DSA
+# kernels); vestigekv = DSA off + vestigekv_mla over the dense-MLA substrate, fp8 side pool
+# (the DSA index-cache format), every --vestigekv-* flag at its default (capacity 4096,
+# overflow fallback on, activation threshold 0, sketch rank 64 -- a queue job can raise
+# the rank with "server_args": ["--vestigekv-index-rank", "256"]). "baseline" means DSA on this model
+# (Dense MLA on Kimi Linear); mexp/glm53/dense_mla.sh is the substrate ablation, not a baseline.
+# Quality/RULER line, fixed in mexp/glm53/common.sh: CUDA graph ON (--cuda-graph-max-bs-decode 4),
+# --disable-radix-cache, --max-running-requests 4, --max-mamba-cache-size 4,
+# --chunked-prefill-size 1024 (2048 and 4096 OOM the DSA prefill: weights take 88 GB/GPU, ~4.5 GB is left for the pool plus prefill working memory), --mem-fraction-static 0.955 (pool ~100k tokens: 0.95 gave 61k, below the 64k RULER prompts), --context-length 73728,
+# --random-seed 0, --language-model-only (vision tower skipped), --sampling-backend pytorch;
+# clients are serial and greedy, RULER data generation and lm-eval seeded 0.
+# Jobs are a JSONL queue (mexp/glm53/queue.jsonl: one job per line = arm + server env +
+# client + args); the runner launches each job's server, runs the client, keeps the
+# server across same-config jobs, and records results/glm53/queue_state.jsonl. Edit the
+# queue while it runs: it is re-read before every job. Registered queue (in order):
+#   ruler-baseline, ruler-vestigekv   -> 13 RULER tasks x {4k,8k,16k,32k,64k}, 10 samples/cell
+#   stream-baseline-128k, stream-vestigekv-128k -> metric 1 (bs=1, 4k prefill, 126976-token
+#       decode; per-token latency curve, 64k point included) with CTX=135168, one mamba slot,
+#       --mem-fraction-static 0.96, --cuda-graph-max-bs-decode 1
+#   stats-vestigekv-stream-128k, stats-vestigekv-ruler-64k -> the same two workloads on the
+#       vestigekv arm with SGLANG_DEBUG_VESTIGEKV_STATS=1 (separate jobs: the bookkeeping syncs
+#       every step, so it never runs on a timed arm). The server log's VKSTATS lines (every 50
+#       decode steps, cumulative) carry fetched rows per scan p50/p90/p99 and
+#       fallback = overflow scans / scans; the stream job's successive lines are the
+#       context-length curve, the RULER-64k job the value at 64k prompts.
+#   replay-vestigekv-r64, -r128, -r256 -> the same three saved 64k RULER prompts
+#       (niah_single_2, qa_squad, cwe from the baseline samples) replayed on the vestigekv arm
+#       at sketch ranks 64, 128 and 256 with stats on; the per-job server log's VKCAL lines
+#       carry need-vs-fire per calibrated build (mexp/glm53/replay_prompts.py). The r128 job
+#       also sets SGLANG_DEBUG_VESTIGEKV_DUMP_DIR=results/glm53/caldump: one snapshot per
+#       (slot, layer) of the rows, keep set and calibration queries the index was fitted on;
+#       python mexp/glm53/cert_offline.py refits sketch bases and ranks on them offline
+#       (certificate zp, fire counts vs need, fallback fraction) without re-serving.
+#       They run before the two stats jobs: the rank decision gates the stats config.
+#   dsadump-vestigekv-{64k,8k,4k} -> DSA-indexer certificate study (engine branch
+#       vestigekv-dsa-index / serving vestigekv-dsa-index-pro6000x2, checked out in engine/ for
+#       these jobs): saved RULER prompts (niah_single_2, cwe, fwe, qa_squad; 2-3 samples per
+#       task) replayed with --ignore-eos (64 tokens, so every request reaches a calibrated
+#       build), GRAPH=0 (the indexer stash copies to the host every step, which a captured
+#       graph cannot) and SGLANG_DEBUG_VESTIGEKV_DUMP_DIR=results/glm53/dsadump, whose snapshots also
+#       carry the indexer keys / KPool gates of every token and the indexer query heads of the
+#       calibration queries; python mexp/glm53/dsa_cert_offline.py scores the indexer-based
+#       certificate (mass coverage, conformal z) against the content-sketch one on them.
+#   ruler-dense-mla-short -> fwe, cwe, qa_squad, niah_single_1 at 4k and 8k (10/cell) on the
+#       dense_mla substrate (DSA off, no VestigeKV): RULER "4k" prompts are ~3.9k tokens, below
+#       one 4096 close block, so the vestigekv arm attends them dense; this separates the
+#       substrate's effect (a DSA-trained model run dense) from VestigeKV's at 4k/8k.
+#   memtrace-vestigekv-64k -> 13 tasks x 3 samples at 64k on the vestigekv arm with
+#       SGLANG_DEBUG_VESTIGEKV_MEM_DIR=results/glm53/memtrace and stats OFF: the server log's
+#       VKMEM lines (allocated / reserved at every request's first prefill chunk) and one
+#       allocator snapshot per five requests (mem_req<N>.pickle; diff two with
+#       python mexp/glm53/memdiff.py). Background: ruler-vestigekv OOMed at its 27th 64k
+#       prompt twice while the same prompts with stats on served 119; the stats syncs
+#       change what the allocator sees, so the trace must not sync.
+python mexp/glm53/queue_runner.py
+# by hand (same commands the runner issues):
+#   bash mexp/glm53/baseline.sh ; python mexp/glm53/run_ruler.py --arm baseline --n 10
+#   bash mexp/glm53/vestigekv.sh ; python mexp/glm53/run_ruler.py --arm vestigekv --n 10
+#   CTX=135168 MAX_REQS=1 MAMBA_SLOTS=1 MEM_FRAC=0.96 CHUNK=512 GRAPH_BS=1 bash mexp/glm53/<arm>.sh
+#   PYTHONPATH=$PWD/engine/python python -m sglang.benchmark.serving --backend sglang \
+#     --model nvidia/GLM-5.3-Flash-NVFP4 --num-prompts 1 --dataset-name random \
+#     --random-input-len 4096 --random-output-len 126976 --random-range-ratio 1 \
+#     --max-concurrency 1 --warmup-requests 0 --output-details \
+#     --output-file results/glm53/latency_stream_4k-126976_<arm>.jsonl
+# results: results/glm53/ruler/results_<arm>_n10_4096-8192-16384-32768-65536.json (+ samples),
+#          results/glm53/latency_stream_4k-126976_<arm>.jsonl, server_<arm>_<job>.log per job
+# two-arm RULER table (task x length, a/b, means): python mexp/glm53/compare_ruler.py
+# per-token latency vs context from the stream jobs: python mexp/glm53/stream_curve.py
+# GSM8K-Platinum (64-shot, n=1209, serial) on either arm: relaunch with CTX=16384, then
+#   PYTHONPATH=$PWD/engine/python python -m sglang.test.few_shot_gsm8k --num-shots 64 \
+#     --num-questions 1209 --data-path mexp/quality/gsm8k_platinum.jsonl --parallel 1 --port 30000
+# Head-needle probe (10.6k tokens, code at position 0): python mexp/glm53/needle.py
+
 # --- quality: long-context MAUVE (64k prefill; the decode-path fidelity gate)
 # 16 fineweb-edu contexts of 65536 tokens (compression genuinely engaged),
 # 256-token generations, per-context sampling_seed shared across arms; same

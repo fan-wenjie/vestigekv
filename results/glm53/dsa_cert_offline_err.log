@@ -1,0 +1,882 @@
+== cal_tp0_n100_slot4_lid3_seq7934.pt T=7934 A=3968 n=7 idx-qpos offset=[-1, 95] archived mass p50/p90=0.292/0.408 need p90/max=4/5
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          1.16       8      11      12          nan
+  sketch    mass0.05    10.93    3813    3926    3946         1.16
+  sketch    mass0.01    11.68    3939    3962    3964         1.04
+  idx_tok   max        165.83      18      31      35          nan
+  idx_tok   mass0.05   361.97    3764    3967    3967         1.18
+  idx_tok   mass0.01   370.17    3930    3967    3967         1.04
+  idx_pool  max        101.70      14      19      21          nan
+  idx_pool  mass0.05   345.39    3967    3967    3967         1.22
+  idx_pool  mass0.01   353.80    3967    3967    3967         1.05
+  selection                     rows   err50   err90  errmax
+  kept+tail                     3966   0.340   0.444   0.644
+  kept+sketch-fire              3973   0.312   0.416   0.518
+  kept+idx-fire(same n)         3973   0.336   0.433   0.585
+  dsa-top2048                   2048   0.394   0.519   0.641
+  kept+oracle-fire(same n)      3973   0.322   0.416   0.582
+  all                           7934   0.000   0.000   0.000
+== cal_tp0_n106_slot4_lid15_seq7934.pt T=7934 A=3966 n=7 idx-qpos offset=[-1, 95] archived mass p50/p90=0.098/0.382 need p90/max=1/1
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          1.65       1       2       3          nan
+  sketch    mass0.05    11.32    3331    3792    3958         1.84
+  sketch    mass0.01    12.20    3888    3954    3964         1.18
+  idx_tok   max         71.45       3       6       7          nan
+  idx_tok   mass0.05   283.23    3734    3964    3965         1.98
+  idx_tok   mass0.01   304.09    3963    3965    3965         1.20
+  idx_pool  max        147.96      18      42      42          nan
+  idx_pool  mass0.05   326.53    3965    3965    3965         2.07
+  idx_pool  mass0.01   342.80    3965    3965    3965         1.21
+  selection                     rows   err50   err90  errmax
+  kept+tail                     3968   0.123   0.480   0.847
+  kept+sketch-fire              3969   0.120   0.452   0.756
+  kept+idx-fire(same n)         3969   0.117   0.451   0.762
+  dsa-top2048                   2048   0.020   0.162   0.480
+  kept+oracle-fire(same n)      3969   0.115   0.443   0.755
+  all                           7934   0.000   0.000   0.000
+== cal_tp0_n111_slot4_lid3_seq7032.pt T=7032 A=3966 n=7 idx-qpos offset=[-1, 965] archived mass p50/p90=0.389/0.484 need p90/max=9/20
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          1.53       2      39      72          nan
+  sketch    mass0.05    15.13    3965    3965    3966         1.16
+  sketch    mass0.01    15.98    3965    3965    3966         1.04
+  idx_tok   max        229.27     318    3727    3964          nan
+  idx_tok   mass0.05   335.53    3965    3965    3966         1.14
+  idx_tok   mass0.01   350.48    3965    3965    3966         1.03
+  idx_pool  max        189.17     188    3965    3965          nan
+  idx_pool  mass0.05   299.39    3965    3965    3966         1.16
+  idx_pool  mass0.01   312.90    3965    3965    3966         1.03
+  selection                     rows   err50   err90  errmax
+  kept+tail                     3066   0.301   0.418   0.567
+  kept+sketch-fire              3080   0.293   0.411   0.567
+  kept+idx-fire(same n)         3080   0.299   0.417   0.567
+  dsa-top2048                   2048   0.387   0.495   0.704
+  kept+oracle-fire(same n)      3080   0.296   0.413   0.566
+  all                           7032   0.000   0.000   0.000
+== cal_tp0_n117_slot4_lid15_seq7032.pt T=7032 A=3966 n=7 idx-qpos offset=[-1, 965] archived mass p50/p90=0.270/0.560 need p90/max=8/14
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          0.00       5      21      25          nan
+  sketch    mass0.05    13.21    3766    3964    3964         1.41
+  sketch    mass0.01    15.04    3949    3965    3965         1.13
+  idx_tok   max        154.25     112     534     917          nan
+  idx_tok   mass0.05   243.20    3738    3965    3965         1.41
+  idx_tok   mass0.01   268.19    3965    3965    3966         1.13
+  idx_pool  max        191.25     466    3785    3859          nan
+  idx_pool  mass0.05   287.71    3965    3965    3966         1.53
+  idx_pool  mass0.01   305.75    3965    3965    3966         1.14
+  selection                     rows   err50   err90  errmax
+  kept+tail                     3066   0.329   0.667   0.962
+  kept+sketch-fire              3074   0.278   0.566   0.812
+  kept+idx-fire(same n)         3074   0.288   0.577   0.839
+  dsa-top2048                   2048   0.085   0.346   0.701
+  kept+oracle-fire(same n)      3074   0.260   0.549   0.795
+  all                           7032   0.000   0.000   0.000
+== cal_tp0_n122_slot4_lid3_seq6954.pt T=6954 A=3966 n=7 idx-qpos offset=[-1, 141] archived mass p50/p90=0.392/0.507 need p90/max=5/10
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          0.87       1      14      33          nan
+  sketch    mass0.05    15.80    3965    3965    3966         1.17
+  sketch    mass0.01    16.62    3965    3965    3966         1.04
+  idx_tok   max        176.41      31     273     506          nan
+  idx_tok   mass0.05   334.80    3956    3965    3965         1.14
+  idx_tok   mass0.01   348.38    3965    3965    3966         1.03
+  idx_pool  max        177.48      51    1729    3949          nan
+  idx_pool  mass0.05   295.65    3957    3965    3965         1.15
+  idx_pool  mass0.01   306.47    3965    3965    3965         1.03
+  selection                     rows   err50   err90  errmax
+  kept+tail                     2988   0.338   0.427   0.520
+  kept+sketch-fire              2993   0.331   0.425   0.517
+  kept+idx-fire(same n)         2993   0.339   0.431   0.535
+  dsa-top2048                   2048   0.390   0.487   0.629
+  kept+oracle-fire(same n)      2993   0.333   0.425   0.520
+  all                           6954   0.000   0.000   0.000
+== cal_tp0_n128_slot4_lid15_seq6954.pt T=6954 A=3966 n=7 idx-qpos offset=[-1, 141] archived mass p50/p90=0.278/0.600 need p90/max=7/10
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          0.00      11      31      45          nan
+  sketch    mass0.05    13.52    3824    3965    3966         1.36
+  sketch    mass0.01    15.27    3954    3965    3966         1.12
+  idx_tok   max        162.88     144     602     715          nan
+  idx_tok   mass0.05   239.12    3854    3965    3966         1.31
+  idx_tok   mass0.01   258.70    3965    3965    3966         1.11
+  idx_pool  max        181.35     217    1768    3284          nan
+  idx_pool  mass0.05   283.17    3965    3965    3966         1.49
+  idx_pool  mass0.01   297.37    3965    3965    3966         1.14
+  selection                     rows   err50   err90  errmax
+  kept+tail                     2988   0.353   0.639   0.982
+  kept+sketch-fire              3001   0.256   0.501   0.713
+  kept+idx-fire(same n)         3001   0.286   0.542   0.981
+  dsa-top2048                   2048   0.075   0.325   0.618
+  kept+oracle-fire(same n)      3001   0.242   0.474   0.838
+  all                           6954   0.000   0.000   0.000
+== cal_tp0_n133_slot4_lid3_seq4104.pt T=4104 A=3967 n=7 idx-qpos offset=[-38, -1] archived mass p50/p90=0.770/0.879 need p90/max=11/13
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.33     480    1772    2172          nan
+  sketch    mass0.05    10.54    3966    3966    3967         1.10
+  sketch    mass0.01    10.96    3966    3966    3967         1.02
+  idx_tok   max        176.53    3966    3966    3967          nan
+  idx_tok   mass0.05   333.03    3966    3966    3967         1.09
+  idx_tok   mass0.01   341.21    3966    3966    3967         1.02
+  idx_pool  max        125.84    1266    2196    2422          nan
+  idx_pool  mass0.05   261.33    3966    3966    3967         1.09
+  idx_pool  mass0.01   268.24    3966    3966    3967         1.02
+  selection                     rows   err50   err90  errmax
+  kept+tail                      137   0.919   1.170   1.341
+  kept+sketch-fire               903   0.484   0.885   1.156
+  kept+idx-fire(same n)          903   0.504   0.899   1.129
+  dsa-top2048                   2048   0.212   0.292   0.377
+  kept+oracle-fire(same n)       903   0.496   0.900   1.144
+  all                           4104   0.000   0.000   0.000
+== cal_tp0_n139_slot4_lid15_seq4104.pt T=4104 A=3966 n=7 idx-qpos offset=[-38, -1] archived mass p50/p90=0.654/0.928 need p90/max=30/47
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.09     271     352     363          nan
+  sketch    mass0.05    10.70    3778    3937    3965         1.14
+  sketch    mass0.01    12.34    3960    3964    3965         1.05
+  idx_tok   max        178.06    2429    3502    3870          nan
+  idx_tok   mass0.05   248.48    3965    3965    3966         1.20
+  idx_tok   mass0.01   261.33    3965    3965    3966         1.05
+  idx_pool  max        195.99    3117    3743    3917          nan
+  idx_pool  mass0.05   251.65    3965    3965    3966         1.20
+  idx_pool  mass0.01   263.18    3965    3965    3966         1.05
+  selection                     rows   err50   err90  errmax
+  kept+tail                      138   0.905   1.319   1.624
+  kept+sketch-fire               387   0.389   0.857   1.386
+  kept+idx-fire(same n)          387   0.314   0.671   1.235
+  dsa-top2048                   2048   0.055   0.156   0.307
+  kept+oracle-fire(same n)       387   0.259   0.621   1.189
+  all                           4104   0.000   0.000   0.000
+== cal_tp0_n14_slot4_lid7_seq65070.pt T=65070 A=59518 n=7 idx-qpos offset=[-1, 62] archived mass p50/p90=0.807/0.846 need p90/max=13/18
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.38      20     105     118          nan
+  sketch    mass0.05    28.00   59170   59517   59517         1.28
+  sketch    mass0.01    33.51   59506   59517   59517         1.07
+  idx_tok   max        167.86    5840   19773   28943          nan
+  idx_tok   mass0.05   290.84   59514   59517   59518         1.25
+  idx_tok   mass0.01   314.44   59517   59517   59518         1.07
+  idx_pool  max        225.85   22687   46347   54500          nan
+  idx_pool  mass0.05   334.66   59517   59517   59518         1.26
+  idx_pool  mass0.01   357.40   59517   59517   59518         1.07
+  selection                     rows   err50   err90  errmax
+  kept+tail                     5552   0.943   1.151   1.620
+  kept+sketch-fire              5597   0.938   1.170   1.619
+  kept+idx-fire(same n)         5597   0.938   1.178   1.620
+  dsa-top2048                   2048   0.873   1.253   2.126
+  kept+oracle-fire(same n)      5597   0.931   1.142   1.619
+  all                          65070   0.000   0.000   0.000
+== cal_tp0_n1_slot4_lid3_seq65069.pt T=65069 A=59518 n=7 idx-qpos offset=[-65048, -1] archived mass p50/p90=0.795/0.849 need p90/max=10/16
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          4.41    1389    8725   11551          nan
+  sketch    mass0.05    14.94   58857   59516   59517         1.16
+  sketch    mass0.01    17.24   59489   59517   59517         1.04
+  idx_tok   max        274.06   11031   44730   48328          nan
+  idx_tok   mass0.05   408.05   59517   59517   59518         1.16
+  idx_tok   mass0.01   427.65   59517   59517   59518         1.04
+  idx_pool  max        241.37   54002   57247   57635          nan
+  idx_pool  mass0.05   337.26   59517   59517   59518         1.16
+  idx_pool  mass0.01   354.07   59517   59517   59518         1.04
+  selection                     rows   err50   err90  errmax
+  kept+tail                     5551   0.892   1.089   1.415
+  kept+sketch-fire              8675   0.727   0.942   1.353
+  kept+idx-fire(same n)         8675   0.687   0.905   1.299
+  dsa-top2048                   2048   0.945   1.064   1.222
+  kept+oracle-fire(same n)      8675   0.683   0.891   1.309
+  all                          65069   0.000   0.000   0.000
+== cal_tp0_n25_slot4_lid7_seq64295.pt T=64295 A=59518 n=7 idx-qpos offset=[-1, 838] archived mass p50/p90=0.668/0.785 need p90/max=1/2
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          1.29       1       1       2          nan
+  sketch    mass0.05    32.09   59517   59517   59517         1.16
+  sketch    mass0.01    33.46   59517   59517   59517         1.03
+  idx_tok   max        109.28     153     491     787          nan
+  idx_tok   mass0.05   434.69   59517   59517   59517         1.16
+  idx_tok   mass0.01   451.08   59517   59517   59517         1.03
+  idx_pool  max        177.49    8480   15538   20346          nan
+  idx_pool  mass0.05   477.50   59517   59517   59517         1.16
+  idx_pool  mass0.01   488.13   59517   59517   59517         1.04
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4777   0.700   1.147   1.541
+  kept+sketch-fire              4778   0.700   1.146   1.539
+  kept+idx-fire(same n)         4778   0.700   1.147   1.538
+  dsa-top2048                   2048   0.919   1.615   2.065
+  kept+oracle-fire(same n)      4778   0.700   1.147   1.541
+  all                          64295   0.000   0.000   0.000
+== cal_tp0_n30_slot4_lid19_seq64295.pt T=64295 A=59519 n=7 idx-qpos offset=[-1, 838] archived mass p50/p90=0.737/0.878 need p90/max=51/65
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.79    4068    8310    8413          nan
+  sketch    mass0.05    10.74   58958   59302   59410         1.47
+  sketch    mass0.01    13.52   59441   59515   59518         1.15
+  idx_tok   max        205.72   54681   58434   59345          nan
+  idx_tok   mass0.05   229.90   59501   59518   59518         1.40
+  idx_tok   mass0.01   242.50   59518   59518   59518         1.12
+  idx_pool  max        186.48   48987   59360   59518          nan
+  idx_pool  mass0.05   225.13   59518   59518   59518         1.47
+  idx_pool  mass0.01   235.85   59518   59518   59518         1.14
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4776   0.567   0.715   0.895
+  kept+sketch-fire              9342   0.228   0.386   0.536
+  kept+idx-fire(same n)         9342   0.188   0.357   0.534
+  dsa-top2048                   2048   0.318   0.521   0.732
+  kept+oracle-fire(same n)      9342   0.139   0.311   0.481
+  all                          64295   0.000   0.000   0.000
+== cal_tp0_n36_slot4_lid7_seq64412.pt T=64412 A=59518 n=7 idx-qpos offset=[-54, -1] archived mass p50/p90=0.662/0.782 need p90/max=1/1
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          0.00       1       1       1          nan
+  sketch    mass0.05    30.25   59517   59517   59518         1.18
+  sketch    mass0.01    31.65   59517   59517   59518         1.04
+  idx_tok   max        108.98       8     135     297          nan
+  idx_tok   mass0.05   420.32   59517   59517   59518         1.17
+  idx_tok   mass0.01   435.58   59517   59517   59518         1.04
+  idx_pool  max        223.85    6093   51691   59486          nan
+  idx_pool  mass0.05   464.05   59517   59517   59518         1.18
+  idx_pool  mass0.01   474.20   59517   59517   59518         1.04
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4894   0.689   1.180   1.544
+  kept+sketch-fire              4895   0.689   1.180   1.544
+  kept+idx-fire(same n)         4895   0.689   1.180   1.544
+  dsa-top2048                   2048   0.941   1.654   1.957
+  kept+oracle-fire(same n)      4895   0.689   1.180   1.544
+  all                          64412   0.000   0.000   0.000
+== cal_tp0_n41_slot4_lid19_seq64412.pt T=64412 A=59519 n=7 idx-qpos offset=[-54, -1] archived mass p50/p90=0.731/0.886 need p90/max=68/79
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.76    2742    6725    9303          nan
+  sketch    mass0.05    10.59   58405   58935   58954         1.51
+  sketch    mass0.01    13.17   59431   59479   59512         1.15
+  idx_tok   max        206.61   48581   58297   58994          nan
+  idx_tok   mass0.05   222.38   58070   59491   59519         1.43
+  idx_tok   mass0.01   235.53   59371   59518   59519         1.13
+  idx_pool  max        181.88   53991   57288   58646          nan
+  idx_pool  mass0.05   187.25   56997   58700   59395         1.43
+  idx_pool  mass0.01   195.83   59135   59437   59519         1.13
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4893   0.590   0.720   0.879
+  kept+sketch-fire              8333   0.229   0.425   0.595
+  kept+idx-fire(same n)         8333   0.207   0.427   0.619
+  dsa-top2048                   2048   0.306   0.495   0.694
+  kept+oracle-fire(same n)      8333   0.147   0.382   0.584
+  all                          64412   0.000   0.000   0.000
+== cal_tp0_n47_slot4_lid7_seq61401.pt T=61401 A=55552 n=7 idx-qpos offset=[-1, 3074] archived mass p50/p90=0.551/0.739 need p90/max=2/2
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          0.64       1       3       5          nan
+  sketch    mass0.05    23.87   54392   55551   55551         1.12
+  sketch    mass0.01    24.92   55408   55551   55551         1.03
+  idx_tok   max        135.10      40     369     734          nan
+  idx_tok   mass0.05   418.01   55551   55551   55552         1.15
+  idx_tok   mass0.01   432.76   55551   55551   55552         1.03
+  idx_pool  max        233.55    1026   31138   55551          nan
+  idx_pool  mass0.05   465.38   55551   55551   55552         1.15
+  idx_pool  mass0.01   473.41   55551   55551   55552         1.03
+  selection                     rows   err50   err90  errmax
+  kept+tail                     5849   0.832   1.222   1.567
+  kept+sketch-fire              5850   0.832   1.221   1.564
+  kept+idx-fire(same n)         5850   0.832   1.222   1.563
+  dsa-top2048                   2048   0.935   1.245   1.602
+  kept+oracle-fire(same n)      5850   0.827   1.221   1.564
+  all                          61401   0.000   0.000   0.000
+== cal_tp0_n52_slot4_lid19_seq61401.pt T=61401 A=55551 n=7 idx-qpos offset=[-1, 3074] archived mass p50/p90=0.349/0.708 need p90/max=6/10
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          2.70      10     350     586          nan
+  sketch    mass0.05    13.24   55496   55549   55550         1.67
+  sketch    mass0.01    14.96   55549   55550   55550         1.19
+  idx_tok   max        115.05     145    1697    2637          nan
+  idx_tok   mass0.05   266.14   55550   55550   55550         1.67
+  idx_tok   mass0.01   284.37   55550   55550   55551         1.19
+  idx_pool  max        123.21    1532   19548   36740          nan
+  idx_pool  mass0.05   242.64   55550   55550   55550         1.67
+  idx_pool  mass0.01   258.18   55550   55550   55550         1.19
+  selection                     rows   err50   err90  errmax
+  kept+tail                     5850   0.371   0.586   0.756
+  kept+sketch-fire              5975   0.331   0.531   0.695
+  kept+idx-fire(same n)         5975   0.345   0.541   0.702
+  dsa-top2048                   2048   0.386   0.627   0.769
+  kept+oracle-fire(same n)      5975   0.310   0.531   0.701
+  all                          61401   0.000   0.000   0.000
+== cal_tp0_n58_slot4_lid7_seq62359.pt T=62359 A=59520 n=7 idx-qpos offset=[-895, -1] archived mass p50/p90=0.559/0.772 need p90/max=1/1
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          0.00       0       1       1          nan
+  sketch    mass0.05    32.94   59463   59519   59519         1.14
+  sketch    mass0.01    34.29   59519   59519   59519         1.03
+  idx_tok   max         95.22       1      16      31          nan
+  idx_tok   mass0.05   402.71   59519   59519   59520         1.15
+  idx_tok   mass0.01   417.99   59519   59519   59520         1.03
+  idx_pool  max        163.57      18     459     887          nan
+  idx_pool  mass0.05   442.42   59519   59519   59520         1.15
+  idx_pool  mass0.01   451.02   59519   59519   59520         1.03
+  selection                     rows   err50   err90  errmax
+  kept+tail                     2839   0.928   1.244   1.591
+  kept+sketch-fire              2839   0.928   1.244   1.591
+  kept+idx-fire(same n)         2839   0.928   1.244   1.591
+  dsa-top2048                   2048   0.909   1.217   1.530
+  kept+oracle-fire(same n)      2839   0.928   1.244   1.591
+  all                          62359   0.000   0.000   0.000
+== cal_tp0_n63_slot4_lid19_seq62359.pt T=62359 A=59519 n=7 idx-qpos offset=[-895, -1] archived mass p50/p90=0.384/0.691 need p90/max=3/3
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          1.71       4     117     235          nan
+  sketch    mass0.05    10.76   58877   59494   59518         1.64
+  sketch    mass0.01    12.24   59508   59518   59518         1.19
+  idx_tok   max         87.16      34      80     100          nan
+  idx_tok   mass0.05   255.76   59517   59518   59518         1.70
+  idx_tok   mass0.01   271.03   59518   59518   59518         1.19
+  idx_pool  max         95.59     356     505     568          nan
+  idx_pool  mass0.05   233.29   59263   59518   59518         1.69
+  idx_pool  mass0.01   246.45   59514   59518   59518         1.19
+  selection                     rows   err50   err90  errmax
+  kept+tail                     2840   0.362   0.639   0.766
+  kept+sketch-fire              2883   0.331   0.591   0.771
+  kept+idx-fire(same n)         2883   0.334   0.585   0.770
+  dsa-top2048                   2048   0.305   0.609   0.780
+  kept+oracle-fire(same n)      2883   0.318   0.581   0.779
+  all                          62359   0.000   0.000   0.000
+== cal_tp0_n69_slot4_lid7_seq64046.pt T=64046 A=59518 n=7 idx-qpos offset=[-1624, -1] archived mass p50/p90=0.835/0.875 need p90/max=13/26
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.16       5     101     176          nan
+  sketch    mass0.05    30.77   59515   59517   59517         1.22
+  sketch    mass0.01    34.42   59517   59517   59517         1.06
+  idx_tok   max        124.21    6457   14480   19355          nan
+  idx_tok   mass0.05   249.25   59517   59517   59517         1.20
+  idx_tok   mass0.01   268.13   59517   59517   59518         1.05
+  idx_pool  max        156.90   17347   30561   38592          nan
+  idx_pool  mass0.05   278.34   59517   59517   59518         1.20
+  idx_pool  mass0.01   294.71   59517   59517   59518         1.06
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4528   1.146   1.512   1.811
+  kept+sketch-fire              4563   1.137   1.500   1.792
+  kept+idx-fire(same n)         4563   1.134   1.488   1.795
+  dsa-top2048                   2048   1.201   1.788   2.201
+  kept+oracle-fire(same n)      4563   1.136   1.489   1.788
+  all                          64046   0.000   0.000   0.000
+== cal_tp0_n74_slot4_lid19_seq64046.pt T=64046 A=59518 n=7 idx-qpos offset=[-1624, -1] archived mass p50/p90=0.456/0.771 need p90/max=18/39
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          2.89      26     702    1706          nan
+  sketch    mass0.05    11.18   58134   59340   59395         1.55
+  sketch    mass0.01    13.29   59455   59514   59517         1.18
+  idx_tok   max        109.38      43    1108    2265          nan
+  idx_tok   mass0.05   277.22   58542   59517   59517         1.54
+  idx_tok   mass0.01   291.74   59442   59517   59517         1.17
+  idx_pool  max        128.64     830    8757   14299          nan
+  idx_pool  mass0.05   256.67   58318   59517   59517         1.52
+  idx_pool  mass0.01   269.38   59429   59517   59517         1.17
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4528   0.404   0.744   1.051
+  kept+sketch-fire              4790   0.271   0.721   1.041
+  kept+idx-fire(same n)         4790   0.279   0.725   1.040
+  dsa-top2048                   2048   0.334   0.818   1.253
+  kept+oracle-fire(same n)      4790   0.268   0.723   1.042
+  all                          64046   0.000   0.000   0.000
+== cal_tp0_n7_slot4_lid15_seq65069.pt T=65069 A=59518 n=7 idx-qpos offset=[-65048, -1] archived mass p50/p90=0.581/0.774 need p90/max=4/6
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          2.69      14      47      87          nan
+  sketch    mass0.05    11.74   57365   58706   59425         1.24
+  sketch    mass0.01    12.77   59336   59472   59507         1.07
+  idx_tok   max        170.76    1013    1410    1488          nan
+  idx_tok   mass0.05   333.41   59517   59517   59517         1.27
+  idx_tok   mass0.01   355.14   59517   59517   59517         1.08
+  idx_pool  max        179.09    2378    6696    6699          nan
+  idx_pool  mass0.05   325.76   59517   59517   59517         1.27
+  idx_pool  mass0.01   344.14   59517   59517   59517         1.08
+  selection                     rows   err50   err90  errmax
+  kept+tail                     5551   0.749   1.243   1.730
+  kept+sketch-fire              5575   0.718   1.214   1.620
+  kept+idx-fire(same n)         5575   0.703   1.224   1.598
+  dsa-top2048                   2048   0.689   1.178   1.597
+  kept+oracle-fire(same n)      5575   0.679   1.192   1.600
+  all                          65069   0.000   0.000   0.000
+== cal_tp0_n85_slot4_lid19_seq64108.pt T=64108 A=59518 n=7 idx-qpos offset=[-1, 1] archived mass p50/p90=0.767/0.896 need p90/max=62/75
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.74    1794    4364    5279          nan
+  sketch    mass0.05     9.51   50413   57722   57801         1.64
+  sketch    mass0.01    11.78   59113   59429   59450         1.27
+  idx_tok   max        130.56    3263    4945    5100          nan
+  idx_tok   mass0.05   259.80   59513   59517   59518         1.78
+  idx_tok   mass0.01   277.15   59517   59517   59518         1.26
+  idx_pool  max        147.86   13803   27094   29723          nan
+  idx_pool  mass0.05   246.92   59517   59517   59518         1.80
+  idx_pool  mass0.01   263.30   59517   59517   59518         1.26
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4590   0.503   0.685   0.860
+  kept+sketch-fire              7132   0.152   0.300   0.650
+  kept+idx-fire(same n)         7132   0.150   0.330   0.675
+  dsa-top2048                   2048   0.253   0.538   0.900
+  kept+oracle-fire(same n)      7132   0.111   0.283   0.658
+  all                          64108   0.000   0.000   0.000
+== cal_tp0_n90_slot4_lid35_seq7966.pt T=7966 A=3966 n=7 idx-qpos offset=[-1, 56205] archived mass p50/p90=0.459/0.634 need p90/max=14/22
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          0.23       8      56      87          nan
+  sketch    mass0.05    10.80    3235    3580    3631         1.44
+  sketch    mass0.01    12.82    3904    3917    3921         1.19
+  idx_tok   max         86.30     315     457     468          nan
+  idx_tok   mass0.05   168.11    3672    3962    3963         1.66
+  idx_tok   mass0.01   195.76    3963    3965    3965         1.21
+  idx_pool  max        114.54    1724    2590    2651          nan
+  idx_pool  mass0.05   159.57    3851    3965    3965         1.74
+  idx_pool  mass0.01   177.63    3965    3965    3965         1.23
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4000   0.476   0.760   1.248
+  kept+sketch-fire              4023   0.369   0.563   0.813
+  kept+idx-fire(same n)         4023   0.391   0.563   0.805
+  dsa-top2048                   2048   0.158   0.262   0.520
+  kept+oracle-fire(same n)      4023   0.354   0.548   0.819
+  all                           7966   0.000   0.000   0.000
+== cal_tp0_n96_slot4_lid19_seq7966.pt T=7966 A=3967 n=7 idx-qpos offset=[-1, 56205] archived mass p50/p90=0.525/0.707 need p90/max=36/46
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.67     123    1363    1496          nan
+  sketch    mass0.05     8.52    3372    3964    3965         1.61
+  sketch    mass0.01     9.78    3864    3966    3967         1.21
+  idx_tok   max        119.53     308    1834    2886          nan
+  idx_tok   mass0.05   182.50    2449    3907    3966         1.34
+  idx_tok   mass0.01   206.99    3781    3966    3967         1.16
+  idx_pool  max        119.06     804    2412    3846          nan
+  idx_pool  mass0.05   169.51    3054    3871    3966         1.58
+  idx_pool  mass0.01   189.74    3854    3966    3967         1.20
+  selection                     rows   err50   err90  errmax
+  kept+tail                     3999   0.320   0.497   0.708
+  kept+sketch-fire              4526   0.111   0.275   0.380
+  kept+idx-fire(same n)         4526   0.130   0.298   0.408
+  dsa-top2048                   2048   0.113   0.248   0.357
+  kept+oracle-fire(same n)      4526   0.090   0.264   0.339
+  all                           7966   0.000   0.000   0.000
+== cal_tp1_n101_slot4_lid35_seq7934.pt T=7934 A=3966 n=7 idx-qpos offset=[-1, 95] archived mass p50/p90=0.236/0.499 need p90/max=5/7
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          2.94       5      97     135          nan
+  sketch    mass0.05     9.84    3511    3949    3964         2.46
+  sketch    mass0.01    12.45    3963    3965    3965         1.45
+  idx_tok   max         40.95       4      16      29          nan
+  idx_tok   mass0.05   172.67    1957    3704    3965         1.64
+  idx_tok   mass0.01   196.70    3497    3960    3965         1.27
+  idx_pool  max         54.19      18      69     133          nan
+  idx_pool  mass0.05   165.42    2750    3692    3965         2.06
+  idx_pool  mass0.01   196.37    3945    3965    3965         1.39
+  selection                     rows   err50   err90  errmax
+  kept+tail                     3968   0.268   0.467   0.793
+  kept+sketch-fire              4000   0.203   0.317   0.477
+  kept+idx-fire(same n)         4000   0.208   0.340   0.633
+  dsa-top2048                   2048   0.098   0.185   0.375
+  kept+oracle-fire(same n)      4000   0.181   0.268   0.477
+  all                           7934   0.000   0.000   0.000
+== cal_tp1_n107_slot4_lid19_seq7934.pt T=7934 A=3967 n=7 idx-qpos offset=[-1, 95] archived mass p50/p90=0.318/0.561 need p90/max=32/51
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.35     129     503     940          nan
+  sketch    mass0.05     9.05    3811    3965    3966         2.21
+  sketch    mass0.01    10.22    3956    3966    3966         1.32
+  idx_tok   max         94.63      40     234     368          nan
+  idx_tok   mass0.05   256.90    3966    3966    3966         2.14
+  idx_tok   mass0.01   279.70    3966    3966    3966         1.31
+  idx_pool  max        117.32     243     907    1222          nan
+  idx_pool  mass0.05   260.34    3966    3966    3966         2.26
+  idx_pool  mass0.01   280.70    3966    3966    3966         1.33
+  selection                     rows   err50   err90  errmax
+  kept+tail                     3967   0.248   0.423   0.748
+  kept+sketch-fire              4174   0.107   0.205   0.341
+  kept+idx-fire(same n)         4174   0.110   0.213   0.332
+  dsa-top2048                   2048   0.048   0.172   0.395
+  kept+oracle-fire(same n)      4174   0.082   0.179   0.286
+  all                           7934   0.000   0.000   0.000
+== cal_tp1_n112_slot4_lid35_seq7032.pt T=7032 A=3965 n=7 idx-qpos offset=[-1, 965] archived mass p50/p90=0.409/0.582 need p90/max=22/26
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          2.02      15     139     146          nan
+  sketch    mass0.05    10.00    3689    3939    3949         1.62
+  sketch    mass0.01    11.72    3944    3964    3964         1.22
+  idx_tok   max         72.56      92     274     391          nan
+  idx_tok   mass0.05   181.52    3875    3936    3965         1.68
+  idx_tok   mass0.01   212.51    3962    3964    3965         1.23
+  idx_pool  max         84.04     122    1740    2338          nan
+  idx_pool  mass0.05   148.90    3508    3960    3965         1.64
+  idx_pool  mass0.01   171.41    3940    3964    3965         1.23
+  selection                     rows   err50   err90  errmax
+  kept+tail                     3067   0.296   0.409   0.556
+  kept+sketch-fire              3114   0.229   0.343   0.460
+  kept+idx-fire(same n)         3114   0.243   0.370   0.497
+  dsa-top2048                   2048   0.146   0.200   0.290
+  kept+oracle-fire(same n)      3114   0.219   0.326   0.431
+  all                           7032   0.000   0.000   0.000
+== cal_tp1_n118_slot4_lid19_seq7032.pt T=7032 A=3967 n=7 idx-qpos offset=[-1, 965] archived mass p50/p90=0.476/0.675 need p90/max=26/34
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          2.79     185     585     825          nan
+  sketch    mass0.05     9.39    3912    3940    3942         1.53
+  sketch    mass0.01    11.62    3958    3963    3966         1.16
+  idx_tok   max        143.51    1213    1906    2416          nan
+  idx_tok   mass0.05   215.59    3962    3966    3966         1.49
+  idx_tok   mass0.01   231.36    3966    3966    3967         1.15
+  idx_pool  max        126.51    1499    3129    3739          nan
+  idx_pool  mass0.05   196.93    3966    3966    3967         1.53
+  idx_pool  mass0.01   211.98    3966    3966    3967         1.16
+  selection                     rows   err50   err90  errmax
+  kept+tail                     3065   0.338   0.515   0.791
+  kept+sketch-fire              3353   0.157   0.260   0.374
+  kept+idx-fire(same n)         3353   0.153   0.274   0.453
+  dsa-top2048                   2048   0.085   0.202   0.469
+  kept+oracle-fire(same n)      3353   0.119   0.215   0.357
+  all                           7032   0.000   0.000   0.000
+== cal_tp1_n123_slot4_lid35_seq6954.pt T=6954 A=3965 n=7 idx-qpos offset=[-1, 141] archived mass p50/p90=0.551/0.644 need p90/max=42/43
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          2.26      82     287     402          nan
+  sketch    mass0.05    10.36    3265    3958    3962         1.42
+  sketch    mass0.01    12.39    3858    3964    3965         1.17
+  idx_tok   max         70.92      95     557     723          nan
+  idx_tok   mass0.05   177.79    3874    3964    3965         1.63
+  idx_tok   mass0.01   203.31    3963    3964    3965         1.21
+  idx_pool  max         77.09     228    2578    3255          nan
+  idx_pool  mass0.05   142.33    3628    3964    3965         1.57
+  idx_pool  mass0.01   162.78    3932    3964    3965         1.21
+  selection                     rows   err50   err90  errmax
+  kept+tail                     2989   0.365   0.517   0.689
+  kept+sketch-fire              3123   0.221   0.396   0.553
+  kept+idx-fire(same n)         3123   0.257   0.407   0.577
+  dsa-top2048                   2048   0.158   0.228   0.442
+  kept+oracle-fire(same n)      3123   0.208   0.377   0.505
+  all                           6954   0.000   0.000   0.000
+== cal_tp1_n129_slot4_lid19_seq6954.pt T=6954 A=3967 n=7 idx-qpos offset=[-1, 141] archived mass p50/p90=0.480/0.673 need p90/max=23/24
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          7.54    3393    3886    3912          nan
+  sketch    mass0.05     9.08    3874    3950    3951         1.56
+  sketch    mass0.01    11.33    3954    3966    3966         1.17
+  idx_tok   max        144.64    1470    3169    3298          nan
+  idx_tok   mass0.05   217.42    3966    3966    3967         1.55
+  idx_tok   mass0.01   230.93    3966    3966    3967         1.16
+  idx_pool  max        128.31    2109    3195    3541          nan
+  idx_pool  mass0.05   198.48    3966    3966    3967         1.56
+  idx_pool  mass0.01   214.38    3966    3966    3967         1.17
+  selection                     rows   err50   err90  errmax
+  kept+tail                     2987   0.320   0.478   0.864
+  kept+sketch-fire              6366   0.014   0.038   0.075
+  kept+idx-fire(same n)         6366   0.001   0.006   0.064
+  dsa-top2048                   2048   0.066   0.176   0.506
+  kept+oracle-fire(same n)      6366   0.001   0.006   0.021
+  all                           6954   0.000   0.000   0.000
+== cal_tp1_n134_slot4_lid35_seq4104.pt T=4104 A=3965 n=7 idx-qpos offset=[-38, -1] archived mass p50/p90=0.641/0.767 need p90/max=2/4
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          1.88      19      56      70          nan
+  sketch    mass0.05    11.12    3835    3961    3963         1.58
+  sketch    mass0.01    12.76    3954    3964    3965         1.18
+  idx_tok   max         49.81       7      25      36          nan
+  idx_tok   mass0.05   184.28    3928    3964    3964         1.55
+  idx_tok   mass0.01   204.28    3963    3964    3965         1.17
+  idx_pool  max         56.48      63     152     172          nan
+  idx_pool  mass0.05   159.87    3796    3964    3965         1.51
+  idx_pool  mass0.01   177.23    3952    3964    3965         1.17
+  selection                     rows   err50   err90  errmax
+  kept+tail                      139   0.990   1.375   1.640
+  kept+sketch-fire               164   0.741   1.093   1.447
+  kept+idx-fire(same n)          164   0.738   1.034   1.399
+  dsa-top2048                   2048   0.059   0.125   0.219
+  kept+oracle-fire(same n)       164   0.663   0.989   1.397
+  all                           4104   0.000   0.000   0.000
+== cal_tp1_n13_slot4_lid35_seq65070.pt T=65070 A=59518 n=7 idx-qpos offset=[-1, 62] archived mass p50/p90=0.744/0.851 need p90/max=7/10
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.78     447    1840    1995          nan
+  sketch    mass0.05     9.31   49388   54259   58740         1.36
+  sketch    mass0.01    10.42   57389   58608   59471         1.15
+  idx_tok   max        102.00     170     440     505          nan
+  idx_tok   mass0.05   214.69   49993   56091   56198         1.38
+  idx_tok   mass0.01   235.86   57456   59037   59081         1.15
+  idx_pool  max        130.62    3629    4582    5028          nan
+  idx_pool  mass0.05   205.77   51499   55519   57770         1.39
+  idx_pool  mass0.01   225.06   57806   58781   59389         1.15
+  selection                     rows   err50   err90  errmax
+  kept+tail                     5552   0.917   1.158   1.539
+  kept+sketch-fire              6465   0.566   0.825   1.251
+  kept+idx-fire(same n)         6465   0.590   0.839   1.118
+  dsa-top2048                   2048   0.563   0.720   0.897
+  kept+oracle-fire(same n)      6465   0.487   0.740   1.142
+  all                          65070   0.000   0.000   0.000
+== cal_tp1_n15_slot4_lid39_seq65070.pt T=65070 A=59518 n=7 idx-qpos offset=[-1, 62] archived mass p50/p90=0.462/0.639 need p90/max=4/7
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.10      24      31      32          nan
+  sketch    mass0.05     9.65   49245   52331   52881         1.32
+  sketch    mass0.01    10.62   56471   58109   58302         1.12
+  idx_tok   max         50.51       3       7      10          nan
+  idx_tok   mass0.05   320.85   57231   58908   58919         1.49
+  idx_tok   mass0.01   349.33   59218   59483   59493         1.15
+  idx_pool  max         76.43      11      12      14          nan
+  idx_pool  mass0.05   308.77   56237   58594   58801         1.47
+  idx_pool  mass0.01   331.61   58781   59482   59490         1.15
+  selection                     rows   err50   err90  errmax
+  kept+tail                     5552   0.767   1.095   1.477
+  kept+sketch-fire              5577   0.688   0.990   1.429
+  kept+idx-fire(same n)         5577   0.669   0.980   1.404
+  dsa-top2048                   2048   0.496   0.746   1.302
+  kept+oracle-fire(same n)      5577   0.643   0.973   1.404
+  all                          65070   0.000   0.000   0.000
+== cal_tp1_n20_slot4_lid23_seq65070.pt T=65070 A=59518 n=7 idx-qpos offset=[-1, 62] archived mass p50/p90=0.325/0.622 need p90/max=4/4
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          2.84       8      23      26          nan
+  sketch    mass0.05    10.84   51742   53219   53864         1.52
+  sketch    mass0.01    11.92   57616   58747   58778         1.17
+  idx_tok   max         88.19      43     152     157          nan
+  idx_tok   mass0.05   229.83   55587   57769   57908         1.66
+  idx_tok   mass0.01   244.37   58878   59344   59371         1.20
+  idx_pool  max        104.88     314    1402    1608          nan
+  idx_pool  mass0.05   218.33   53788   58875   59002         1.64
+  idx_pool  mass0.01   230.83   58583   59493   59505         1.19
+  selection                     rows   err50   err90  errmax
+  kept+tail                     5552   0.278   0.733   1.225
+  kept+sketch-fire              5563   0.177   0.671   1.220
+  kept+idx-fire(same n)         5563   0.188   0.696   1.218
+  dsa-top2048                   2048   0.102   0.570   0.989
+  kept+oracle-fire(same n)      5563   0.168   0.678   1.220
+  all                          65070   0.000   0.000   0.000
+== cal_tp1_n26_slot4_lid39_seq64295.pt T=64295 A=59517 n=7 idx-qpos offset=[-1, 838] archived mass p50/p90=0.626/0.759 need p90/max=3/5
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          2.54      94     211     324          nan
+  sketch    mass0.05    12.27   56698   58716   59164         1.51
+  sketch    mass0.01    18.35   59495   59511   59515         1.16
+  idx_tok   max        117.11     151     293     392          nan
+  idx_tok   mass0.05   250.70   55335   57232   58518         1.45
+  idx_tok   mass0.01   271.92   58877   59194   59489         1.13
+  idx_pool  max        129.17    1072    2165    2603          nan
+  idx_pool  mass0.05   232.36   57254   58976   59348         1.50
+  idx_pool  mass0.01   248.47   59217   59446   59516         1.14
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4778   0.529   0.765   1.149
+  kept+sketch-fire              4888   0.461   0.714   0.915
+  kept+idx-fire(same n)         4888   0.482   0.744   0.914
+  dsa-top2048                   2048   0.530   0.815   1.157
+  kept+oracle-fire(same n)      4888   0.446   0.690   0.903
+  all                          64295   0.000   0.000   0.000
+== cal_tp1_n31_slot4_lid23_seq64295.pt T=64295 A=59519 n=7 idx-qpos offset=[-1, 838] archived mass p50/p90=0.616/0.832 need p90/max=27/30
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.86     703    6469   14852          nan
+  sketch    mass0.05    12.98   59086   59295   59518         1.31
+  sketch    mass0.01    15.95   59506   59513   59518         1.08
+  idx_tok   max        103.11    3166   28578   59518          nan
+  idx_tok   mass0.05   177.32   59518   59518   59518         1.28
+  idx_tok   mass0.01   187.31   59518   59518   59518         1.07
+  idx_pool  max        112.16   18354   42614   59518          nan
+  idx_pool  mass0.05   166.70   59518   59518   59518         1.29
+  idx_pool  mass0.01   175.59   59518   59518   59518         1.07
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4776   0.521   0.661   0.774
+  kept+sketch-fire              7372   0.349   0.547   0.691
+  kept+idx-fire(same n)         7372   0.365   0.575   0.695
+  dsa-top2048                   2048   0.486   0.697   0.843
+  kept+oracle-fire(same n)      7372   0.307   0.522   0.649
+  all                          64295   0.000   0.000   0.000
+== cal_tp1_n37_slot4_lid39_seq64412.pt T=64412 A=59518 n=7 idx-qpos offset=[-54, -1] archived mass p50/p90=0.565/0.771 need p90/max=4/9
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          1.93       6      36      65          nan
+  sketch    mass0.05    14.00   59043   59397   59457         1.51
+  sketch    mass0.01    21.44   59497   59512   59516         1.22
+  idx_tok   max        143.90    1196    4026    6988          nan
+  idx_tok   mass0.05   280.00   59117   59503   59517         1.56
+  idx_tok   mass0.01   311.77   59513   59517   59517         1.19
+  idx_pool  max        159.57    6124   25529   34887          nan
+  idx_pool  mass0.05   258.09   59331   59515   59517         1.57
+  idx_pool  mass0.01   286.51   59514   59517   59517         1.19
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4894   0.554   0.800   1.147
+  kept+sketch-fire              4909   0.534   0.787   1.117
+  kept+idx-fire(same n)         4909   0.541   0.779   1.110
+  dsa-top2048                   2048   0.495   0.767   1.152
+  kept+oracle-fire(same n)      4909   0.528   0.771   1.094
+  all                          64412   0.000   0.000   0.000
+== cal_tp1_n42_slot4_lid23_seq64412.pt T=64412 A=59519 n=7 idx-qpos offset=[-54, -1] archived mass p50/p90=0.664/0.860 need p90/max=75/101
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.71     307    4519    9998          nan
+  sketch    mass0.05    13.96   59156   59472   59518         1.31
+  sketch    mass0.01    16.54   59506   59518   59518         1.09
+  idx_tok   max         84.80    1092   24555   59518          nan
+  idx_tok   mass0.05   166.39   59367   59518   59518         1.30
+  idx_tok   mass0.01   177.52   59518   59518   59518         1.09
+  idx_pool  max         90.21    6556   28953   59518          nan
+  idx_pool  mass0.05   148.58   59434   59518   59518         1.29
+  idx_pool  mass0.01   157.33   59518   59518   59518         1.08
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4893   0.578   0.716   0.938
+  kept+sketch-fire              6693   0.350   0.529   0.674
+  kept+idx-fire(same n)         6693   0.361   0.558   0.686
+  dsa-top2048                   2048   0.480   0.678   0.973
+  kept+oracle-fire(same n)      6693   0.328   0.519   0.667
+  all                          64412   0.000   0.000   0.000
+== cal_tp1_n48_slot4_lid39_seq61401.pt T=61401 A=55551 n=7 idx-qpos offset=[-1, 3074] archived mass p50/p90=0.217/0.453 need p90/max=0/0
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          0.00       0       0       0          nan
+  sketch    mass0.05    13.42   55160   55507   55534         1.76
+  sketch    mass0.01    14.99   55505   55532   55545         1.23
+  idx_tok   max          0.00       0       0       0          nan
+  idx_tok   mass0.05   306.02   53393   55531   55550         1.76
+  idx_tok   mass0.01   329.59   55495   55550   55551         1.23
+  idx_pool  max          0.00       0       0       0          nan
+  idx_pool  mass0.05   289.49   53052   55516   55550         1.69
+  idx_pool  mass0.01   308.33   55434   55550   55550         1.20
+  selection                     rows   err50   err90  errmax
+  kept+tail                     5850   0.358   0.649   0.894
+  kept+sketch-fire              5850   0.358   0.649   0.894
+  kept+idx-fire(same n)         5850   0.358   0.649   0.894
+  dsa-top2048                   2048   0.429   0.810   1.001
+  kept+oracle-fire(same n)      5850   0.358   0.649   0.894
+  all                          61401   0.000   0.000   0.000
+== cal_tp1_n53_slot4_lid23_seq61401.pt T=61401 A=55553 n=7 idx-qpos offset=[-1, 3074] archived mass p50/p90=0.196/0.527 need p90/max=0/1
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          1.00       1     103     254          nan
+  sketch    mass0.05    11.13   53676   55482   55527         1.57
+  sketch    mass0.01    11.98   55159   55549   55551         1.16
+  idx_tok   max         54.20       3      11      13          nan
+  idx_tok   mass0.05   202.68   54936   55552   55553         1.47
+  idx_tok   mass0.01   212.53   55537   55552   55553         1.14
+  idx_pool  max         61.35      69     111     125          nan
+  idx_pool  mass0.05   200.65   55500   55552   55553         1.60
+  idx_pool  mass0.01   208.87   55552   55552   55553         1.16
+  selection                     rows   err50   err90  errmax
+  kept+tail                     5848   0.251   0.564   0.737
+  kept+sketch-fire              5885   0.247   0.541   0.662
+  kept+idx-fire(same n)         5885   0.246   0.529   0.667
+  dsa-top2048                   2048   0.257   0.620   0.806
+  kept+oracle-fire(same n)      5885   0.240   0.499   0.661
+  all                          61401   0.000   0.000   0.000
+== cal_tp1_n59_slot4_lid39_seq62359.pt T=62359 A=59519 n=7 idx-qpos offset=[-895, -1] archived mass p50/p90=0.220/0.549 need p90/max=0/0
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          0.00       0       0       0          nan
+  sketch    mass0.05    14.01   59180   59466   59478         1.63
+  sketch    mass0.01    15.73   59496   59512   59514         1.20
+  idx_tok   max          0.00       0       0       0          nan
+  idx_tok   mass0.05   300.83   56138   59518   59518         1.53
+  idx_tok   mass0.01   327.74   59328   59518   59518         1.18
+  idx_pool  max          0.00       0       0       0          nan
+  idx_pool  mass0.05   292.71   56188   59518   59518         1.55
+  idx_pool  mass0.01   312.44   59189   59518   59519         1.18
+  selection                     rows   err50   err90  errmax
+  kept+tail                     2840   0.341   0.792   1.094
+  kept+sketch-fire              2840   0.341   0.792   1.094
+  kept+idx-fire(same n)         2840   0.341   0.792   1.094
+  dsa-top2048                   2048   0.374   0.802   1.060
+  kept+oracle-fire(same n)      2840   0.341   0.792   1.094
+  all                          62359   0.000   0.000   0.000
+== cal_tp1_n64_slot4_lid23_seq62359.pt T=62359 A=59519 n=7 idx-qpos offset=[-895, -1] archived mass p50/p90=0.241/0.593 need p90/max=5/9
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.11      50     982    1466          nan
+  sketch    mass0.05     9.69   51297   58050   59455         1.44
+  sketch    mass0.01    10.48   56033   59266   59517         1.12
+  idx_tok   max         79.54      33      70      77          nan
+  idx_tok   mass0.05   190.51   51620   59518   59519         1.48
+  idx_tok   mass0.01   200.52   58399   59518   59519         1.15
+  idx_pool  max         86.12     319     694     696          nan
+  idx_pool  mass0.05   186.04   55854   59518   59519         1.51
+  idx_pool  mass0.01   193.17   58718   59518   59519         1.14
+  selection                     rows   err50   err90  errmax
+  kept+tail                     2840   0.310   0.619   0.784
+  kept+sketch-fire              3172   0.238   0.494   0.680
+  kept+idx-fire(same n)         3172   0.251   0.515   0.647
+  dsa-top2048                   2048   0.273   0.577   0.760
+  kept+oracle-fire(same n)      3172   0.203   0.480   0.636
+  all                          62359   0.000   0.000   0.000
+== cal_tp1_n6_slot4_lid43_seq65069.pt T=65069 A=59518 n=7 idx-qpos offset=[-65048, -1] archived mass p50/p90=0.494/0.676 need p90/max=0/1
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          0.28       0       0       1          nan
+  sketch    mass0.05    10.26   53189   55657   57158         1.27
+  sketch    mass0.01    11.09   58462   59092   59210         1.09
+  idx_tok   max         34.33       0       0       1          nan
+  idx_tok   mass0.05   317.77   58719   59517   59517         1.39
+  idx_tok   mass0.01   337.01   59489   59517   59517         1.11
+  idx_pool  max         16.76       0       0       1          nan
+  idx_pool  mass0.05   292.86   58809   59517   59517         1.38
+  idx_pool  mass0.01   310.09   59505   59517   59517         1.10
+  selection                     rows   err50   err90  errmax
+  kept+tail                     5551   0.633   0.946   1.334
+  kept+sketch-fire              5551   0.629   0.943   1.298
+  kept+idx-fire(same n)         5551   0.629   0.943   1.298
+  dsa-top2048                   2048   0.468   0.802   1.125
+  kept+oracle-fire(same n)      5551   0.629   0.943   1.298
+  all                          65069   0.000   0.000   0.000
+== cal_tp1_n75_slot4_lid23_seq64046.pt T=64046 A=59518 n=7 idx-qpos offset=[-1624, -1] archived mass p50/p90=0.282/0.747 need p90/max=19/42
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          2.56       5     135     326          nan
+  sketch    mass0.05    12.37   59269   59392   59393         1.54
+  sketch    mass0.01    13.84   59502   59507   59507         1.17
+  idx_tok   max         82.77      13     359     874          nan
+  idx_tok   mass0.05   240.35   59306   59517   59517         1.56
+  idx_tok   mass0.01   252.10   59514   59517   59517         1.16
+  idx_pool  max         80.80      42    1691    4117          nan
+  idx_pool  mass0.05   235.84   59406   59517   59517         1.58
+  idx_pool  mass0.01   247.29   59517   59517   59518         1.17
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4528   0.323   0.792   0.918
+  kept+sketch-fire              4578   0.251   0.695   0.918
+  kept+idx-fire(same n)         4578   0.260   0.704   0.918
+  dsa-top2048                   2048   0.263   0.703   1.021
+  kept+oracle-fire(same n)      4578   0.237   0.693   0.918
+  all                          64046   0.000   0.000   0.000
+== cal_tp1_n80_slot4_lid7_seq64108.pt T=64108 A=59518 n=7 idx-qpos offset=[-1, 1] archived mass p50/p90=0.834/0.875 need p90/max=28/47
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          4.77     424    1675    1888          nan
+  sketch    mass0.05    26.30   59511   59515   59517         1.21
+  sketch    mass0.01    29.84   59517   59517   59518         1.06
+  idx_tok   max        200.09   17973   46240   58613          nan
+  idx_tok   mass0.05   269.42   56281   59502   59517         1.15
+  idx_tok   mass0.01   289.03   58924   59516   59517         1.04
+  idx_pool  max        272.44   51343   59056   59517          nan
+  idx_pool  mass0.05   311.56   59081   59517   59517         1.18
+  idx_pool  mass0.01   332.85   59489   59517   59518         1.05
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4590   1.012   1.288   1.865
+  kept+sketch-fire              5367   0.864   1.152   1.655
+  kept+idx-fire(same n)         5367   0.883   1.201   1.707
+  dsa-top2048                   2048   0.936   1.552   2.182
+  kept+oracle-fire(same n)      5367   0.838   1.163   1.667
+  all                          64108   0.000   0.000   0.000
+== cal_tp1_n86_slot4_lid23_seq64108.pt T=64108 A=59518 n=7 idx-qpos offset=[-1, 1] archived mass p50/p90=0.742/0.899 need p90/max=64/85
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          4.02     536     873     929          nan
+  sketch    mass0.05    10.77   50604   56678   58865         1.42
+  sketch    mass0.01    12.34   58081   59456   59496         1.16
+  idx_tok   max         80.14     551    1643    2641          nan
+  idx_tok   mass0.05   195.81   52662   58785   59518         1.46
+  idx_tok   mass0.01   215.57   59070   59507   59518         1.17
+  idx_pool  max         90.62    2233    6798   12000          nan
+  idx_pool  mass0.05   176.60   51985   56807   59518         1.41
+  idx_pool  mass0.01   196.63   58909   59457   59518         1.16
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4590   0.794   0.966   1.139
+  kept+sketch-fire              5123   0.247   0.447   0.743
+  kept+idx-fire(same n)         5123   0.264   0.498   0.745
+  dsa-top2048                   2048   0.239   0.464   0.885
+  kept+oracle-fire(same n)      5123   0.229   0.430   0.722
+  all                          64108   0.000   0.000   0.000
+== cal_tp1_n91_slot4_lid7_seq7966.pt T=7966 A=3967 n=7 idx-qpos offset=[-1, 56205] archived mass p50/p90=0.379/0.524 need p90/max=12/14
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          1.24      18      46      57          nan
+  sketch    mass0.05    26.98    3919    3966    3967         1.22
+  sketch    mass0.01    29.41    3966    3966    3967         1.05
+  idx_tok   max        171.24     261     799     995          nan
+  idx_tok   mass0.05   396.67    3966    3966    3967         1.25
+  idx_tok   mass0.01   424.73    3966    3966    3967         1.05
+  idx_pool  max        247.78    2282    3896    3958          nan
+  idx_pool  mass0.05   439.30    3966    3966    3967         1.25
+  idx_pool  mass0.01   450.57    3966    3966    3967         1.05
+  selection                     rows   err50   err90  errmax
+  kept+tail                     3999   0.428   0.754   1.042
+  kept+sketch-fire              4020   0.414   0.744   1.033
+  kept+idx-fire(same n)         4020   0.397   0.706   0.943
+  dsa-top2048                   2048   0.388   0.544   0.778
+  kept+oracle-fire(same n)      4020   0.393   0.685   0.941
+  all                           7966   0.000   0.000   0.000
+== cal_tp1_n97_slot4_lid23_seq7966.pt T=7966 A=3966 n=7 idx-qpos offset=[-1, 56205] archived mass p50/p90=0.432/0.603 need p90/max=11/12
+  proxy     crit           zp  fire50  fire90 firemax fired/oracle
+  sketch    max          3.64     327     580     842          nan
+  sketch    mass0.05     9.16    3833    3935    3959         1.57
+  sketch    mass0.01    10.64    3957    3961    3962         1.17
+  idx_tok   max         66.93     150     547     966          nan
+  idx_tok   mass0.05   171.71    3965    3965    3966         1.65
+  idx_tok   mass0.01   185.50    3965    3965    3966         1.18
+  idx_pool  max         66.70     293     979    1551          nan
+  idx_pool  mass0.05   147.45    3961    3965    3966         1.58
+  idx_pool  mass0.01   161.71    3965    3965    3966         1.16
+  selection                     rows   err50   err90  errmax
+  kept+tail                     4000   0.339   0.511   0.987
+  kept+sketch-fire              4328   0.169   0.280   0.417
+  kept+idx-fire(same n)         4328   0.183   0.288   0.835
+  dsa-top2048                   2048   0.133   0.288   0.419
+  kept+oracle-fire(same n)      4328   0.138   0.244   0.371
+  all                           7966   0.000   0.000   0.000
+== mean over snapshots
+  proxy     crit       fire50  fire90 firemax fired/oracle  n
+  sketch    max           370    1173    1693         0.00  48
+  sketch    mass0.05    35521   36515   36785         1.44  48
+  sketch    mass0.01    36883   37112   37146         1.14  48
+  idx_tok   max          3472    6975    9256         0.00  48
+  idx_tok   mass0.05    36096   37005   37062         1.44  48
+  idx_tok   mass0.01    37051   37176   37185         1.13  48
+  idx_pool  max          7007   13015   16264         0.00  48
+  idx_pool  mass0.05    36258   36988   37130         1.47  48
+  idx_pool  mass0.01    37067   37177   37194         1.14  48
+  selection                     rows   err50   err90  errmax  n
+  kept+tail                     4086   0.538   0.806   1.096  48
+  kept+sketch-fire              4659   0.411   0.674   0.936  48
+  kept+idx-fire(same n)         4659   0.413   0.677   0.950  48
+  dsa-top2048                   2048   0.391   0.653   0.933  48
+  kept+oracle-fire(same n)      4659   0.388   0.650   0.919  48
+  all                          41285   0.000   0.000   0.000  48
