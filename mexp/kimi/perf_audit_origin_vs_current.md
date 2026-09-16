@@ -88,6 +88,34 @@ often the certificate over-fires, and it is the same defect the quality side
 sees as a high fallback rate. `--disable-vestigekv-recall-overflow-fallback`
 restores the origin behaviour and is measured as its own arm below.
 
+## The latency A/B: the fence is the whole gap, and the paper's 1.28x reproduces
+
+Same box, same protocol (bs=1, 4k prefill, continuous decode, CUDA graph on,
+radix off), server-side metric, ms/token as the median of the scheduler's
+gen-throughput lines within +/-2k tokens of each context, p10-p90 in brackets:
+
+| context | dense | origin/vestigekv | current branch | origin speedup | current speedup |
+|---|---|---|---|---|---|
+| 64k | 4.354 | 4.089 | 4.202 | 1.065 | 1.036 |
+| 128k | 4.778 | 4.175 | 4.204 | 1.145 | 1.137 |
+| 252k | 5.550 | 4.343 [4.337-4.358] | 4.664 [4.523-4.744] | **1.278** | 1.190 |
+| 256k | 5.564 | 4.360 [4.345-4.368] | 4.701 [4.531-4.778] | **1.276** | 1.184 |
+
+Three things follow.
+
+- **The paper's 1.28x at 256k reproduces exactly on this box** once the paper's
+  backend is what serves it: 1.276 against a dense arm that itself reproduces
+  (5.564 ms/token here, 179.1 tok/s in the paper's own units). The protocol was
+  never the explanation.
+- **The branch's whole cost is at long context**: within noise to 128k (the
+  sign even flips), then 7.3% slower at 252k and 7.8% at 256k. 341 us/step at
+  256k, which is the fence cost the profile attributes to the pack (~250 us)
+  and the dense attention it forces (~195 us), partly overlapped.
+- **The spread confirms the mechanism**: origin's window is [4.345-4.368],
+  4.5x tighter than the current tree's [4.531-4.778]. A per-step cost that
+  switches on and off is what an intermittent fence looks like; a uniformly
+  slower kernel would shift the median without widening the window.
+
 ## Production protocol (radix cache on)
 
 The paper's serving numbers were taken with the prefix cache on; this line has

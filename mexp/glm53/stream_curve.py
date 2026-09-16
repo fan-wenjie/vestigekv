@@ -47,17 +47,21 @@ def load_server(job, arm, line):
 
 def server_curve(args, arms):
     jobs = args.jobs.split(",") if args.jobs else [f"stream-{arm}-{(args.prefill + args.output_len) // 1024}k" for arm in arms]
-    curves = {arm: load_server(job, arm, args.line) for arm, job in zip(arms, jobs)}
+    # keyed by job, not by arm: two jobs of the same arm (two engine trees) are
+    # the common comparison here and would collapse into one column
+    pairs = list(zip(arms, jobs))
+    curves = {job: load_server(job, arm, args.line) for arm, job in pairs}
+    labels = [job if len(set(jobs)) == len(jobs) else f"{arm}:{job}" for arm, job in pairs]
     total = args.prefill + args.output_len
     points = sorted({p for p in [8192 * 2**i for i in range(0, 6)] + [total - 4096] if p <= total})
     half = args.window // 2
     print(f"ms/token from the server's gen-throughput lines within +/-{half} tokens of each context (median [p10-p90])")
-    print(f"{'context':>9s}" + "".join(f"{arm:>24s}" for arm in arms) + (f"{'ratio':>8s}" if len(arms) == 2 else ""))
+    print(f"{'context':>9s}" + "".join(f"{l[-23:]:>24s}" for l in labels) + (f"{'ratio':>8s}" if len(pairs) == 2 else ""))
     for ctx in points:
         row = f"{ctx // 1024:8d}k"
         vals = []
-        for arm in arms:
-            seg = sorted(v for n, v in curves[arm] if abs(n - ctx) <= half)
+        for job in jobs:
+            seg = sorted(v for n, v in curves[job] if abs(n - ctx) <= half)
             if not seg:
                 row += f"{'-':>24s}"
                 vals.append(float("nan"))
@@ -66,7 +70,7 @@ def server_curve(args, arms):
             p10, p90 = seg[int(0.1 * (len(seg) - 1))], seg[int(0.9 * (len(seg) - 1))]
             vals.append(med)
             row += f"{med:9.3f} [{p10:6.3f}-{p90:6.3f}]"
-        if len(arms) == 2:
+        if len(pairs) == 2:
             row += f"{vals[0] / vals[1]:8.3f}"
         print(row)
 
