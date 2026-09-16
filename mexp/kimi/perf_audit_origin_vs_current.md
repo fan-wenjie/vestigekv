@@ -378,6 +378,33 @@ the forked stage 1's own overhead and has to be closed before the fenced
 branch is worth tuning. `td-profile-256k` then attributes whatever remains by
 kernel.
 
+### Atomics, checked statically before the data
+
+Three `tl.atomic_*` calls exist in the VestigeKV kernels, and only one of them
+is new against origin:
+
+| call | file | in origin? | how often it fires |
+|---|---|---|---|
+| `atomic_add(hist_ptr + bin_, 1)` | sigma_fused.py:133 | yes | tier-1 block close, not the token path |
+| `atomic_max(amax_ptr, ...)` | operand_fused.py:74 | yes | index build, 14 times in 258050 steps |
+| `atomic_add(ovf_count_ptr + li, 1)` | fused_prologue.py:622 | **no** | once per overflowing (layer, lane), inside `if pid == 0` |
+
+The new one counts overflows for `--vestigekv-rebuild-overflow-fraction`. It
+survives the nodense arm, because the compaction raises the flag whatever the
+fallback setting says, so it fires at the measured overflow rate: about 0.055
+per (step, layer) on TP1, roughly 0.4 single-word adds per step from one
+program each. That is not a 0.3 ms/step cost, and the host-side reads of that
+counter are both gated -- `_overflow_total` only on a stats dump, and
+`_rearm_overflowing_indices` only when the rebuild fraction is above zero,
+which the default leaves at 0. So atomics are on record as checked, not as the
+explanation; if the nodense arm is short of origin, the profile decides.
+
+The standing prediction, for the record before the data: nodense does strictly
+*less* work than origin (no gather launch at all against origin's full pack),
+so a shortfall cannot be work volume. It would have to be the forked stage 1's
+row read -- two segments with a select per block (kept then fetched) against
+origin's one contiguous CSR load.
+
 ## Pending
 - `td-replay-64k` ran and its six answers are sane, five of six hit, but it is
   **not** a comparison: the only other replay on record used
