@@ -1,0 +1,4 @@
+2026-09-16_01:48:09 OK runner=2 servers=2 job=ruler-vestigekv done=1 failed=0 prog='573/650 [28:21<06:07,  4.78s/it]' new_err=0 gpu=89187/98% 88631/96%  disk_free=60G
+2026-09-16_02:18:09 SERVER_ERRORS runner=0 servers=1 job=ruler-vestigekv-long done=2 failed=0 prog='== RULER vestigekv n=10 wall=1905s' new_err=2 gpu=89185/96% 88629/97%  disk_free=60G
+2026-09-16_02:48:09 STALL runner=0 servers=1 job=ruler-vestigekv-long done=2 failed=0 prog='== RULER vestigekv n=10 wall=1905s' new_err=0 gpu=89185/97% 88629/98%  disk_free=60G STALL(no client progress since last check)
+2026-09-16_03:18:09 OK runner=1 servers=1 job=ruler-vestigekv done=1 failed=0 prog='15/650 [02:08<1:30:53,  8.59s/it]' new_err=-2 gpu=89165/98% 88609/98%  disk_free=60G

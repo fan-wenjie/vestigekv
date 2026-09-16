@@ -300,6 +300,42 @@ bash mexp/quality/run_quality.sh vestigekv
 bash mexp/quality/run_quality.sh dense
 bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 
+# --- Kimi Linear RULER on 2x RTX PRO 6000 (engine branch vestigekv, the Kimi line) ---------
+# Engine branches: `vestigekv` = upstream main + the VestigeKV backend + the general fixes
+# (capacity fence / flags / int32 / eager step, stats, per-request calibration basis,
+# rank flag, debug dumps, state-job unlink); it serves Kimi Linear only. The GLM-5.3 port
+# lives on `vestigekv-glm53` (geometry, side pool, model hooks, key ring) with its box
+# branch `vestigekv-pro6000x2` and the experiment branch `vestigekv-dsa-index`.
+# Arms: baseline = dense MLA (--attention-backend triton, same tree), vestigekv = the
+# vestigekv_mla backend at every flag default. Quality line as for GLM: CUDA graph ON
+# (--cuda-graph-max-bs-decode 4), --disable-radix-cache, --max-running-requests 4,
+# --max-mamba-cache-size 4, --chunked-prefill-size 4096, --context-length 73728,
+# --random-seed 0, --sampling-backend pytorch, TP=2, NCCL_P2P_DISABLE=1; clients serial and
+# greedy, RULER data generation and lm-eval seeded 0; model moonshotai/Kimi-Linear-48B-A3B-Instruct.
+# Jobs (mexp/kimi/queue.jsonl, same runner as the GLM line with --line kimi):
+#   ruler-baseline, ruler-vestigekv -> 13 RULER tasks x {4k,8k,16k,32k,64k}, 10 samples/cell
+#   stats-vestigekv-ruler-64k, stats-vestigekv-stream-128k -> the 13 tasks at 64k (10/cell) and a
+#       4k-prefill 126976-token decode on the vestigekv arm with SGLANG_DEBUG_VESTIGEKV_STATS=1:
+#       the server log's VKSTATS lines carry the recall fetch per scan (p50/p90/p99 rows) and the
+#       fallback rate (overflowed scans / scans); separate jobs because the bookkeeping syncs.
+#   ruler-baseline-long, ruler-vestigekv-long -> the 13 tasks x {128k,256k,512k,1M}, 5 samples/cell,
+#       with CTX=1064960 (1M + 16k; SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 because the
+#       model's derived context is exactly 1048576), --max-running-requests 2, two mamba slots,
+#       --cuda-graph-max-bs-decode 2 (lm-eval's RULER generator is seeded 0 here too)
+python mexp/glm53/queue_runner.py --line kimi
+# health monitor (read-only; one line per 30 min in results/kimi/health.log: runner/server
+# liveness, current job, client progress or STALL, new server errors, GPU, disk):
+bash mexp/health_check.sh kimi 1800 &
+# regression bisection over engine commits on the needle tasks (serves each commit from a
+# throwaway worktree via ENGINE=<dir>, counts garbage answers; results/kimi/bisect.log):
+#   bash mexp/kimi/bisect_niah.sh <engine-commit> [n=10] [tasks]
+# by hand:
+#   bash mexp/kimi/baseline.sh ; python mexp/glm53/run_ruler.py --arm baseline --n 10 \
+#     --model moonshotai/Kimi-Linear-48B-A3B-Instruct --out results/kimi/ruler
+#   bash mexp/kimi/vestigekv.sh ; (same client with --arm vestigekv)
+# results: results/kimi/ruler/results_<arm>_n10_4096-8192-16384-32768-65536.json;
+# two-arm table: python mexp/glm53/compare_ruler.py --out results/kimi/ruler
+
 # --- GLM-5.3-Flash-NVFP4 on 2x RTX PRO 6000 Blackwell (SM120; branch vestigekv-pro6000x2) ---
 # Arms: baseline = the model as shipped (DSA: indexer top-k 2048 + KPool 4:1, Triton DSA
 # kernels); vestigekv = DSA off + vestigekv_mla over the dense-MLA substrate, fp8 side pool

@@ -66,6 +66,7 @@ def main():
     ap.add_argument("--tasks", default=",".join(ALL_TASKS))
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "results", "ruler_glm53"))
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--model", default=MODEL, help="served model name (tokenizer too)")
     args = ap.parse_args()
     lengths = [int(x) for x in args.lengths.split(",")]
     tasks = args.tasks.split(",")
@@ -77,8 +78,8 @@ def main():
     res = evaluator.simple_evaluate(
         model="local-completions",
         model_args={
-            "model": MODEL,
-            "tokenizer": MODEL,
+            "model": args.model,
+            "tokenizer": args.model,
             "base_url": f"http://127.0.0.1:{args.port}/v1/completions",
             "num_concurrent": 1,
             "max_retries": 3,

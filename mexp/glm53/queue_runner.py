@@ -1,4 +1,5 @@
-"""JSONL job queue for the GLM-5.3 experiment line: edit queue.jsonl, run this.
+"""JSONL job queue for an experiment line (mexp/<line>/queue.jsonl): edit it, run this
+with --line glm53 (default) or --line kimi.
 
 One job per line of queue.jsonl:
   {"id": "ruler-baseline", "arm": "baseline", "client": "ruler",
@@ -20,12 +21,16 @@ import subprocess
 import sys
 import time
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 PY = os.environ.get("PYTHON", os.path.expanduser("~/.conda/envs/sglang-dev/bin/python"))
-MODEL = "nvidia/GLM-5.3-Flash-NVFP4"
+# --line <name> (default glm53): jobs, arm scripts and results live under mexp/<name>/
+# and results/<name>/; the line's model is what its clients are told to talk to.
+LINE = sys.argv[sys.argv.index("--line") + 1] if "--line" in sys.argv else "glm53"
+MODELS = {"glm53": "nvidia/GLM-5.3-Flash-NVFP4", "kimi": "moonshotai/Kimi-Linear-48B-A3B-Instruct"}
+MODEL = MODELS[LINE]
+HERE = os.path.join(ROOT, "mexp", LINE)
 QUEUE = os.path.join(HERE, "queue.jsonl")
-RESULTS = os.path.join(ROOT, "results", "glm53")
+RESULTS = os.path.join(ROOT, "results", LINE)
 STATE = os.path.join(RESULTS, "queue_state.jsonl")
 SERVER_LOG = os.path.join(RESULTS, "server_{arm}_{job}.log")  # one log per job: a crash must stay readable
 
@@ -116,8 +121,8 @@ def run_client(job, port):
     env["CUDA_VISIBLE_DEVICES"] = ""  # clients are HTTP only; no CUDA context next to the server
     os.makedirs(RESULTS, exist_ok=True)
     if client == "ruler":
-        cmd = [PY, os.path.join(HERE, "run_ruler.py"), "--arm", arm, "--port", port,
-               "--n", str(args.get("n", 10)), "--out", os.path.join(RESULTS, "ruler")]
+        cmd = [PY, os.path.join(ROOT, "mexp", "glm53", "run_ruler.py"), "--arm", arm, "--port", port,
+               "--model", MODEL, "--n", str(args.get("n", 10)), "--out", os.path.join(RESULTS, "ruler")]
         if "lengths" in args:
             cmd += ["--lengths", args["lengths"]]
         if "tasks" in args:
@@ -136,10 +141,10 @@ def run_client(job, port):
                "--output-details", "--output-file", out_jsonl]
         out = os.path.join(RESULTS, f"stream_{arm}_{job['id']}.log")
     elif client == "needle":
-        cmd = [PY, os.path.join(HERE, "needle.py"), str(args.get("reps", 330)), port]
+        cmd = [PY, os.path.join(ROOT, "mexp", "glm53", "needle.py"), str(args.get("reps", 330)), port]
         out = os.path.join(RESULTS, f"needle_{arm}_{job['id']}.log")
     elif client == "replay":
-        cmd = [PY, os.path.join(HERE, "replay_prompts.py"), "--port", port,
+        cmd = [PY, os.path.join(ROOT, "mexp", "glm53", "replay_prompts.py"), "--port", port,
                "--samples", os.path.join(ROOT, args["samples"]), "--tasks", args.get("tasks", "niah_single_2,ruler_qa_squad,ruler_cwe"),
                "--length", str(args.get("length", 65536)), "--n", str(args.get("n", 1)),
                "--max-tokens", str(args.get("max_tokens", 64))]
