@@ -343,7 +343,7 @@ rows from the kept table and the fetch buffer, or from the page table when the
 lane is fenced, so the CSR that the pack kernel builds -- and the arming work
 with it -- has no consumer left.
 
-## The tier-decode router measured: a third of the way, and not adopted
+## The tier-decode router measured: a third of the way, adopted, gap still open
 
 Production protocol, 256k, server-side ms/token (`td-stream-256k`, wall 1422s):
 
@@ -357,7 +357,15 @@ Production protocol, 256k, server-side ms/token (`td-stream-256k`, wall 1422s):
 
 It removes the per-step copy and it is faster than the default, but it
 recovers only 0.128 of the 0.443 ms gap, 29%, and stays 0.297 ms behind
-origin. The gate was 4.33 and it measures 4.643, so **it is not adopted**.
+origin.
+
+**Adoption criterion, owner's ruling (2026-09-16 23:43): better than the
+implementation it replaces is enough to ship, and the gap is worked on
+separately.** By that rule it qualifies -- 4.643 against the default's 4.771,
+1.201x against 1.169x -- and the earlier reading against a 4.33 gate is
+superseded. Shipping still waits on the correctness pair (`td-ruler-64k`
+against `td-ruler-64k-off`, same tree, one flag apart), because the router is
+supposed to move no row and a difference there is a bug, not a tradeoff.
 
 Two readings, and the arms that separate them.
 
