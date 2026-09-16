@@ -400,6 +400,36 @@ the forked stage 1's own overhead and has to be closed before the fenced
 branch is worth tuning. `td-profile-256k` then attributes whatever remains by
 kernel.
 
+### The nodense arm answers it: the machinery is free
+
+`td-stream-256k-nodense` measures **4.348** at 256k against origin's **4.346**,
+inside both p10-p90 windows ([4.332-4.360] and [4.330-4.363]), and 4.168
+against 4.181 at 128k. The forked stage 1, the prep-only pack and the router
+together cost nothing. There is no bottleneck to close before tuning the
+fenced branch, because there is no gap.
+
+That makes the decomposition exact:
+
+| arm | 256k | what it contains |
+|---|---|---|
+| origin | 4.346 | base; an overflow truncates and loses rows |
+| nodense | 4.348 | base; same truncation, tier-decode machinery on |
+| tier-decode | 4.643 | base + attending the full row set inside stage 1 |
+| current default | 4.771 | base + copying the CSR + attending the full row set |
+
+- Handling an overflow costs **0.423 ms/step** in the CSR design and **0.295
+  ms/step** in the tier design. The router made it 30% cheaper and that is the
+  whole of its win.
+- The residual 0.295 ms is not an implementation defect. It is the feature:
+  attending every row of an overflowing lane, which pre-registration 3's C1
+  values at 0.057 of the 65-cell RULER mean. Origin does not pay it because it
+  drops those rows.
+
+So closing the remaining gap to origin is not a kernel problem. It is either
+firing fewer rows (calibration -- origin fires fewer because it solves z
+against the kept maximum rather than the archived row's true score) or making
+the fenced lane's attention cheaper.
+
 ### Two kinds of "do not run this kernel", and which one is legal
 
 A captured decode graph replays a fixed node list, so a launch cannot be
