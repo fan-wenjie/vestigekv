@@ -149,6 +149,21 @@ closed: the KV split count sized from the attended rows (done,
 may also reorder it, and an archive ordered into residual-norm bands so the
 scan can skip whole bands under a sound bound.
 
+## Queued behind every measurement: recall as search over a static set
+
+Exchangeability plus the frozen ranking make the archive a static point set and
+each step's trigger a maximum-inner-product query against it, so the archive can
+be clustered and a cluster skipped whole under the cluster form of the same
+Cauchy-Schwarz certificate (centroid and radius for the sidecar and sketch
+terms, the cluster's largest residual for the certificate term), with the
+conformal calibration carried from rows to clusters. This attacks the largest
+VestigeKV kernel: the scan is 210 us/step at 256k, grows linearly with the
+archive and is bandwidth-bound, so only reading fewer rows makes it faster.
+The paper states it as future work (appendix, "Recall as search over a static
+set"); implementation starts only after every queued measurement has run, and
+lands only if the measured gain justifies changing the algorithm this close to
+the deadline (2026-09-26).
+
 ## Pending
 - `stream-vestigekv-256k-origin`: origin's timed 4k->256k stream, the clean A/B
   against `stream-vestigekv-256k` at 64k/128k/256k.
