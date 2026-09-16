@@ -1,8 +1,8 @@
 # Pre-registration 4 (DRAFT): the recall margin under a repaired cost structure, and the new default
 
-Status: draft. **To be frozen** (committed) once the performance line has
-finished, with its measured numbers filled into "Cost structure" below and
-nothing else changed. No arm of this pre-registration runs before the freeze.
+Status: **frozen 2026-09-16 15:40**, with the performance line's measured
+numbers filled into "Cost structure" below and nothing else changed. No arm of
+this pre-registration ran before this commit.
 
 ## Why the question is reopened
 
@@ -38,16 +38,34 @@ It failed on cost, and four things measured since change what that cost is.
    256k. `--vestigekv-rebuild-overflow-fraction` refits a layer whose scan
    keeps overflowing, off the token path.
 
-## Cost structure (filled at the freeze, from the performance line)
+## Cost structure (measured, 2026-09-16)
 
-- 256k timed stream, server-side ms/token: dense _, origin/vestigekv _,
-  current default _, grid-strided pack _, + rebuild trigger _, + attended
-  splits _.
-- stats-on 256k stream at the chosen package: fetch p50/p90/p99 _,
-  cumulative fallback _.
-- gather microbenchmark: contiguous _ GB/s against scattered _ GB/s at each
-  arm's best grid (decides whether a contiguous kept arena is also in the
-  package).
+256k timed streams, server-side ms/token at 256k, and the speedup over dense:
+
+| protocol | dense | origin | current default | grid-strided pack | + rebuild trigger | + attended splits | fence disarmed |
+|---|---|---|---|---|---|---|---|
+| radix off | 5.564 | 4.360 (1.276) | 4.701 (1.184) | 4.395 (1.266) | 4.518 (1.232) | 4.517 (1.232) | -- |
+| radix on | 5.576 | 4.346 (1.283) | 4.771 (1.169) | 4.879 (1.143) | -- | -- | 4.343 (1.284) |
+
+Recall at 256k, stats on, margin 0, over 258050 steps: production protocol
+fetch p50/p90/p99 = 0/180/2115, overflow 4846, fallback 0.00268; quality
+protocol 0/0/29, overflow 8, fallback 0.00000. The overflow count is
+back-loaded: 148 of the 4846 had happened by step 84750.
+
+Three readings the arms below inherit.
+
+- **The branch costs nothing except the fence.** Disarming it reaches
+  1.284x where origin measures 1.283x, so the 443 commits between them are
+  free; arming it costs 12% while firing on 0.27% of scans, which is a cost
+  of arming, not of firing, and is not yet located.
+- **The certificate goes stale with context.** Overflow is concentrated in
+  the second half of the stream, which is what a fit made at 8k context
+  serving 256k looks like, and is the defect the rebuild trigger and the
+  prefill calibration both address.
+- **Two structural options are closed.** A contiguous arena for the attended
+  tier buys nothing (contiguous, every-32 and random index lists are within
+  1% at every grid, 2255 against 2232 GB/s), and sizing the KV splits from
+  the attended rows is a 2.8% regression at 256k.
 
 ## The package under test
 
