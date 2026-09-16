@@ -372,6 +372,16 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       the "--log-level info" server arg is sglang's default and only makes the runner tag the
 #       output file. A gap above the window spread is bisected with the same job at the
 #       intermediate commits.
+#   profile-vestigekv-origin, profile-vestigekv-current -> kernel-level decode profiles of the two
+#       trees (origin/vestigekv via ENGINE, and the current tree) on the same stream protocol:
+#       mexp/kimi/profile_stream.py drives one 4k-in, ignore-eos request and, when the server's
+#       decode log reaches 128k and 256k, runs the built-in torch profiler for 200 forward steps
+#       (POST /start_profile with num_steps; CUPTI records the kernels inside the CUDA-graph
+#       replay); traces in results/kimi/profile/<job>/ctx<N>k-TP-0.trace.json.gz. The diff:
+#       python mexp/kimi/kernel_diff.py results/kimi/profile/profile-vestigekv-origin/ctx256k-TP-0.trace.json.gz \
+#           results/kimi/profile/profile-vestigekv-current/ctx256k-TP-0.trace.json.gz --label-a origin --label-b current
+#       gives per-kernel GPU us/step for both trees sorted by the difference, which is what
+#       names the commit behind a latency gap (then bisected with the same job at that commit).
 #   pc-A{1,2,3}-{ruler,stats64k,stream256k-stats,stream256k} -> pre-registration 2
 #       (mexp/kimi/prereg2_prefill_calibration.md): arms A1 = --enable-vestigekv-prefill-calibration,
 #       A2 = A1 + --vestigekv-recall-margin 2, A3 = A1 + margin 4.6 with --vestigekv-recall-threshold

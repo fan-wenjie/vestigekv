@@ -173,6 +173,13 @@ def run_client(job, port):
         if job.get("server_args") or "limit" in args or str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1":
             cmd += ["--tag", job["id"]]  # a variant must not overwrite the arm's plain run
         out = os.path.join(RESULTS, f"longbench2_{arm}_{job['id']}.log")
+    elif client == "profile":
+        # Kernel-level decode profiles at the given contexts (mexp/kimi/profile_stream.py).
+        cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "profile_stream.py"), "--port", port,
+               "--out", os.path.join(RESULTS, "profile", job["id"]),
+               "--ctxs", str(args.get("ctxs", "131072,262144")), "--steps", str(args.get("steps", 200)),
+               "--server-log-glob", os.path.join(RESULTS, f"server_{arm}_*.log")]
+        out = os.path.join(RESULTS, f"profile_{arm}_{job['id']}.log")
     elif client == "gsm8k":
         cmd = [PY, "-m", "sglang.test.few_shot_gsm8k", "--num-shots", str(args.get("shots", 64)),
                "--num-questions", str(args.get("n", 1209)),
