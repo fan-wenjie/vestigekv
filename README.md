@@ -318,6 +318,16 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       4k-prefill 126976-token decode on the vestigekv arm with SGLANG_DEBUG_VESTIGEKV_STATS=1:
 #       the server log's VKSTATS lines carry the recall fetch per scan (p50/p90/p99 rows) and the
 #       fallback rate (overflowed scans / scans); separate jobs because the bookkeeping syncs.
+#   margin-{0,1,2,3} -> smoke sweep of --vestigekv-recall-margin (engine commit "recall rows within
+#       a margin of the kept max") on the tasks the max-recall criterion loses (niah_single_1,
+#       niah_multikey_2/3, ruler_fwe, ruler_qa_hotpot) at 16k/32k/64k, 10/cell, stats on: each
+#       job's scores plus its VKSTATS fetch p50/p90/p99 and fallback rate give the
+#       quality-vs-fetch trade-off; the chosen margin then gets a plain (stats-off) latency check.
+#       Decision rule and degradation gates are pre-registered in
+#       mexp/kimi/prereg_recall_margin.md (frozen before any sweep result was read).
+#   margin-lse-{2.3,4.6} -> the same sweep with --vestigekv-recall-threshold lse (margin taken
+#       from the kept log-sum-exp: a dropped row holds <= e^-margin of the whole kept mass;
+#       2.3 and 4.6 are mass fractions 0.1 and 0.01), the control for the max-based margin.
 #   ruler-baseline-long, ruler-vestigekv-long -> the 13 tasks x {128k,256k,512k,1M}, 5 samples/cell,
 #       with CTX=1064960 (1M + 16k; SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 because the
 #       model's derived context is exactly 1048576), --max-running-requests 2, two mamba slots,
