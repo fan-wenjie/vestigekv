@@ -137,6 +137,8 @@ def run_client(job, port):
         n_out = int(args.get("output_len", 126976))
         # a stats-on stream syncs every step: keep its file apart from the timed one
         tag = "_stats" if str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1" else ""
+        if job.get("server_args"):
+            tag += "_" + job["id"]  # a flag sweep must not overwrite the arm's default run
         out_jsonl = os.path.join(RESULTS, f"latency_stream_4k-{n_out}_{arm}{tag}.jsonl")
         cmd = [PY, "-m", "sglang.benchmark.serving", "--backend", "sglang", "--model", MODEL,
                "--port", port, "--num-prompts", "1", "--dataset-name", "random",
