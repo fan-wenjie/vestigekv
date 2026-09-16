@@ -20,8 +20,16 @@ Reference points, already measured on the same engine (results/kimi):
    margin-0's fallback rate, and fetch p50 <= 2048 rows (half the capacity).
 3. Long-decode cost (confirmation run at the chosen value, stats-stream-128k):
    cumulative fallback <= 0.02 and fetch p90 <= 512 rows.
-4. Latency (confirmation run, stats off, 4k -> 128k stream): mean ms/token
-   <= margin-0's mean + 3%.
+4. Latency, as a give-back rate of VestigeKV's own gain over the dense
+   baseline (confirmation runs, stats off, one 4k -> 256k stream per arm,
+   read at 64k, 128k and 256k as the median inter-token latency over the
+   4096 tokens ending there): with t_dense, t_0 (margin 0) and t_m (the
+   candidate) at a context point, the give-back rate is
+   r = (t_m - t_0) / (t_dense - t_0). Where margin 0 gains over dense
+   (t_dense > t_0) the candidate must keep r <= 0.25 at every such point;
+   where it does not (short contexts, VestigeKV's fixed cost), the absolute
+   rule t_m <= 1.01 x t_dense applies instead. A low speedup thus allows only
+   a small absolute cost and a high speedup a proportionally larger one.
 
 ## Choice rule
 
@@ -31,7 +39,9 @@ but only if that mean beats margin-0's by at least 0.05; otherwise the default
 stays 0 and the sweep is reported as a negative result. Ties: the smaller
 margin; the max base over the lse base unless lse wins on both the targeted
 mean and fetch p50. Gates 3 and 4 are checked after the choice; a failure
-falls back to the next candidate in the same order, then to 0.
+falls back to the next candidate in the same order, then to 0. The dense
+and margin-0 streams (stream-baseline-256k, stream-vestigekv-256k) are queued
+with the sweep so the gain is measured on the same engine and box.
 
 ## Confirmation
 
