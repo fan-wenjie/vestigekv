@@ -370,12 +370,18 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       with CTX=1064960 (1M + 16k; SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 because the
 #       model's derived context is exactly 1048576), --max-running-requests 2, two mamba slots,
 #       --cuda-graph-max-bs-decode 2 (lm-eval's RULER generator is seeded 0 here too)
-# weight-cache daemon (one process per GPU holding the TP=2 bf16 shards; every server the
-# queue launches then loads its weights over CUDA IPC in seconds -- common.sh adds
-# --weight-cache-mode client whenever the daemon's ready files name live pids, and its GPU
-# guard then only refuses a second server; WEIGHT_CACHE=off forces disk loading; each
-# server log must show "[IpcModelLoader] Loaded model via IPC", a config mismatch falls
-# back to disk with a warning):
+# weight-cache daemon (one process per GPU holding the TP=2 bf16 shards; a server launched
+# while its ready files name live pids loads the weights over CUDA IPC -- common.sh adds
+# --weight-cache-mode client, and its GPU guard then only refuses a second server;
+# WEIGHT_CACHE=off forces disk loading). NOT USABLE for Kimi Linear on this tree: the IPC
+# load itself takes 0.7 s, but the client-mode server dies with an illegal memory access
+# at CUDA-graph capture (KDA decode kernel) and, with graphs off, in the MoE fused gate:
+# sglang's IpcModelLoader replaces parameters by object and rebuilds only Mamba-style
+# conv1d views, while Kimi Linear's KDA layers, MoE gate and absorbed MLA weights keep
+# construction-time references (results/kimi/weight_daemon.log and the smoke logs of
+# 2026-09-16 07:44-07:48). Fixing it means per-model reference rebuilding in sglang
+# (kimi_linear.py: qkv_conv1d/A_log/dt_bias, the gate's correction bias, w_kc/w_vc);
+# the queue runs with disk loading (~60 s per server launch) until then.
 nohup bash mexp/kimi/weight_daemon.sh > results/kimi/weight_daemon.log 2>&1 &
 bash mexp/kimi/weight_daemon.sh status     # or stop
 python mexp/glm53/queue_runner.py --line kimi

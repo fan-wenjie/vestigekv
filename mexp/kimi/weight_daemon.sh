@@ -21,7 +21,9 @@ case "${1:-start}" in
     pgrep -af "weight_cache" | cut -c1-120 || echo "daemon stopped" ;;
   start)
     if pgrep -f "^[^ ]*python[^ ]* -m sglang.launch_server" > /dev/null; then echo "ABORT: a server is running"; exit 1; fi
-    cd "$ROOT" && exec $PY -m sglang.srt.weight_cache.daemon --model-path "$MODEL" --trust-remote-code \
-      --tp-size 2 --disable-custom-all-reduce "${@:2}" ;;
+    # The daemon's allocations must be exportable as CUDA IPC handles, which the
+    # expandable-segments allocator common.sh selects for the servers cannot be.
+    cd "$ROOT" && exec env -u PYTORCH_CUDA_ALLOC_CONF $PY -m sglang.srt.weight_cache.daemon --model-path "$MODEL" \
+      --trust-remote-code --tp-size 2 --disable-custom-all-reduce "${@:2}" ;;
   *) echo "usage: $0 [start|status|stop]"; exit 2 ;;
 esac
