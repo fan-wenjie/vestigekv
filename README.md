@@ -336,6 +336,11 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       rule): the 4k -> 256k stream at margin 2, timed and with stats, so the long-decode cost
 #       of a margin (gates 3 and 4 of the pre-registration) is on record even though the
 #       short-answer gate 2 failed every max-base candidate in the sweep.
+#   smoke-prefillcal-needle, smoke-prefillcal-replay-64k -> engineering smoke of
+#       --enable-vestigekv-prefill-calibration (engine commit "calibrate the recall index during
+#       prefill"): the head needle and three saved 64k prompts with stats on; the server log's
+#       VKCAL lines show whether the prefill-time builds install before decode (async=True at a
+#       seq below the prompt length) and what they fire. Not a pre-registered measurement.
 #   ruler-baseline-long, ruler-vestigekv-long -> the 13 tasks x {128k,256k,512k,1M}, 5 samples/cell,
 #       with CTX=1064960 (1M + 16k; SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 because the
 #       model's derived context is exactly 1048576), --max-running-requests 2, two mamba slots,
