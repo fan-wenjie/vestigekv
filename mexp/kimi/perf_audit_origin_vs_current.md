@@ -287,11 +287,15 @@ with it -- has no consumer left.
   (wired, tested, registered). The gate is 4.33 ms/token with the overflow path
   intact. `td-needle`, `td-replay-64k` and `td-ruler-64k` are its correctness
   arms; the row sets do not move, so a RULER difference is a bug.
-- If it is adopted, two paper sentences stop being true and must be rewritten
-  from the new design, not edited: "The stock MLA-decode kernel is untouched"
-  (stage 1 is a fork of it, differing only in where a row id comes from) and
-  the kernel count, where the two-kernel CSR pack becomes the prep kernel
-  alone, so seven fused kernels become six.
+- If it is adopted, four paper places stop being true and must be rewritten
+  from the new design, not edited. Body: "The stock MLA-decode kernel is
+  untouched" (stage 1 is a fork of it, differing only in where a row id comes
+  from); the kernel count, where the two-kernel CSR pack becomes the prep
+  kernel alone, so seven fused kernels become six; and the int64-CSR sentence
+  near the deployment notes, which describes a width the graph path no longer
+  builds (the tiers stay int32 and the fork widens on the load). Appendix: the
+  paragraph on the same int64 overflow, which stays true of the eager path and
+  has to say which path it is about.
 - `stream-vestigekv-256k-origin`: origin's timed 4k->256k stream, the clean A/B
   against `stream-vestigekv-256k` at 64k/128k/256k.
 - `profile-vestigekv-origin-256k` and the 256k window of
