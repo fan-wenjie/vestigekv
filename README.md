@@ -373,6 +373,10 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       output file. A gap above the window spread is bisected with the same job at the
 #       intermediate commits.
 #   Findings and the method of this audit: mexp/kimi/perf_audit_origin_vs_current.md.
+#   mexp/kimi/bench_dense_mla.py times the experimental page-table dense MLA decode
+#       (engine branch vestigekv-fused-fallback, module vestigekv/dense_mla.py) against a torch
+#       reference and against the CSR copy it would remove, at a fenced lane's row count. Run
+#       with ENGINE=~/vestigekv-wt/engine-fused and only when no timed job is measuring.
 #   mexp/kimi/bench_gather.py reads N rows of 576 bf16 through an index list, contiguous
 #       against scattered (one row every 32, the attended tier's spacing) and against random,
 #       over a grid sweep: it says how much of the attended tier's ~88 GB/s is locality and
