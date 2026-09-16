@@ -47,6 +47,56 @@ At 128k the branch therefore costs ~0.6% of a decode step, and the 1.28x
 is not explained by it. The 256k pair and the timed origin stream decide
 whether the gap grows with context or is a protocol difference.
 
+## The 256k finding: the overflow fence, and the rank skew it creates
+
+Collective time is not work: an all-reduce absorbs the wait for the slower rank.
+`mexp/kimi/rank_skew.py` splits the two apart per rank (us per step, 200 steps):
+
+| trace | TP0 nccl | TP0 compute | TP1 nccl | TP1 compute | skew | step |
+|---|---|---|---|---|---|---|
+| origin @128k | 582.8 | 4716.5 | 461.6 | 4724.7 | 8.2 | 4383.9 |
+| current @128k | 613.4 | 4711.0 | 483.9 | 4700.9 | 10.1 | 4409.3 |
+| current @256k | 915.4 | 4850.5 | 452.1 | 5316.4 | 466.0 | 4845.4 |
+
+**At 128k the branch costs nothing in compute**: the slower rank's compute is
+4724.7 us on origin and 4711.0 us on the current tree, i.e. the current tree is
+13.7 us/step *faster* in real work. The +25 us of step time is collective
+jitter, and the `_pack_csr_gather_kernel` regression (int64 CSR) is paid back by
+the faster scan and stage-2 kernels.
+
+**At 256k the two ranks diverge by 466 us/step**, and the whole divergence is
+two kernels (TP1 minus TP0, us/step):
+
+| kernel | TP0 | TP1 | diff |
+|---|---|---|---|
+| _pack_csr_gather_kernel | 13.5 | 264.2 | +250.7 |
+| _fwd_grouped_kernel_stage1 | 106.5 | 301.4 | +194.9 |
+
+Both are the signature of the **dense-fallback fence**: when a scan fires more
+rows than the recall capacity, the pack replaces that lane's kept-plus-fetched
+row set with the request's *entire* row set, so the gather and the attention
+run over 256k rows instead of the ~8k kept ones. A pack 20x heavier on one rank
+means most of TP1's MLA layers fence while TP0's do not -- the ranks hold
+different heads, so they fire different row sets and overflow independently.
+TP0 then waits for TP1 inside the all-reduce (915 vs 452 us).
+
+The fence does not exist on `origin/vestigekv`: there an overflow is **truncated**
+to the first `FETCH_WIDTH_UNCAPPED`=4096 fired rows and counted in the histogram.
+It arrived with commit 256f320 (capacity, flags, int32 tables), default on. So
+this is a genuine cost the branch added at long context, it is bounded by how
+often the certificate over-fires, and it is the same defect the quality side
+sees as a high fallback rate. `--disable-vestigekv-recall-overflow-fallback`
+restores the origin behaviour and is measured as its own arm below.
+
+## Production protocol (radix cache on)
+
+The paper's serving numbers were taken with the prefix cache on; this line has
+been running `--disable-radix-cache` (quality determinism). `RADIX=on` in
+`mexp/kimi/common.sh` selects the production protocol, and the `prod-stream-*`
+jobs repeat the 4k->256k timed stream under it for dense, the current tree,
+`origin/vestigekv` and the current tree with the fence disabled -- which
+separates "the branch costs something" from "the harness protocol differs".
+
 ## Pending
 - `stream-vestigekv-256k-origin`: origin's timed 4k->256k stream, the clean A/B
   against `stream-vestigekv-256k` at 64k/128k/256k.

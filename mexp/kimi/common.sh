@@ -10,8 +10,12 @@ MODEL=${MODEL:-moonshotai/Kimi-Linear-48B-A3B-Instruct}
 COMMON=(--model-path $MODEL --trust-remote-code --tp-size 2
   --context-length "${CTX:-73728}" --max-running-requests "${MAX_REQS:-4}"
   --max-mamba-cache-size "${MAMBA_SLOTS:-4}" --chunked-prefill-size "${CHUNK:-4096}"
-  --disable-radix-cache --disable-custom-all-reduce --sampling-backend pytorch
+  --disable-custom-all-reduce --sampling-backend pytorch
   --random-seed "${SEED:-0}" --host 127.0.0.1 --port "${PORT:-30000}")
+# RADIX=on serves with the prefix cache, the production default and the protocol
+# the paper's serving numbers were taken under; the quality line keeps it off so a
+# rerun of the same prompt recomputes instead of replaying a cached prefix.
+[ "${RADIX:-off}" = on ] || COMMON+=(--disable-radix-cache)
 [ -n "${MEM_FRAC:-}" ] && COMMON+=(--mem-fraction-static "$MEM_FRAC")
 if [ "${GRAPH:-1}" = 1 ]; then COMMON+=(--cuda-graph-max-bs-decode "${GRAPH_BS:-4}"); else COMMON+=(--disable-cuda-graph); fi
 # Weight-cache daemon (mexp/kimi/weight_daemon.sh): when its ready files name live pids,

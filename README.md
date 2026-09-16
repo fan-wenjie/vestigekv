@@ -373,6 +373,15 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       output file. A gap above the window spread is bisected with the same job at the
 #       intermediate commits.
 #   Findings and the method of this audit: mexp/kimi/perf_audit_origin_vs_current.md.
+#   mexp/kimi/rank_skew.py <trace prefix>... splits each rank's collective time (a sink that
+#       absorbs the wait for the slower rank) from its compute, which is what a code change
+#       actually costs; it is how the 256k fence cost was found.
+#   prod-stream-{baseline,vestigekv,vestigekv-origin,vestigekv-nofence}-256k -> the same timed
+#       4k->256k stream under the PRODUCTION protocol (RADIX=on in common.sh keeps the prefix
+#       cache, as the paper's serving numbers were taken; the quality line stays radix-off).
+#       Four arms separate protocol from code: dense, the current tree, origin/vestigekv, and
+#       the current tree with --disable-vestigekv-recall-overflow-fallback (origin's truncate
+#       behaviour on overflow).
 #   profile-vestigekv-origin, profile-vestigekv-current -> kernel-level decode profiles of the two
 #       trees (origin/vestigekv via ENGINE, and the current tree) on the same stream protocol:
 #       mexp/kimi/profile_stream.py drives one 4k-in, ignore-eos request and, when the server's
