@@ -433,6 +433,13 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #           results/kimi/profile/profile-vestigekv-current/ctx256k-TP-0.trace.json.gz --label-a origin --label-b current
 #       gives per-kernel GPU us/step for both trees sorted by the difference, which is what
 #       names the commit behind a latency gap (then bisected with the same job at that commit).
+#   mexp/kimi/make_lb2_numbers.py regenerates the paper's LongBench v2 macros from
+#       results/kimi/longbench2/results_{baseline,vestigekv}.json:
+#       python mexp/kimi/make_lb2_numbers.py [--out ~/vestigekv_paper/lb2_numbers.tex]
+#       Overall and per domain / difficulty / length bucket per arm, the signed paired
+#       difference, and the questions the arms answer differently in each direction. An arm
+#       that has not run emits \PENDING, which errors at build time rather than printing a
+#       stale number.
 #   mexp/kimi/ruler_diff.py compares two RULER arms question by question:
 #       python mexp/kimi/ruler_diff.py results/kimi/ruler/samples_<a>.json results/kimi/ruler/samples_<b>.json
 #       For arms that must be identical (a stats-on twin, or a change that moves no row such as
