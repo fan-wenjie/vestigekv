@@ -184,6 +184,35 @@ GB/s in the decode kernel is a parallelism artifact, not a locality one, and
 the lever is the split count (--enable-vestigekv-attended-splits), not the
 layout. The arena idea is dropped.
 
+## Negative: sizing the KV splits from the attended rows (2026-09-16)
+
+`--enable-vestigekv-attended-splits` clamps what the decode kernel's split
+count is sized from, 262144 rows at 256k down to the attended bound near
+12288. Timed 256k streams, server-side ms/token, against the same tree
+without it:
+
+| context | attended splits | perf branch | ratio |
+|---|---|---|---|
+| 128k | 4.146 [4.115-4.238] | 4.179 [4.138-4.212] | 0.992 |
+| 252k | 4.478 [4.431-4.548] | 4.391 [4.358-4.424] | 1.020 |
+| 256k | 4.517 [4.470-4.559] | 4.395 [4.368-4.437] | 1.028 |
+
+The gains at and below 128k sit inside overlapping windows; the 2.8%
+regression at 256k does not. Per kernel at 256k, `_fwd_grouped_kernel_stage1`
+rises 107.6 -> 132.8 us and `_fwd_kernel_stage2` does not move.
+
+So the model behind the flag was wrong in both halves: fewer splits starve the
+read of parallelism rather than feeding each split more work, and the combine
+stage was never dominated by the number of partials. The base's sizing is
+already near optimal. The flag stays off and is not adopted.
+
+With this and the gather microbenchmark, both explanations offered for the
+attended tier's ~88 GB/s are closed: not locality (contiguous, every-32 and
+random index lists are within 1% at every grid) and not over-splitting. What
+remains is stage1 itself, which is not a pure read -- it carries a 576-wide
+multi-head dot per row -- so it is occupancy or arithmetic bound, and it is
+upstream code outside this backend.
+
 ## Negative: a sound ball bound cannot prune the scan (2026-09-16)
 
 `mexp/kimi/bucket_offline.py` measures, on dumped calibration snapshots, what
