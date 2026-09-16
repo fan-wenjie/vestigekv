@@ -386,7 +386,9 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       cache, as the paper's serving numbers were taken; the quality line stays radix-off).
 #       Four arms separate protocol from code: dense, the current tree, origin/vestigekv, and
 #       the current tree with --disable-vestigekv-recall-overflow-fallback (origin's truncate
-#       behaviour on overflow).
+#       behaviour on overflow). MAMBA_SLOTS=8, not the radix-off streams' 1: with the prefix
+#       cache on, sglang sizes the hybrid state cache at 5 mamba slots per request and refuses
+#       to start below that ("state cache is too small to serve any requests").
 #   profile-vestigekv-origin, profile-vestigekv-current -> kernel-level decode profiles of the two
 #       trees (origin/vestigekv via ENGINE, and the current tree) on the same stream protocol:
 #       mexp/kimi/profile_stream.py drives one 4k-in, ignore-eos request and, when the server's
