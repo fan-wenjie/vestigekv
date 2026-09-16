@@ -184,7 +184,32 @@ GB/s in the decode kernel is a parallelism artifact, not a locality one, and
 the lever is the split count (--enable-vestigekv-attended-splits), not the
 layout. The arena idea is dropped.
 
-## Queued behind every measurement: recall as search over a static set
+## Negative: a sound ball bound cannot prune the scan (2026-09-16)
+
+`mexp/kimi/bucket_offline.py` measures, on dumped calibration snapshots, what
+fraction of the archive survives the cluster form of the certificate. Three
+snapshots, 59518 archived rows each, k-means in sketch space:
+
+| clusters | rows still read (mean) | median | rows the certificate fires |
+|---|---|---|---|
+| 256 | 90.9% | 100.0% | 1754 of 59518 |
+| 1024 | 87.9% | 98.6% | 1739 of 59518 |
+
+Quantile schemes on one or two coordinates are worse (99-100% at B up to
+16384): they cut slabs, not balls, and the unconstrained coordinates keep the
+radius. The obstacle is dimensional, not implementational: the bound's slack is
+the sketch query norm times the ball radius, and a radius falls as B^(-1/r), so
+at r=64 raising B from 256 to 16384 shrinks it by about 4%. The soundness
+assertion passes everywhere, so the bound is right and simply too loose.
+
+The algorithm is therefore not changed. The paper's future-work paragraph now
+states the reframing and this obstacle together, and the body clause pointing
+at it is removed. What remains open is an approximate, conformally calibrated
+pruning test, which would move the fired set and so would have to be measured
+as a quality change rather than a speed one -- out of scope before the
+deadline.
+
+## Superseded: queued behind every measurement
 
 Exchangeability plus the frozen ranking make the archive a static point set and
 each step's trigger a maximum-inner-product query against it, so the archive can
