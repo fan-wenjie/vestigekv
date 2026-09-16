@@ -54,6 +54,11 @@ def main():
         tasks=[TASK],
         task_manager=tm,
         batch_size=1,
+        # The instruct model has a chat template and LongBench v2 is an
+        # instruction task: without it the model continues the document,
+        # writes "Analysis:" and never reaches the requested answer line
+        # (measured: 1% of 300 answers parsed, both arms at the floor).
+        apply_chat_template=True,
         limit=args.limit,
         log_samples=True,
         random_seed=args.seed,
