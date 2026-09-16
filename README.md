@@ -416,7 +416,13 @@ python mexp/glm53/queue_runner.py
 #     --max-concurrency 1 --warmup-requests 0 --output-details \
 #     --output-file results/glm53/latency_stream_4k-126976_<arm>.jsonl
 # results: results/glm53/ruler/results_<arm>_n10_4096-8192-16384-32768-65536.json (+ samples),
-#          results/glm53/latency_stream_4k-126976_<arm>.jsonl, server_<arm>_<job>.log per job
+#          results/glm53/latency_stream_4k-126976_<arm>.jsonl, server_<arm>_<job>.log per job.
+#          RECORD NOTE: the vestigekv stream file on disk is the stats-on run (a stats job
+#          used to write the same name and overwrote the timed one; the runner now suffixes
+#          _stats). The timed vestigekv curve, read before that overwrite (fixed engine,
+#          per-token median over the 4096 tokens ending at each point): 8k 11.535, 16k 11.613,
+#          32k 11.731, 64k 11.885, 128k 12.207 ms vs baseline 11.265/11.283/11.301/11.340/11.398
+#          (ratio 0.977 -> 0.934; means 11.908 vs 11.342 ms/token).
 # two-arm RULER table (task x length, a/b, means): python mexp/glm53/compare_ruler.py
 # per-token latency vs context from the stream jobs: python mexp/glm53/stream_curve.py
 # GSM8K-Platinum (64-shot, n=1209, serial) on either arm: relaunch with CTX=16384, then

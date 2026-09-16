@@ -133,7 +133,9 @@ def run_client(job, port):
     elif client == "stream":
         # README metric 1: bs=1, 4k prefill, continuous decode; per-token latency curve.
         n_out = int(args.get("output_len", 126976))
-        out_jsonl = os.path.join(RESULTS, f"latency_stream_4k-{n_out}_{arm}.jsonl")
+        # a stats-on stream syncs every step: keep its file apart from the timed one
+        tag = "_stats" if str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1" else ""
+        out_jsonl = os.path.join(RESULTS, f"latency_stream_4k-{n_out}_{arm}{tag}.jsonl")
         cmd = [PY, "-m", "sglang.benchmark.serving", "--backend", "sglang", "--model", MODEL,
                "--port", port, "--num-prompts", "1", "--dataset-name", "random",
                "--random-input-len", str(args.get("input_len", 4096)), "--random-output-len", str(n_out),
