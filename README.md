@@ -460,6 +460,10 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       A job whose only difference is a server flag needs `args.lengths` or `args.tasks` as well,
 #       or the ruler client writes UNTAGGED and overwrites the arm's canonical results file. lm-eval scores only one length per record, so the per-question win counts cover the
 #       scored cells alone while the answer comparison covers all 65.
+#   PRIORITY: a performance job interrupts the quality job that is running -- its state line is
+#       dropped from results/kimi/queue_state.jsonl so it reruns -- and within a performance
+#       block the timing job goes first, ahead of its own correctness smokes. In-flight quality
+#       work is not a reason to queue a performance job behind it.
 #   The order of the whole line is fixed: every performance job, then the pre-registration 4
 #       candidate arms and their smoke, then the default is committed, and only then the
 #       quality jobs -- which all run under that default. Draft rule:
