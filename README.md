@@ -433,6 +433,13 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #           results/kimi/profile/profile-vestigekv-current/ctx256k-TP-0.trace.json.gz --label-a origin --label-b current
 #       gives per-kernel GPU us/step for both trees sorted by the difference, which is what
 #       names the commit behind a latency gap (then bisected with the same job at that commit).
+#   mexp/kimi/ruler_diff.py compares two RULER arms question by question:
+#       python mexp/kimi/ruler_diff.py results/kimi/ruler/samples_<a>.json results/kimi/ruler/samples_<b>.json
+#       For arms that must be identical (a stats-on twin, or a change that moves no row such as
+#       --enable-vestigekv-tier-decode) any differing answer is a bug and the tool names the task,
+#       the length and the document; exit status is 1 when they disagree, so a smoke job can gate
+#       on it. lm-eval scores only one length per record, so the per-question win counts cover the
+#       scored cells alone while the answer comparison covers all 65.
 #   The order of the whole line is fixed: every performance job, then the pre-registration 4
 #       candidate arms and their smoke, then the default is committed, and only then the
 #       quality jobs -- which all run under that default. Draft rule:
