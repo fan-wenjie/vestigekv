@@ -420,6 +420,34 @@ the forked stage 1's own overhead and has to be closed before the fenced
 branch is worth tuning. `td-profile-256k` then attributes whatever remains by
 kernel.
 
+### Correction: the copy the tier path removes is 16 us, not 250
+
+The 250 us figure came from `profile-vestigekv-current-256k`, the default tree
+*before* the grid-stride fix. On the perf branch, which the tier work is built
+on, `_pack_csr_gather_kernel` costs 15.9 us/step on TP1 at 256k, and the tier
+path takes it to zero. Origin against the delivered implementation, TP1, 256k,
+per kernel:
+
+| kernel | origin | tier | diff |
+|---|---|---|---|
+| _fwd_grouped_kernel_stage1 | 110.5 | 298.1 | +187.6 |
+| _scan_batched_kernel | 211.6 | 215.6 | +4.0 |
+| _fwd_kernel_stage2 | 183.4 | 183.4 | 0.0 |
+| _pack_csr_gather_kernel | 15.9 | **0.0** | -15.9 |
+| ncclDevKernel_AllReduce | 440.3 | 423.9 | -16.4 |
+
+So the whole cost is stage 1's +187.6 us, which is the feature: origin reads
+about 8k rows because it truncates, and the delivered implementation attends
+the fired set. That trace predates the affine arm, which takes 0.087 ms/step of
+it back end to end; a fresh profile is needed for the final per-kernel
+attribution.
+
+One thing this table shows that nothing has acted on: **stage 2 costs 183.4 us
+against stage 1's 110.5**, identical on both trees. The combine costs more than
+the read. `--enable-vestigekv-attended-splits` aimed at exactly that and
+measured a 2.8% regression at 256k, but that was before the row read changed,
+so the verdict may not still hold.
+
 ### The nodense arm answers it: the machinery is free
 
 `td-stream-256k-nodense` measures **4.348** at 256k against origin's **4.346**,
@@ -627,6 +655,11 @@ origin's one contiguous CSR load.
   (wired, tested, registered). The gate is 4.33 ms/token with the overflow path
   intact. `td-needle`, `td-replay-64k` and `td-ruler-64k` are its correctness
   arms; the row sets do not move, so a RULER difference is a bug.
+- **Done (2026-09-17)**: the paper and README say six fused kernels, not seven,
+  and the kernel-mapping paragraph no longer claims the stock MLA-decode kernel
+  is untouched -- stage 1 is a fork of it, with an arithmetic row-id form for a
+  contiguous page table, and identical row sets either way. Still open: the two
+  int64-CSR sentences, which describe a width only the eager path still builds.
 - If it is adopted, four paper places stop being true and must be rewritten
   from the new design, not edited. Body: "The stock MLA-decode kernel is
   untouched" (stage 1 is a fork of it, differing only in where a row id comes

@@ -19,7 +19,7 @@ carries — the 64-dim un-roped sidecar branch, a vestige of RoPE that NoPE
 training repurposes into a salience channel — keeping a global top-(S/32) of
 rows attended while a **certified per-step recall tier** (rank-64 sketch +
 conformal certificate) keeps every archived row reachable: no row is ever
-dropped. The whole recall step runs as **seven fused Triton kernels inside
+dropped. The whole recall step runs as **six fused Triton kernels inside
 the decode CUDA graph** — one launch per step, no extra fixed cost, and the
 graph never recaptures for VestigeKV reasons. Cache rows stay bit-exact
 bf16; no quantization anywhere.
