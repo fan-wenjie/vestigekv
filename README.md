@@ -423,6 +423,32 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       4096 steps, so only the amortisation changes. Near 0.0002 puts the cause on the step
 #       count; near 0.3-0.4 puts it on the context's provenance, and then "the speedup is a
 #       long-decode number" needs a second qualifier in the paper.
+#   omit-blend-ruler-n10 -> the omitted-mass arm, the one lever the six refutations left.
+#       Six independent measurements now say more rows cannot help multi-key: the margin
+#       sweep 0->3 does not move it, A2's corrected target nets zero, A4 has nothing to
+#       recover, and held-out recall is 99.9% with no decay from k=1 to k=8. All six ask the
+#       same question -- is the row that beats max1 fired -- and all six answer yes. None of
+#       them looks at the softmax SCALE. Measured on the Kimi dumps: the attended set is ~6%
+#       of rows and captures 57% of the dense softmax mass (min 24%), so every retained weight
+#       is inflated by Z/Zv, mean 2.9x and up to 8.7x. Offline, correcting the denominator
+#       from the certified bound the scan already computes AND carrying the omitted mass at
+#       the archive's mean value cuts the attention-output error from 0.508 to 0.406; the
+#       denominator alone makes it worse (0.652), because that subtracts the mass without
+#       returning its value.
+#       This runs that arm end to end: SGLANG_DEBUG_VESTIGEKV_OMITTED_BLEND=1, 13 tasks,
+#       4k-64k, n=10, against the delivered A0 at the same n (multikey_2 0.920,
+#       multikey_3 0.860, qa_hotpot 0.680, 65-cell mean 0.9179). `probe: true` runs the head
+#       needle first so a catastrophic sign or scale error costs one minute, not twenty.
+#       PREDICTION, before running: multikey_2 and multikey_3 rise. FALSIFIERS, either of
+#       which ends the arm: (1) the targeted tasks do not move -- output error was a weak
+#       proxy and 20% of it buys nothing; (2) ANY currently-perfect task falls, which says
+#       the blend trades the tasks that work for the ones that do not. Note the arm rewrites
+#       every attention output, so collateral damage is the real risk and all 13 tasks run,
+#       not just the three that are failing.
+#       RISK: the arm materialises the [H, archive] score matrix and the side/csk/rho views
+#       per lane per layer per step -- the three the steady-state footprint deliberately does
+#       not hold. ~430 MB resident at 64k x 4 lanes against ~9 GB free. An OOM is a cost of
+#       the probe, not a result.
 #   mexp/kimi/cert_holdout_offline.py -> does the certificate hold OUT OF SAMPLE?
 #       ent_margin_offline.py and z_topk_offline.py both score the fitted zp on the queries
 #       zp was fitted on. A conformal quantile recovers its target in sample BY CONSTRUCTION,
