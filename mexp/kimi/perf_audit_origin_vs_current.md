@@ -292,15 +292,35 @@ same context, the first one explains almost none of it.**
   against 0, and attended_frac 0.108 against 0.049 at a quarter of the
   context, are the same statement twice.
 
-So the 2100x at matched context is the other two, and the per-task spread
-says both are present: every RULER task pays the same one-build-per-request
-structure, yet they range from 0.096 (single_1) to 0.245 (multikey_3) over
-4k-64k. The common floor is the calibration regime, the spread on top is the
-task. `stats-stream-64kprefill` separates them directly -- 64k prefill,
-continuation text, 4096 decode steps, stats on -- because it holds the context
-at RULER's and amortizes the calibration the way the long stream does. Near
-0.0002 puts the weight on RULER's questions; near 0.3 puts it on the prefilled
-context itself.
+**The control says it is the regime, not the question.**
+`stats-stream-64k-x130` holds everything RULER's 64k stats job holds -- the
+engine, the env, 64k of context, 14 generated tokens, 130 requests, ~1800 steps
+-- and changes only what the text is, random continuation instead of a needle:
+
+| 64k, 130 requests x 14 tokens | fallback TP0 | TP1 | fetch p50 | index builds |
+|---|---|---|---|---|
+| random continuation (control) | 0.407 | 0.439 | 1143 / 1663 | 903 |
+| RULER needle questions | 0.360 | 0.324 | 1023 / 449 | 889 |
+| the long stream, at 64k | 0.00014 | -- | 0 | 14 over 258050 steps |
+
+The continuation arm falls back **more** than RULER, so the questions are not
+the cause and are if anything slightly easier than random text. The whole 2100x
+is the short-answer regime: both 64k arms fit 903 and 889 indexes over ~1800
+steps, one per request per layer, while each request runs only 14 steps. The
+index is calibrated at about the point the answer ends, so most of the answer
+is served by the provisional identity-basis index with z at Z_MAX, which is
+conservative and over-fires straight into the 4096 capacity.
+
+Two consequences follow, and both belong in the paper.
+
+- **The speedup needs long generations.** On short answers a third to a half of
+  scans cannot certify, whatever the question is. The 1.28x is a long-decode
+  number and the text must say so rather than let a reader carry it across.
+- **Pre-registration 2 attacked the right problem.** Calibrating during prefill
+  is the obvious way to remove the provisional phase; it failed because prompt
+  queries are not exchangeable with decode queries, so it under-recalled. The
+  problem it aimed at is the dominant one, and a method that calibrates on
+  decode queries sooner is the open direction.
 
 What this costs is not hypothetical: pre-registration 3's C1 control turns the
 fallback off and RULER loses 0.0565 of the 65-cell mean, concentrated on the
