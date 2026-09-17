@@ -112,6 +112,29 @@ gap as measured, with this pre-registration's arms as the attempts that did not
 close it. That outcome is worth stating: it is the difference between a method
 that is weak on multi-key and one whose weakness is understood.
 
+## Adoption ruling (owner, 2026-09-17)
+
+If A2 passes every gate, it is adopted as the final algorithm without checking
+back. "Passes every gate" is the whole of the condition and it is already the
+definition of leading across the board: Q1 requires the multi-key gain, Q2 and
+Q3 forbid paying for it anywhere else, C1 caps the fallback rate and P1 caps
+the latency. An arm that improves multi-key by less than Q1's threshold, or
+that gains there and loses elsewhere, is **not** adopted under this ruling --
+it is reported with its numbers and the decision returns to the owner.
+
+Adoption is these steps, in order, and nothing else:
+
+1. Merge `vestigekv-multikey` into the delivered branch
+   `vestigekv-fused-fallback`; the arm is one expression in `recall_tier.py`.
+2. Re-run the registered unit and kernel suites and the head needle (gate S1).
+3. Re-measure the 256k production stream on the merged tree and confirm P1
+   against A0's 4.364 ms/token.
+4. Regenerate the paper's RULER macros from A2's n=50 results
+   (`make_ruler_numbers.py --n 50`) and rewrite the certificate's description:
+   it certifies every archived row that beats the kept maximum, not the best
+   archived row.
+5. Record the outcome in this file, including every gate's measured value.
+
 ## What this does to the paper
 
 The body's task-family claim is unaffected either way -- single-needle,
