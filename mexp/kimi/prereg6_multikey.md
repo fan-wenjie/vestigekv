@@ -197,6 +197,32 @@ builds once, so most of its steps are exactly those. That is the next thing to
 measure, and it needs an instrument that attributes a miss to the index that
 served it, which does not exist yet.
 
+## The amortisation reading, confirmed (2026-09-17)
+
+`stats-stream-64kprefill-long` resolves the variable `stats-stream-64k-x130`
+left confounded, and it resolves it the way the outcome above predicted.
+
+| run | context arrives by | decode steps | text | fallback |
+|---|---|---|---|---|
+| RULER 64k | 64k prefill | 14 | needle question | 0.360 |
+| `stats-stream-64k-x130` | 64k prefill | 14 | random continuation | 0.41 |
+| `stats-stream-64kprefill-long` | 64k prefill | **4096** | random continuation | **0.0027 / 0.0044** |
+| long stream at 64k | decoded up to | 258050 | random continuation | 0.00014 |
+
+Rows 2 and 3 differ in **one** variable, the decode count, and the rate falls
+by about a hundredfold. The pre-registered reading was "near 0.0002 puts the
+cause on the step count; near 0.3-0.4 puts it on the context's provenance"; at
+0.0027-0.0044 it is two decades from the first and two from the second, and on
+the log scale that decides a ratio it sits with the step count. The context's
+provenance is not what drives the rate, so the paper's "long-decode number"
+qualifier needs no second clause about how the context was built.
+
+What is left is the mechanism, and it is the one the outcome above named: a
+fourteen-step answer spends nearly all of its steps on an index that has not
+finished calibrating, so it is not a statement about the question being asked.
+`idxstate-ruler-64k` and `idxstate-stream-64kprefill` measure that directly,
+with the prediction and its falsifier registered in README before either ran.
+
 ## Adoption ruling (owner, 2026-09-17)
 
 If A2 passes every gate, it is adopted as the final algorithm without checking

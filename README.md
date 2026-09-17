@@ -423,6 +423,26 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       4096 steps, so only the amortisation changes. Near 0.0002 puts the cause on the step
 #       count; near 0.3-0.4 puts it on the context's provenance, and then "the speedup is a
 #       long-decode number" needs a second qualifier in the paper.
+#   idxstate-ruler-64k, idxstate-stream-64kprefill -> WHICH index the misses are under.
+#       The offline scan says a CALIBRATED certificate fires every archived row that beats the
+#       kept maximum (1081 of 1081 on the Kimi snapshots), so the rows RULER loses on multi-key
+#       are lost on steps some other index served. Until now the stats line pooled every scan
+#       into one fired-row histogram, so that could not be checked. The delivered tree now
+#       splits scans, fired rows and overflows three ways by the state of the index that served
+#       them -- PROVISIONAL (no tier, or z clamped to Z_MAX because calibration has not met
+#       min_hard), FRESH (fitted, context not outgrown), STALE (fitted past
+#       INDEX_STALE_FACTOR x the length at the fit) -- and reports them as
+#       idx(scans/fetch/ovf)[prov=.. fresh=.. stale=..].
+#       These two run that instrument on the two ends of the amortisation axis that
+#       stats-stream-64kprefill-long just isolated: the same 64k prefill, 14 decode steps
+#       (RULER) against 4096 (the stream), where fallback measures 0.36 and 0.0045. Both on
+#       ENGINE=/home/user/vestigekv-wt/engine-fused, which is the only tree carrying the
+#       instrument.
+#       PREDICTION, recorded before running: if the amortisation reading is right, RULER's
+#       scans are mostly prov and its overflows are concentrated there, while the long stream's
+#       are mostly fresh. The falsifier is sharp -- RULER showing a fresh-dominated mix, or its
+#       per-bucket overflow rate being flat across the three, says the misses are NOT an
+#       index-state effect and the multi-key gap needs a different explanation.
 #   stats-stream-64k-x130 -> the controlled counterpart of stats-vestigekv-ruler-64k: the same
 #       engine tree, the same env (CTX 73728, radix off, stats on), the same context (64k
 #       prefill), the same generated length (14 tokens) and the same number of requests (130,

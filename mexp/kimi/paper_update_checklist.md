@@ -49,6 +49,11 @@ now, so both have to name the path they describe.
   (`stats-stream-64k-x130`) falls back on 0.41 -- more than RULER. So the
   regime, not the question, is what decides, and the text must not let a reader
   carry 1.28x across to a short-answer workload.
+  **Resolved 2026-09-17**: the regime means the DECODE COUNT, not how the
+  context was built. `stats-stream-64kprefill-long` holds the 64k prefill and
+  the text fixed and moves only the step count, 14 to 4096; fallback goes 0.41
+  to 0.0027/0.0044. So the qualifier is "long-decode" and nothing more -- no
+  second clause about prefill versus decoded-up-to is needed.
 - **What the tier path and the affine arm each cost in quality**: 0 of 650
   answers and exactly +0.0000 for the tier row read; 40 of 650 and +0.0056 for
   the affine reordering, against a 40-of-650 run-to-run floor. Worth a sentence
