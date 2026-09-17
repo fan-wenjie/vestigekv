@@ -432,9 +432,31 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       of rows and captures 57% of the dense softmax mass (min 24%), so every retained weight
 #       is inflated by Z/Zv, mean 2.9x and up to 8.7x. Offline, correcting the denominator
 #       from the certified bound the scan already computes AND carrying the omitted mass at
-#       the archive's mean value cuts the attention-output error from 0.508 to 0.406; the
-#       denominator alone makes it worse (0.652), because that subtracts the mass without
-#       returning its value.
+#       that set's MASS-WEIGHTED centroid cuts the attention-output error from 0.471 to
+#       0.195; the plain archive mean only reaches 0.367, and the denominator alone makes it
+#       WORSE (0.652), because that subtracts the mass without returning its value. An oracle
+#       with the true mass and true values reproduces dense exactly, which is what says the
+#       decomposition is right. The weighted centroid is not a tweak: the correction is one
+#       turn of the online-softmax recurrence O_n = lerp(O_{n-1}, v_n, sigmoid(s_n - lse)),
+#       and a synthetic row standing for the omitted set is exact only if it carries that
+#       set's weighted centroid.
+#       TWO JOBS, because the first raced a code change:
+#         omit-blend-ruler-n10  the ARITHMETIC-mean variant (offline 0.367). It launched at
+#           11:06 from a working tree rewritten at 11:10, so it has NO commit. Indicative
+#           only; its numbers may not be quoted and do not go in the paper.
+#         omit-blend-exact-n10  the registered arm: the mass-weighted centroid (offline
+#           0.195), commit 974e266. This is the one that decides the line.
+#       Testing the exact form rather than a cheap approximation is deliberate: if the BEST
+#       available compensation does not move accuracy the line is dead, whereas a weak
+#       variant failing proves nothing. Cheap approximations already ruled out offline, so
+#       they are not retried: the rank-64 sketch is a poor basis for the VALUE (0.531, worse
+#       than doing nothing); bucketing the archive on its top principal direction saturates
+#       at 0.311; firing the top 2048 omitted rows exactly captures only 28.7% of the mass
+#       (a long flat tail, not a head); and the NoPE dividend -- phi_j = (side, csk, rho) and
+#       v_j are static, so a tail summary could be built once at block close, which RoPE
+#       would forbid -- is structurally real but its FAVOR+ random-feature realisation
+#       underflows at this score scale (exp(-|u|^2/2) -> 0) and returns the uncompensated
+#       output at D = 128, 512 and 2048 alike.
 #       This runs that arm end to end: SGLANG_DEBUG_VESTIGEKV_OMITTED_BLEND=1, 13 tasks,
 #       4k-64k, n=10, against the delivered A0 at the same n (multikey_2 0.920,
 #       multikey_3 0.860, qa_hotpot 0.680, 65-cell mean 0.9179). `probe: true` runs the head
