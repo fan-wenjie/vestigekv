@@ -164,6 +164,39 @@ rather than C1: raising the fallback rate is the mechanism, so capping the rate
 would cap the mechanism. What may not rise is the latency, and what may not
 fall is any accuracy.
 
+## Outcome (2026-09-17): A2 and A4 attack an step that is not failing
+
+Three measurements, none of which needed the arms to finish.
+
+**The calibrated certificate misses nothing.** On the Kimi snapshots, at the
+fitted zp, **1081 of 1081** archived rows whose true score beats the kept
+maximum are already fired -- 100% at gain 0, and every candidate entropy gain
+up to 2.0 recovers the same 1081 while firing more rows
+(`mexp/kimi/ent_margin_offline.py`). A4 has nothing to recover. A2 aims at the
+same step from the other side, choosing which rows the quantile must cover, and
+that step is not where rows are lost either.
+
+**A2's probe moved nothing on multi-key.** At n=10 against A0 it changed 6 of
+100 multi-key answers with a net of exactly zero: multikey_2 0.920 and
+multikey_3 0.860 in both arms. Its 43-of-650 total perturbation is the
+run-to-run floor.
+
+**The truncation experiment found a real but secondary effect.** With the
+fallback off, keeping the same number of rows spread over the archive instead
+of as a positional prefix lifts multikey_2 from 0.200 to 0.367 and multikey_3
+from 0.100 to 0.300. Position is costing something, and it is a free fix, but
+0.300 against the 0.860 the fallback delivers says it is not the main term.
+
+**Both arms are stopped**, A2's remaining half unrun. What the three together
+say is that the failures are not on the steps served by a correctly calibrated
+index: that index is perfect on its calibration queries. They are on the steps
+served by something else -- the provisional identity-basis index with z at
+Z_MAX before calibration completes, or an index that has gone stale against a
+context that has moved. A RULER answer is about fourteen steps and its layer
+builds once, so most of its steps are exactly those. That is the next thing to
+measure, and it needs an instrument that attributes a miss to the index that
+served it, which does not exist yet.
+
 ## Adoption ruling (owner, 2026-09-17)
 
 If A2 passes every gate, it is adopted as the final algorithm without checking
