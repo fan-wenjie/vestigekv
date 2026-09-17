@@ -434,6 +434,11 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       DETECTED, not asserted: _verify_affine re-checks the table when the batch composition
 #       changes and the pack's prep kernel clears the flag on any step whose row does not land
 #       at base+seq-1. 256k: 4.369 ms/token, 1.276x over dense, against the CSR design's 1.169x.
+#   td-stream-256k-helper -> the 256k stream after the two row-loop arms became one
+#       @triton.jit function inlined per call site. The disassembly says the generated code
+#       is equivalent (same instruction histogram, 3024 each; same registers, 237/0; same
+#       LDGSTS, 8), so this job is the confirmation that equivalence holds end to end: it
+#       must reproduce td-stream-256k-affine's 4.369 ms/token.
 #   td-ruler-64k-final -> the 13 tasks x 4k-64k on that delivered default, the arm the paper's
 #       quality numbers should cite. td-ruler-64k / td-ruler-64k-off are its matched pair for
 #       the tier path alone (same tree, tier-decode on and off), from before the flags went.
