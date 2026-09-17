@@ -423,6 +423,21 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       4096 steps, so only the amortisation changes. Near 0.0002 puts the cause on the step
 #       count; near 0.3-0.4 puts it on the context's provenance, and then "the speedup is a
 #       long-decode number" needs a second qualifier in the paper.
+#   mexp/kimi/cert_holdout_offline.py -> does the certificate hold OUT OF SAMPLE?
+#       ent_margin_offline.py and z_topk_offline.py both score the fitted zp on the queries
+#       zp was fitted on. A conformal quantile recovers its target in sample BY CONSTRUCTION,
+#       so "1081 of 1081 rows recovered" was never evidence that the recall step loses nothing
+#       -- and the ruling that stopped arms A2 and A4 rests on it. This refits zp on half the
+#       calibration points with the delivered rule and scores the other half, reporting both
+#       row recall (of the archived rows whose true score beats the kept maximum, how many
+#       fire) and QUERY recall (of the queries needing at least one, how many get ALL of them,
+#       broken down by how many they need). The second is the quantity a k-key question is
+#       made of; a marginal per-row guarantee does not deliver it.
+#         python mexp/kimi/cert_holdout_offline.py --split random   (and --split pos)
+#       Offline, no GPU, reads results/kimi/caldump. PREDICTION before running: out-of-sample
+#       row recall lands near the 0.90 target rather than the in-sample 1.00, and query recall
+#       falls off with k. If instead out-of-sample recall is also ~1.00, the certificate really
+#       is not where the rows go and the multi-key gap is tier-1's keep decision, not recall.
 #   idxstate-ruler-64k, idxstate-stream-64kprefill -> WHICH index the misses are under.
 #       The offline scan says a CALIBRATED certificate fires every archived row that beats the
 #       kept maximum (1081 of 1081 on the Kimi snapshots), so the rows RULER loses on multi-key

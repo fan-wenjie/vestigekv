@@ -223,6 +223,52 @@ finished calibrating, so it is not a statement about the question being asked.
 `idxstate-ruler-64k` and `idxstate-stream-64kprefill` measure that directly,
 with the prediction and its falsifier registered in README before either ran.
 
+## Three recall-side mechanisms tested and refuted (2026-09-17)
+
+The outcome above rested on "1081 of 1081 rows recovered", and that number was
+measured **in sample**: `ent_margin_offline.py` scores the fitted zp on the very
+queries zp was fitted on, and a conformal quantile recovers its target in
+sample by construction. The ruling that stopped A2 and A4 therefore rested on
+an artifact, whatever its conclusion. `cert_holdout_offline.py` refits zp on
+half the calibration points with the delivered rule and scores the other half.
+
+| | row recall | query recall (ALL needed rows) |
+|---|---|---|
+| in sample | 2154/2157 = 99.9% | 478/481 = 99.4% |
+| held out, random split | 973/974 = 99.9% | 229/230 = 99.6% |
+| held out, position split | 1283/1286 = 99.8% | 279/282 = 98.9% |
+
+Out-of-sample query recall by how many rows the query needs: 100% at k=1, 97.8%
+at k=2, and 100% at every k from 3 to 8. **It does not decay with k**, which is
+the decay the whole multi-key story predicted. The prediction registered in
+README before running -- "out-of-sample row recall lands near 0.90 and query
+recall falls off with k" -- is falsified, and the A2/A4 ruling survives a test
+that could have overturned it.
+
+Two further loss channels, both checked because the holdout script does not
+model them:
+
+- **The entropy gate.** A closed gate sets the threshold to +inf and the query
+  fires nothing, which no offline scan above would see. All 42 snapshots report
+  `gate_off: True` -- the self-disable at `GATE_SELF_DISABLE_FRACTION` fires
+  everywhere on this workload -- so the gate is not a loss channel here.
+- **Negative zp.** Seven of 42 snapshots calibrate zp below zero (to -1.584),
+  which deflates the index score and fires FEWER rows than the sketch alone.
+  Those seven have 100% query recall and clamping at `max(zp, 0)` changes not
+  one fired row.
+
+**What this closes.** The recall path is not where RULER loses rows, and that
+now rests on a held-out measurement rather than an in-sample one. The median
+fired-row count is 0: the kept set already holds what beats it. So there is no
+headroom in the certificate, the gate, or the quantile, and a mechanism aimed
+at any of them is aimed at a step that is not failing.
+
+**What is left**, in the order the evidence supports: (1) the gap is at least
+partly n=10 noise -- the cross-run answer churn is 40 of 650 = 6% and
+multikey_3's gap is 14 of 100 -- which `ruler-vestigekv-n50-tgt` settles; (2)
+tier-1's keep decision, which none of the above tests, since every offline scan
+here conditions on the kept set as given.
+
 ## Adoption ruling (owner, 2026-09-17)
 
 If A2 passes every gate, it is adopted as the final algorithm without checking
