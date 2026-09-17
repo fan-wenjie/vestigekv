@@ -485,6 +485,53 @@ n=50 before setting any threshold: A0's own qa_hotpot fell 0.680 -> 0.608 from
 n=10 to n=50, so the dense column above, still at n=10, is not a safe
 denominator. `ruler-baseline-n50` supplies it.
 
+## Tier-1's keep rule is not the weak link (2026-09-17)
+
+The one step every offline study here conditions on rather than tests. The
+objection from first principles is real: sigma is the residual of CONTENT
+against a 31-dimensional trigonometric basis over POSITION, so it measures
+local novelty; it is query-independent and norm-blind, while attention
+relevance is q.k. Tier-2 meanwhile measures uncertainty as the residual against
+a 64-dimensional basis V fitted to the data. Two different notions of residual
+in two halves of one algorithm.
+
+Measured on 24 Kimi snapshots at the same rho = 1/32 budget:
+
+| keep rule | kept softmax mass | archived rows > max1 | max1 |
+|---|---|---|---|
+| **sigma (current)** | **0.4748** | **0.0** | **6.95** |
+| row norm | 0.0119 | 117.5 | 1.49 |
+| rho, the residual against V | 0.0360 | 17.5 | 1.54 |
+| random | 0.0370 | 9.5 | 3.14 |
+| oracle (true max score) | 0.7951 | 0.0 | 6.95 |
+
+**Selecting by norm is four times WORSE than random.** After RMSNorm the norms
+are near-uniform and the large ones are sinks and punctuation, not where
+attention lands; rho is fitted to measure uncertainty, not relevance. And
+sigma reaches the ORACLE's max1 exactly, 6.95, with zero archived rows above
+it -- tier-1 is already keeping the single most-attended row essentially every
+time, which is why the median fired-row count is 0 and why the certificate
+looks perfect. Recall has little to do because sigma left it little.
+
+Combinations are worse still. Giving half the budget to a challenger:
+
+| | kept mass |
+|---|---|
+| sigma alone | **0.4748** |
+| sigma + norm | 0.1048 |
+| sigma + rho | 0.1188 |
+| sigma + recency | 0.1325 |
+| norm x rho | 0.0060 |
+
+**What survives.** The budget is not the constraint: an oracle holds 0.795 of
+the mass in the same 1/32, against sigma's 0.475. Thirty-two points are on the
+table and no feature tried here reaches them. But the mass gap has already been
+shown not to be the multi-key mechanism -- coverage RISES with k, from 0.620 at
+k=0 to 0.965 at k>=4 -- so closing it is not obviously worth anything.
+
+Same caveat as everything else in this file: measured on calibrated tiers at
+calibration positions.
+
 ## Adoption ruling (owner, 2026-09-17)
 
 If A2 passes every gate, it is adopted as the final algorithm without checking
