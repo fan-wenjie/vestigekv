@@ -427,6 +427,16 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       because origin's in-graph branch returns before its stats branch, so the instrument
 #       never runs under the production protocol; these two disable the cuda graph and read
 #       fetched=<n>/call at 64k. Their timings are meaningless and are not read.
+#   DELIVERED IMPLEMENTATION (engine branch vestigekv-fused-fallback): the decode step reads a
+#       lane's rows from the tiers, and a fenced lane whose page table is one contiguous run
+#       computes its row ids as base+offset. Both are unconditional -- the flags that used to
+#       select them are gone, and the alternatives live in that branch's history. Affinity is
+#       DETECTED, not asserted: _verify_affine re-checks the table when the batch composition
+#       changes and the pack's prep kernel clears the flag on any step whose row does not land
+#       at base+seq-1. 256k: 4.369 ms/token, 1.276x over dense, against the CSR design's 1.169x.
+#   td-ruler-64k-final -> the 13 tasks x 4k-64k on that delivered default, the arm the paper's
+#       quality numbers should cite. td-ruler-64k / td-ruler-64k-off are its matched pair for
+#       the tier path alone (same tree, tier-decode on and off), from before the flags went.
 #   td-stream-256k-affine -> the same 256k stream with --enable-vestigekv-affine-page-table:
 #       a fenced lane computes its row ids as base+offset rather than loading them, which
 #       makes the K address affine and gives the loop its own async-copy pipeline (LDGSTS 4
