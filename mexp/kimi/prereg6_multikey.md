@@ -337,6 +337,48 @@ text or the question. It does not yet explain the multi-key ACCURACY gap: a
 provisional index over-fetches (1663 rows against fresh's 1061) and its
 overflows fall back to dense, both of which are correct-but-slow, not wrong.
 
+## The omitted-mass arm: rejected, and the metric that recommended it (2026-09-17)
+
+**The finding that motivated it stands.** VestigeKV attends about 6% of rows
+and its attended set holds only ~57% of the dense softmax mass (min 24% over
+the Kimi dumps), so every retained weight is inflated by Z/Zv, mean 2.9x. No
+measurement before this one looked at the softmax SCALE; they all asked whether
+the row that beats max1 is fired, and it is.
+
+**The correction is exactly one turn of the online-softmax recurrence**
+`O_n = lerp(O_{n-1}, v_n, sigmoid(s_n - lse_{n-1}))` against a synthetic row
+standing for the whole omitted set, with mass M from the certified bound the
+scan already computes and value that set's mass-weighted centroid. Offline it
+cut the attention-output error against dense from 0.471 to 0.195.
+
+**It destroys retrieval.** On its first working run it failed the head needle --
+answering `7-ZEBRA-REVIEWED-NORTHERN-DEPOTS` where the code is `7-ZEBRA-4419`,
+the prefix right and the tail confabulated -- and cost 0.109 over the 65-cell
+RULER grid, damaging every task family at every length above 4096. At 4096 it
+is exactly 0 on all 13 tasks, because a 4096-token context has no closed block
+and so no archive: that zero is what proves the arm really ran.
+
+**It is not a bug.** Two unit tests recompute logM and the centroid
+independently from the tier's own operands and both match
+(`test_vestigekv_recall_tier.py::TestOmittedMass`); a blend-off control on the
+same tree answers the needle correctly. On the real dumps the certified bound
+inflates the omitted log-mass by only 0.56 nats, giving sigma 0.517 where the
+true omitted scores would give 0.647. So the arm replaces **48% of the
+attention output with the archive's centroid**, and a correct estimate would
+still replace 35%.
+
+**Why the offline metric recommended it anyway.** Relative L2 against dense is
+minimised by moving toward the mean, so mixing in a centroid improves it
+*by construction* while flattening exactly the peak that retrieval reads. The
+metric could not distinguish "closer on average" from "still pointing at the
+needle", and 0.471 -> 0.195 was the metric rewarding the failure mode. **Any
+future arm that changes the attention output must be gated on a retrieval
+check, not on output error.** The head needle costs one second and would have
+ended this arm before the first RULER run.
+
+**Rejected.** The mass gap is real and remains the one unexplained term; the
+centroid is not the way to close it.
+
 ## Adoption ruling (owner, 2026-09-17)
 
 If A2 passes every gate, it is adopted as the final algorithm without checking
