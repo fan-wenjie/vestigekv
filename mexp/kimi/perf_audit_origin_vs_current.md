@@ -482,6 +482,27 @@ TP1 and 13.5 us on TP0, and the step is gated by the slower rank, so removing
 it should show about 250 us. It showed 128. The missing ~120 us is inside
 stage 1, which is where the fenced lane's row reading moved.
 
+### Origin cannot report its own recall under the graph path
+
+`origin-stats-stream-256k` ran to completion and emitted **no VKSTATS at all**.
+The reason is structural, not a job error: in origin's step dispatch the
+in-graph branch returns before the stats branch is reached
+
+    if self._ingraph_pack is not None:
+        self._ingraph_host_step(...)
+        return
+    if envs.SGLANG_DEBUG_VESTIGEKV_STATS.get():
+        self._step_with_stats(...)
+
+so with the graph active -- which is the production protocol -- the instrument
+never runs. The current tree reports because its stats plumbing was rewritten
+later.
+
+How many rows origin fires is a property of its certificate, not of graph
+capture, so the pair `origin-stats-64k-eager` / `current-stats-64k-eager`
+measures it with `--disable-cuda-graph` at 64k (30 requests, 64 tokens each).
+Their timings mean nothing and are not read; `fetched=<n>/call` is the number.
+
 ### Atomics, checked statically before the data
 
 Three `tl.atomic_*` calls exist in the VestigeKV kernels, and only one of them

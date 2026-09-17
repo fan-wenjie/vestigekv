@@ -422,6 +422,14 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       fallback 0.360 at 64k while the long stream measures 0.00014 at the same context, and
 #       this says how much of that 2100x is the question rather than the short-answer regime.
 #         (queue job; the stream client takes args.num_prompts for this)
+#   origin-stats-64k-eager, current-stats-64k-eager -> how many rows each tree's certificate
+#       fires, measured where origin can report it. origin-stats-stream-256k produced no VKSTATS
+#       because origin's in-graph branch returns before its stats branch, so the instrument
+#       never runs under the production protocol; these two disable the cuda graph and read
+#       fetched=<n>/call at 64k. Their timings are meaningless and are not read.
+#   td-stream-256k-nospill -> the 256k retest after the fenced arm stopped spilling (255 regs
+#       and 40B of stack became 200 and none; see mexp/kimi/fence_disasm.py and the engine rule
+#       .claude/rules/disassemble-check-for-spills.md).
 #   origin-stats-stream-256k -> origin/vestigekv on the production 256k stream with
 #       SGLANG_DEBUG_VESTIGEKV_STATS=1. Origin's stats line predates the fetch percentiles and
 #       the fallback rate, but it carries fetched=<n>/call, the mean rows a scan fires, and that
