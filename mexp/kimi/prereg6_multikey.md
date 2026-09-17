@@ -269,6 +269,38 @@ multikey_3's gap is 14 of 100 -- which `ruler-vestigekv-n50-tgt` settles; (2)
 tier-1's keep decision, which none of the above tests, since every offline scan
 here conditions on the kept set as given.
 
+## The index-state buckets, measured (2026-09-17)
+
+Instrument verified before reading: `calls/step=1.00`, and RULER reports
+`steps=1850`, the same count `engine/` gives. The earlier bucket numbers
+(prov 28%) came from the run whose prologue was entered ~3x per step and are
+**superseded**; they inflated the fresh bucket 11-fold.
+
+| | RULER 64k | stream, 64k prefill + 4096 steps |
+|---|---|---|
+| provisional | **10487 scans (81%)**, 1662.7 rows, ovf **0.3152** | **180 (0.6%)**, 1812.8 rows, ovf **0.3278** |
+| fresh | 2463 (19%), 1061.0 rows, ovf 0.1839 | 28520 (99.4%), 2.3 rows, ovf 0.0003 |
+| stale | 0 | 0 |
+| fallback | 0.305 | 0.00233 |
+
+**A provisional index overflows at the same rate in both workloads**, 0.315
+against 0.328. What differs by 130x is not the rate but the MIX: 81% of
+RULER's scans are served before calibration completes, against 0.6% of the
+stream's. The arithmetic closes -- 0.006*0.3278 + 0.994*0.0003 = 0.0023 against
+0.00233 measured -- so the fallback rate is the state mix times the per-state
+rate and nothing else.
+
+The registered prediction is confirmed: RULER's scans ARE mostly provisional,
+and its overflows are concentrated there. `stale` is exactly 0 in both, so a
+fourteen-token answer never outgrows its index and one of the three states this
+instrument was built for is dead weight on this workload.
+
+**What it does and does not say.** It explains the FALLBACK gap completely, and
+it says the gap is about how many steps run before calibration, not about the
+text or the question. It does not yet explain the multi-key ACCURACY gap: a
+provisional index over-fetches (1663 rows against fresh's 1061) and its
+overflows fall back to dense, both of which are correct-but-slow, not wrong.
+
 ## Adoption ruling (owner, 2026-09-17)
 
 If A2 passes every gate, it is adopted as the final algorithm without checking
