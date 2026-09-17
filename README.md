@@ -472,6 +472,13 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       difference, and the questions the arms answer differently in each direction. An arm
 #       that has not run emits \PENDING, which errors at build time rather than printing a
 #       stale number.
+#   mexp/kimi/fence_disasm.py compiles the forked decode stage 1 at both settings of the FENCE
+#       constexpr and disassembles each, so "the two differ by one branch" is checked rather
+#       than assumed:
+#         python mexp/kimi/fence_disasm.py [--out <dir>]
+#       Prints registers, spills and instruction counts for both and writes ptx.diff/sass.diff.
+#       It found the fenced build at 255 registers with 40 bytes of stack against 200 and none,
+#       which is a cost every step pays because register allocation is compile-time.
 #   mexp/kimi/ruler_diff.py compares two RULER arms question by question:
 #       python mexp/kimi/ruler_diff.py results/kimi/ruler/samples_<a>.json results/kimi/ruler/samples_<b>.json
 #       For arms that must be identical (a stats-on twin, or a change that moves no row such as

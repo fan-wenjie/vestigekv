@@ -425,6 +425,35 @@ That makes the decomposition exact:
   values at 0.057 of the 65-cell RULER mean. Origin does not pay it because it
   drops those rows.
 
+### The fenced arm spills, and every step pays for it
+
+`mexp/kimi/fence_disasm.py` compiles the forked stage 1 at both settings of the
+`FENCE` constexpr and disassembles each:
+
+| build | registers | stack | LDL | STL | LDG | SASS lines |
+|---|---|---|---|---|---|---|
+| FENCE=False (nodense) | 200 | 0 | 0 | 0 | 75 | 2231 |
+| FENCE=True (tier-decode) | **255** | **40 B** | **12** | **10** | 147 | 2996 |
+
+The fenced build hits the 255-register ceiling and **spills to local memory**.
+The unfenced build does not spill at all. Register allocation is a property of
+the compiled kernel, not of the data, so a build with the fence in it pays the
+spill on **every** step -- the 99.7% of TP0 scans and 94.5% of TP1 scans that
+never fence included.
+
+That re-splits the 0.295 ms/step the tier build costs over nodense: about
+0.19 ms is the fenced work itself (TP1 minus TP0 stage 1, 191.7 us at a 5.5%
+fence rate) and the remaining ~0.10 ms is the spill tax on every step. The
+first is the feature; the second is pure loss and is fixable.
+
+Why the usual argument did not save it: mutually exclusive branches share
+registers only when their live ranges are disjoint, and here the branch sits
+*inside* the row loop (`elif vk_fenced:` within `for start_n`), so both arms'
+values stay live across the whole loop and the allocator has to add rather than
+take the maximum. Hoisting the test above the loop -- one loop over the page
+table, one over kept-plus-fetched -- makes the ranges disjoint. It grows the
+SASS, which is already 34% larger, and should remove the spill.
+
 So closing the remaining gap to origin is not a kernel problem. It is either
 firing fewer rows (calibration -- origin fires fewer because it solves z
 against the kept maximum rather than the archived row's true score) or making
