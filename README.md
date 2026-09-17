@@ -514,6 +514,11 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       Prints registers, spills and instruction counts for both and writes ptx.diff/sass.diff.
 #       It found the fenced build at 255 registers with 40 bytes of stack against 200 and none,
 #       which is a cost every step pays because register allocation is compile-time.
+#   caldump-kimi-64k -> step 0 of pre-registration 6: one short RULER job (niah_multikey_3 at
+#       64k, n=2) with SGLANG_DEBUG_VESTIGEKV_DUMP_DIR set, so the calibration snapshots exist
+#       for Kimi's geometry. z_topk_offline.py then reads them and the table picks the k that
+#       arm A2 uses. The GLM snapshots cannot: rank 128 and no sidecar against Kimi's rank 64
+#       and a 64-dim one.
 #   mexp/kimi/z_topk_offline.py asks what the conformal z has to be to certify a query's
 #       top-k archived rows rather than its single best one, on the same dumped snapshots
 #       bucket_offline.py reads:
