@@ -112,6 +112,58 @@ gap as measured, with this pre-registration's arms as the attempts that did not
 close it. That outcome is worth stating: it is the difference between a method
 that is weak on multi-key and one whose weakness is understood.
 
+## Amendment 1 (2026-09-17): what RULER's multi-key gap is a gap in
+
+Tier-1's signal is the norm of a row's residual after the close window is
+projected onto a 31-dimensional trigonometric basis: what it keeps is what the
+block's low-frequency structure fails to explain. That is a **prior about
+natural text**, a shortcut for the ordinary case, not a general relevance
+score. RULER is built to defeat exactly such priors, so a gap there is partly a
+gap outside the method's stated applicability rather than a defect inside it.
+
+The measured fallback rates order themselves by how natural the text is, not by
+how many decode steps amortise the calibration: the model's own continuation
+0.003/0.055, real documents 0.241/0.171, needles in a haystack 0.360/0.324,
+random tokens 0.407/0.439. And on real documents the rate is 24% while the
+accuracy is *identical to dense* over 300 questions. A high rate is the net
+bounding what the prior stops covering, which is the design working.
+
+Two consequences for this pre-registration, both recorded before A2 reported.
+
+- **Q1's threshold is not re-argued here**, but its meaning is narrower than it
+  reads. Recovering half of RULER's multi-key gap is worth having; failing to
+  is not by itself evidence that the method is weak on multi-key retrieval in
+  natural documents, and the paper must not report it as if it were.
+- **A third arm follows from the framing**, below.
+
+## Arm A3: fall back where the prior fails, and only there
+
+If A2 does not close the gap, the next thing to try is not a better certificate
+but an honest admission that the certificate has nothing to work with. The
+detector is already computed: `sigma_fused` builds a 1024-bin histogram of the
+close window's sigma values at every block close. A block whose sigma
+distribution has no structure -- no rows standing out from the rest -- is a
+block where the spectral prior has failed, and its rows should be attended
+rather than ranked.
+
+The arm is: at block close, derive a structure statistic from the histogram
+that already exists, and mark a block that fails it so its rows are attended
+densely. Fallback rises only where the prior fails, and natural text pays
+nothing.
+
+**Prerequisite, and it is falsifiable on its own.** The statistic must separate
+the text types before any serving arm is built: computed offline on calibration
+dumps from a random-token stream, a RULER haystack and a LongBench document, it
+must order them the way the fallback rates do. If one histogram statistic
+cannot tell random tokens from a real document, the detector does not exist and
+the arm is dropped without running -- the same way A1 was.
+
+**Accuracy is the binding constraint, not the rate.** A3 is adopted only if it
+holds Q2 and Q3 (no loss anywhere) while improving Q1, and its cost gate is P1
+rather than C1: raising the fallback rate is the mechanism, so capping the rate
+would cap the mechanism. What may not rise is the latency, and what may not
+fall is any accuracy.
+
 ## Adoption ruling (owner, 2026-09-17)
 
 If A2 passes every gate, it is adopted as the final algorithm without checking
