@@ -423,6 +423,26 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       4096 steps, so only the amortisation changes. Near 0.0002 puts the cause on the step
 #       count; near 0.3-0.4 puts it on the context's provenance, and then "the speedup is a
 #       long-decode number" needs a second qualifier in the paper.
+#   stepattr-mk3, stepattr-s1 -> the blind spot: what happens at ANSWER steps.
+#       Every offline study here runs on CALIBRATED tiers sampled at the eight decode steps
+#       right after the build, while 81% of RULER's scans run on a PROVISIONAL tier at answer
+#       positions. So "the certificate misses nothing" (99.9% held out, no decay to k=8),
+#       "coverage rises with k" (0.620 -> 0.965) and "fired rows are 0 to 13" all describe the
+#       19% of steps RULER barely enters -- and the third was already caught wrong by two
+#       orders of magnitude (serving fires 90 to 230).
+#       SGLANG_DEBUG_VESTIGEKV_STEPDUMP=1 writes one record per (step, layer, lane) to
+#       results/kimi/stepattr/: dense coverage of the attended set, its per-head minimum,
+#       whether dense's argmax row was attended at all, entropy, rows beating max1, plus the
+#       tier's state (provisional, zp, built_at) so the 81% separates from the 19%.
+#       Two jobs, one variable: niah_multikey_3 (0.760 at 64k) against niah_single_1 (1.000),
+#       n=10 at 65536 only. Same answer length family, same haystack, different key count.
+#       PREDICTION: on multikey_3's failing steps, coverage or top1_attended is materially
+#       worse than on single_1's, and the difference sits on PROVISIONAL records.
+#       FALSIFIER: the two tasks' records are indistinguishable. That would say the attended
+#       set is not where multi-key is lost even at answer positions, and the remaining
+#       candidate is the arithmetic of attending rather than the choice of them -- which the
+#       answer-length test already argues against (r = -0.096, and niah_multikey_3 and
+#       niah_single_3 emit the same 37 characters with gaps of +0.140 and +0.000).
 #   fence-mk1-ruler, fence-mk4-ruler -> the retreat: fence multi-key instead of ranking it.
 #       Eight recall-side mechanisms are ruled out and the gap survives all of them, so this
 #       stops trying to recover the row and instead notices the case and attends densely. A
