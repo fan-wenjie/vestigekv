@@ -79,7 +79,21 @@ def main():
 
         nq, A = true.shape
         print(f"== {os.path.basename(f)}  archive {A}  queries {nq}  rank {r}")
-        print(f"   {'k':>3s} {'z (conformal)':>14s} {'fired rows p50':>15s} {'p90':>9s} {'of archive':>11s}")
+        # The set that actually matters: a row only changes the output if its
+        # true score beats the best kept row. Its size is data-determined per
+        # query, not a chosen k, and certifying exactly it is the target the
+        # guarantee should have.
+        beats = true > max1[:, None]
+        nb = beats.sum(1).float()
+        zb = torch.where(beats, need, torch.full_like(need, -1e30)).max(1).values
+        zb = zb[nb > 0]
+        jb = D.conformal_k(max(zb.numel(), 1), args.target)
+        z_beat = float(zb.sort().values[min(jb, max(zb.numel(), 1) - 1)]) if zb.numel() else 0.0
+        fired_b = ((idxs + z_beat * cert) > max1[:, None]).sum(-1).float()
+        print(f"   beats max1: count p50 {nb.median():.0f} p90 {nb.quantile(0.9):.0f} "
+              f"max {nb.max():.0f} | queries with none {(nb==0).float().mean():.0%}")
+        print(f"   {'target':>10s} {'z':>8s} {'fired p50':>10s} {'p90':>8s}")
+        print(f"   {'beats max1':>10s} {z_beat:8.3f} {fired_b.median():10.0f} {fired_b.quantile(0.9):8.0f}")
         order = true.argsort(dim=1, descending=True)
         for k in ks:
             topk = order[:, :k]
@@ -89,8 +103,7 @@ def main():
             j = D.conformal_k(nq, args.target)
             z = float(zq.sort().values[min(j, nq - 1)])
             fired = ((idxs + z * cert) > max1[:, None]).sum(-1).float()
-            print(f"   {k:3d} {z:14.3f} {fired.median():15.0f} {fired.quantile(0.9):9.0f} "
-                  f"{fired.median()/A:11.2%}")
+            print(f"   {('top-%d' % k):>10s} {z:8.3f} {fired.median():10.0f} {fired.quantile(0.9):8.0f}")
 
 
 if __name__ == "__main__":

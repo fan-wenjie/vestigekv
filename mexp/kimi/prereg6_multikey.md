@@ -1,8 +1,8 @@
-# Pre-registration 6 (DRAFT): the multi-key gap, and two changes aimed at it
+# Pre-registration 6: the multi-key gap, and the change aimed at it
 
-Status: **draft**. It freezes when the quality queue empties and the Kimi
-calibration dump below has run, because one arm's parameter is chosen from that
-dump. Nothing else is revised after data.
+Status: **frozen 2026-09-17 06:45**, after step 0's calibration dump and before
+any arm ran. Step 0 dropped one of the two arms and replaced the other's target;
+both changes are recorded below with the measurement that caused them.
 
 ## The gap, and where it is
 
@@ -36,31 +36,38 @@ rows gets roughly tau^k, and the measured means fit that shape: multikey_2 at
 across k, while every single-needle task sits at 1.000 because tier-1 usually
 keeps a single needle and recall is never exercised.
 
-Two things follow, and each gets an arm.
+Step 0 measured both candidates before either ran. One did not survive it.
 
-**The clamp may bind before k does.** `Z_MAX = 8.0`. On dumped GLM-5.3
-snapshots the calibrated z at k=1 is 6.98 to 8.31 -- one layer already above
-the clamp, so its conformal requirement is not met even for one row and the
-clamp silently weakens the guarantee. This is a constant, not an algorithm
-change, and it is tested first because it is cheaper and because a result here
-changes what the second arm has to explain.
+**The clamp does not bind on Kimi.** `Z_MAX = 8.0`, and the dumped Kimi
+snapshots calibrate z between 0.48 and 3.59 with the stored `zp` at 2.28. The
+GLM-5.3 snapshots that suggested this arm sit at 6.98 to 8.31, so the clamp
+binds there and not here. **Arm A1 is dropped before running**, and the
+observation is kept because it says the two geometries are not interchangeable
+for this question.
 
-**The target is the wrong set.** Certifying the top-k instead of the best is
-one expression: `z_req = max over the top-k archived rows of
-(true - idxs) / cert`. The quantile then certifies all k jointly. On the same
-GLM snapshots, k=3 costs a few percent of z and 10-33% more fired rows at p90
-(`mexp/kimi/z_topk_offline.py`), which is cheap against a 0.140 gap -- but that
-is GLM geometry (rank 128, no sidecar) and Kimi's is different, so the number
-that picks k comes from a Kimi dump, not from those snapshots.
+**The target is the wrong set, in both directions.** Certifying the top-k was
+the first proposal; measuring it says the question of which k does not arise.
+What actually reaches the output is the set of archived rows whose true score
+beats the best kept row -- nothing else is ever attended -- and that set is
+data-determined per query and tiny. Over 12 Kimi snapshots its size has a
+median of 0, a p90 between 0 and 21, and a maximum of 57, and **44% to 100% of
+calibration queries have no such row at all**: the kept set already holds
+everything that matters and recall has nothing to do.
 
-## Step 0, before the arms: a Kimi calibration dump
+Against that, today's target is mis-specified twice over. It certifies the best
+archived row whether or not that row beats the kept maximum, so on the 94% of
+queries where it does not, the requirement raises z for a row the output would
+never see; and where several rows do beat it, only one of them is guaranteed,
+which is exactly the multi-key failure. The measurement shows both signs: on 7
+of 12 snapshots the correct target calibrates to a **lower** z than today's
+(0.483 against 2.286 at the extreme), and on the snapshots where several rows
+beat the maximum it calibrates higher (3.589 against 2.797).
 
-One RULER job at 64k with the snapshot dump on, then
-`z_topk_offline.py --dir results/kimi/caldump --ks 1,2,3,4`. It reports, for
-Kimi's geometry, the calibrated z and the fired-row count at each k. **k for
-arm A2 is whichever k is the largest with a fired-row p90 no more than twice
-k=1's**, chosen from that table and fixed before any arm runs. If no k>1
-satisfies that, A2 runs at k=2 and the table is reported as the reason.
+## Step 0 is done
+
+`caldump-kimi-64k` ran and the numbers above come from it. The rule that was to
+pick k is retired with arm A2's fixed k: the set is not chosen, it is the one
+the data defines.
 
 ## Arms
 
@@ -70,9 +77,12 @@ on.
 
 - **A0** the delivered default. Its n=50 numbers come from
   `ruler-vestigekv-n50`, already queued; no separate run.
-- **A1** `Z_MAX = 16`. One constant.
-- **A2** joint top-k calibration at the k step 0 picks. One expression.
-- **A3** A1 and A2 together, run only if both pass their own gates.
+- **A2** the corrected target: `z_req = max over {archived rows whose true
+  score beats the best kept row} of (true - idxs) / cert`, and a query with no
+  such row imposes no requirement instead of the one it imposes today. One
+  expression in `recall_tier.py`.
+
+A1 is dropped (the clamp does not bind on Kimi) and A3 with it.
 
 ## Gates
 
@@ -92,8 +102,8 @@ An arm that fails any gate is reported as failed and not adopted.
 
 ## Choice and adoption
 
-Among arms passing every gate, take the highest targeted mean; ties go to the
-one that changes less, which orders A1 before A2 before A3. The chosen arm's
+Among arms passing every gate, take the highest targeted mean; with only one arm
+left there is no tie to break. The chosen arm's
 constant or expression becomes the default in one commit, and the paper's RULER
 table is re-measured under it.
 
@@ -109,11 +119,13 @@ multi-query, multi-value and variable-tracking are all exactly 0 against dense
 at n=10 and are re-confirmed at n=50 by gate B2 of pre-registration 3. What
 changes is the paragraph explaining the multi-key gap: today it can only report
 it, and an adopted arm turns it into a cost that was identified, priced and
-paid. The certificate's description gains "the top-k" in place of "the best"
-if A2 is adopted, and the recommended configuration gains a second knob.
+paid. The certificate's description gains "every archived row that beats the kept
+maximum" in place of "the best archived row" if A2 is adopted. No knob is
+added: the set is defined by the data, not configured.
 
 ## Not revised after the data
 
-The gate thresholds, the arm list, the targeted-mean definition, the choice
-rule, and the rule that picks k in step 0. The deadline is 2026-09-26; an arm
+The gate thresholds, the targeted-mean definition and the choice rule. The arm
+list shrank before any arm ran, on step 0's measurement and for a stated
+reason; that is the pre-registration working, not a revision after data. The deadline is 2026-09-26; an arm
 that has not reported by 2026-09-23 is dropped rather than rushed.
