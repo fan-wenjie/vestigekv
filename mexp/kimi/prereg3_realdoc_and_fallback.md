@@ -113,6 +113,32 @@ removes the fence's *cost* has to keep the fence's *rows* -- which is the
 tier-decode router's premise and the reason the debug fence stub is not an
 implementation.
 
+## Amendment 2 (2026-09-17): which tree the quality arms run on
+
+The delivered backend changed after this pre-registration froze: the decode
+step reads a lane's rows from the tiers rather than a packed CSR, and a fenced
+lane whose row set is one contiguous run computes its row ids arithmetically.
+The arms below therefore move from `engine/` to `engine-fused`, which is what
+ships: **RULER at n=50 (both arms), LongBench v2 (both arms and the stats
+twin)**. The `fb-<task>` set stays on `engine/`, because six of its thirteen
+jobs already ran there and a set split across trees is worse than one that is
+documented.
+
+What licenses moving them is measured, not assumed. On one tree, tier row
+reading against CSR row reading is **0 of 650 RULER answers different and a
+paired mean difference of exactly +0.0000**: the row sets are identical. The
+affine arm does change answers -- 40 of 650, mean +0.0056 -- because it reads
+a fenced lane's rows in index order where the page-table arm reads them in
+table order, and NoPE makes that the same multiset but not the same
+floating-point accumulation. Two runs of the *same* row logic on two different
+trees differ by the same amount (40 of 650, mean -0.0055), so the affine
+reordering is not distinguishable from the run-to-run floor. Owner's standing
+ruling applies: mathematical equivalence is sufficient and bit differences
+from accumulation order are acceptable.
+
+Gate A1 and the RULER gates are unchanged. The tree each number was measured
+on is reported with it.
+
 ## What is not revised after the data
 
 The thresholds above, the subset file, the prompt template and the job list.
