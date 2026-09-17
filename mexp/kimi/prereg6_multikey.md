@@ -114,6 +114,9 @@ that is weak on multi-key and one whose weakness is understood.
 
 ## Amendment 1 (2026-09-17): what RULER's multi-key gap is a gap in
 
+**RETRACTED the same day; see Amendment 1R below. The text is kept because the
+arms it justified were built on it.**
+
 Tier-1's signal is the norm of a row's residual after the close window is
 projected onto a 31-dimensional trigonometric basis: what it keeps is what the
 block's low-frequency structure fails to explain. That is a **prior about
@@ -128,13 +131,46 @@ random tokens 0.407/0.439. And on real documents the rate is 24% while the
 accuracy is *identical to dense* over 300 questions. A high rate is the net
 bounding what the prior stops covering, which is the design working.
 
-Two consequences for this pre-registration, both recorded before A2 reported.
+## Amendment 1R (2026-09-17): the naturalness ordering was the confound
 
-- **Q1's threshold is not re-argued here**, but its meaning is narrower than it
-  reads. Recovering half of RULER's multi-key gap is worth having; failing to
-  is not by itself evidence that the method is weak on multi-key retrieval in
-  natural documents, and the paper must not report it as if it were.
-- **A third arm follows from the framing**, below.
+Amendment 1's ordering is **also an ordering by decode length** -- those four
+runs generated about 250k, 1, 14 and 14 tokens. The two axes were never
+separated, and "not by how many decode steps amortise the calibration" was
+asserted, not measured. Measured, it is wrong.
+
+`lit-continue-64k-short` and `lit-continue-64k-long` continue a real novel
+(Journey to the West, The Count of Monte Cristo, Don Quixote, truncated to
+exactly 64k tokens) and vary only the generated length. With
+`stats-stream-64k-x130` and `stats-stream-64kprefill-long` holding the length
+and varying only the text, the 2x2 closes:
+
+| | 14 decode steps | 4096 decode steps |
+|---|---|---|
+| random tokens | 0.407 (97.8% provisional) | 0.0023 (0.6%) |
+| **a real novel** | **0.483 (97.9% provisional)** | **0.0032 (0.6%)** |
+
+- **Decode length moves the rate 151x.** Same novel, same context.
+- **Text type moves it 1.6x, in the WRONG direction.** At 14 steps a novel
+  falls back MORE than random tokens (0.483 against 0.407) and far more than
+  RULER (0.305). Prose is the most favourable input a prior on ordinary
+  language can get; it is the worst case measured.
+
+So the spectral prior's fit to the text does **not** explain the fallback rate.
+What explains it is the share of steps served before calibration completes:
+97.9% for the novel at 14 steps, 0.6% at 4096, and the per-state overflow rates
+are the same in both (0.455 and 0.403 provisional).
+
+One mechanism does track the text: at the Z_MAX clamp the number of rows fired
+is content-dependent -- 2483 for the novel, 1958 for random tokens, 1663 for
+RULER -- so natural prose makes the *provisional* index fire more and overflow
+more. That is a statement about the clamp, not about the prior.
+
+**Consequences.** The paper may not order fallback by naturalness, and may not
+present a high rate on RULER as the method working at the edge of its stated
+applicability. Arm A3 below was derived from Amendment 1 and its premise is
+gone: it is **dropped**, and its prerequisite (a sigma-histogram statistic
+separating text types) is not worth building, because the thing it would select
+for does not drive the rate.
 
 ## Arm A3: fall back where the prior fails, and only there
 

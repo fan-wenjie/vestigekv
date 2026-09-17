@@ -71,5 +71,11 @@ now, so both have to name the path they describe.
   everything measured on `engine/`, which counts in `_ingraph_host_step`.
   The dump now reports `calls/step` so the multiplicity is measured, not
   inferred. Anything quoted from an affected job must be re-measured.
+- **The fallback rate is a decode-length number, not a text-type number.** The
+  2x2 (random tokens / a real novel) x (14 / 4096 decode steps) at a fixed 64k
+  context: 0.407, 0.0023, 0.483, 0.0032. Length moves it 151x; text moves it
+  1.6x and the most natural text is the WORST. Any sentence ordering fallback
+  by how natural the text is must go, including the one that reads a high
+  RULER rate as the method working at the edge of its applicability.
 - The fallback rate is **per rank**: TP0 0.0027 and TP1 0.0548 on the same 256k
   job. Any figure quoted from one rank understates it 20x.
