@@ -611,10 +611,27 @@ so with the graph active -- which is the production protocol -- the instrument
 never runs. The current tree reports because its stats plumbing was rewritten
 later.
 
-How many rows origin fires is a property of its certificate, not of graph
-capture, so the pair `origin-stats-64k-eager` / `current-stats-64k-eager`
-measures it with `--disable-cuda-graph` at 64k (30 requests, 64 tokens each).
-Their timings mean nothing and are not read; `fetched=<n>/call` is the number.
+**That route is closed too, and the pair measured nothing.** Origin's whole
+decode hook is guarded by `self._graph_bufs` being non-empty, and only graph
+capture populates it, so `--disable-cuda-graph` skips the hook entirely: no
+scan, no compression, no stats. The fused tree has an explicit eager branch for
+this (`_ensure_graph_bufs()` then the recall step under "No decode graph
+replays this step"); origin does not. Three things agree: origin printed no
+VestigeKV configuration line where the fused tree printed one per rank, neither
+emitted VKSTATS, and origin's median ITL was **32.96 ms against the fused
+tree's 40.16** -- faster because it was serving dense while the other ran the
+whole recall step eagerly.
+
+The fused tree's own silence has a different cause: its stats accounting hangs
+off the in-graph host step alone, so an eager step accounts nothing. Worth
+fixing when the instrument is next touched, since an instrument that works on
+one launch path is the defect this file already records twice.
+
+So how many rows origin fires has no cheap measurement, and patching origin is
+against keeping it as the reference. What stands is the source-level reading:
+origin solves z against the kept maximum where the current tree solves against
+the archived row's own true score, which is a strictly weaker requirement on
+the hard samples, so origin fires strictly fewer rows there.
 
 ### Atomics, checked statically before the data
 
