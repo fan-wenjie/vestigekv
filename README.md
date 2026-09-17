@@ -414,6 +414,15 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       prod-stream-vestigekv-256k-origin, and it answers whether the forked stage 1 itself costs
 #       anything, with the overflow work removed from both sides. Not a quality arm: truncating
 #       is what pre-registration 3's C1 measured at -0.057 of the RULER mean.
+#   stats-stream-64kprefill-long -> the one variable stats-stream-64k-x130 left confounded.
+#       That control holds the context, the generated length and the request count against
+#       RULER and changes only the text, which rules the text out (random continuation falls
+#       back 0.41 against RULER's 0.36). But it still differs from the long stream in TWO ways:
+#       its 64k arrived by prefill rather than by decoding up to it, and its calibration is
+#       amortised over 14 steps rather than 258050. This job keeps the 64k prefill and decodes
+#       4096 steps, so only the amortisation changes. Near 0.0002 puts the cause on the step
+#       count; near 0.3-0.4 puts it on the context's provenance, and then "the speedup is a
+#       long-decode number" needs a second qualifier in the paper.
 #   stats-stream-64k-x130 -> the controlled counterpart of stats-vestigekv-ruler-64k: the same
 #       engine tree, the same env (CTX 73728, radix off, stats on), the same context (64k
 #       prefill), the same generated length (14 tokens) and the same number of requests (130,
