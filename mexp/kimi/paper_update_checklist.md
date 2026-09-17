@@ -77,5 +77,21 @@ now, so both have to name the path they describe.
   1.6x and the most natural text is the WORST. Any sentence ordering fallback
   by how natural the text is must go, including the one that reads a high
   RULER rate as the method working at the edge of its applicability.
+- **The speedup cannot be measured on RULER, and must not be claimed there.**
+  A 14-token answer never amortises the index: 81% of RULER's scans run on a
+  tier that has not finished calibrating, and it falls back on 0.305 with every
+  knob at its default. There is no speedup at that length to lose, so "what
+  does the multi-key fence cost in latency" is not a question RULER can answer
+  -- asking it there measures the wrong regime. The speedup is a LONG-GENERATION
+  number and the method's prior is fitted to natural text; both belong in the
+  same sentence as 1.28x, every time it appears.
+- **Where the fence costs anything is exactly where there was nothing to gain.**
+  The fence fires on lanes that emit many archived rows, which is the
+  provisional regime: 81% of RULER's scans and 0.6% of a long decode's. On the
+  long stream the fresh bucket emits 2.3 rows per scan (p50 0, p90 <= 2), far
+  under a fence of 256, so the prediction is that fence 256 leaves the 256k
+  stream's 4.364 ms/token essentially unchanged and adds under a point of
+  fallback. `fence-mk256-stream-256k` and `-stats-256k` measure it; until they
+  report, the paper states the fence's cost only as the RULER fallback rate.
 - The fallback rate is **per rank**: TP0 0.0027 and TP1 0.0548 on the same 256k
   job. Any figure quoted from one rank understates it 20x.
