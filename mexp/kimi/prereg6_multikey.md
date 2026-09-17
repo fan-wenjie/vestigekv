@@ -446,6 +446,45 @@ consecutive steps right after the build, while 81% of RULER's scans run on a
 PROVISIONAL tier at answer positions. Every offline conclusion in this file
 inherits that gap, including "the certificate misses nothing".
 
+## Outcome at n=50: the fence FAILS Q1, and why that is still informative
+
+`fence-mk256-n50`, 5 tasks x 5 lengths x n=50, against A0 at the same n:
+
+| task | A0 n=50 | fence 256 n=50 | diff | dense (n=10) |
+|---|---|---|---|---|
+| niah_multikey_2 | 0.944 | 0.972 | **+0.028** | 1.000 |
+| niah_multikey_3 | 0.872 | **0.972** | **+0.100** | 1.000 |
+| ruler_qa_hotpot | 0.608 | 0.608 | **+0.000** | 0.760 |
+| **targeted mean** | 0.808 | **0.851** | +0.043 | 0.920 |
+| niah_single_3 | -- | 0.992 | -0.008 vs n=10 A0 | -- |
+| ruler_qa_squad | -- | 0.734 | (A0 n=50 pending) | 0.562 |
+
+**Q1 wants 0.870 and the arm gives 0.851, so it is reported as FAILED and not
+adopted**, per the ruling below. The n=10 reading of 0.887 did not survive:
+`ruler_qa_hotpot` appeared to gain 0.080 there and gains exactly 0.000 at n=50.
+
+**What is real.** multikey_3 goes 0.872 -> 0.972, which is 78% of its gap to
+dense and about ten standard errors over 250 samples; multikey_2 goes 0.944 ->
+0.972. The fence works, and it works on exactly the task family it was aimed
+at.
+
+**What the gate actually caught is a defect in the gate.** The targeted mean
+bundles two different failures under the word "multi-key": multi-NEEDLE
+retrieval, where several archived rows must reach one output and the fence
+fixes most of the gap, and multi-HOP reasoning (`ruler_qa_hotpot`), where the
+model must chain two retrievals and the fence does nothing at all. Q1's
+threshold was set on the mixture, so it tests no single mechanism. That is a
+flaw in how this pre-registration was written, recorded rather than repaired:
+the threshold is not revised after the data.
+
+**What a successor must do differently.** State the targeted family as
+multi-needle only, with `ruler_qa_hotpot` reported separately as the multi-hop
+control -- it is now evidence that the two families fail for different reasons,
+which is worth more than folding them together ever was. And measure dense at
+n=50 before setting any threshold: A0's own qa_hotpot fell 0.680 -> 0.608 from
+n=10 to n=50, so the dense column above, still at n=10, is not a safe
+denominator. `ruler-baseline-n50` supplies it.
+
 ## Adoption ruling (owner, 2026-09-17)
 
 If A2 passes every gate, it is adopted as the final algorithm without checking
