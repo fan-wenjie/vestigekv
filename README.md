@@ -423,6 +423,26 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       4096 steps, so only the amortisation changes. Near 0.0002 puts the cause on the step
 #       count; near 0.3-0.4 puts it on the context's provenance, and then "the speedup is a
 #       long-decode number" needs a second qualifier in the paper.
+#   lit-continue-64k-short, lit-continue-64k-long -> continue a NOVEL, to separate natural
+#       text from decode length. mexp/kimi/continue_text.py, new client "continue": real
+#       prose from LongBench v2's Literary and Detective sub-domains (Journey to the West,
+#       The Count of Monte Cristo, Don Quixote -- 18 documents over 512k characters),
+#       truncated to exactly 64k tokens, continued with ignore_eos so every request
+#       generates its full length.
+#       WHY: pre-registration 6's "naturalness" ordering -- self-continuation 0.003, real
+#       documents 0.241, needles 0.360, random 0.407 -- is ALSO an ordering by decode length
+#       (~250k, 1, 14, 14 tokens). The two axes were never separated, and the decode count
+#       moves the rate 180x where the text type moves it 35%, so that ordering is mostly the
+#       confound. These two hold the text natural and vary only the length; x130 (random,
+#       same context, same counts) holds the length and varies only the text. The four are a
+#       2x2 and the paper's applicability claim rests on which axis wins.
+#       PREDICTION: short 0.25-0.40 (natural text shaves something off random's 0.41 but the
+#       step count dominates) and long 0.002-0.01, with the short run ~80% provisional. A
+#       novel is the most favourable case a spectral prior can get, so if it still falls back
+#       like RULER at 14 steps, "the prior fails on non-natural text" is not the explanation
+#       for the fallback rate and pre-registration 6's amendment 1 has to be rewritten.
+#       FALSIFIER of the amortisation story: short comes in near 0.01, i.e. natural text
+#       alone fixes it without any extra decode steps.
 #   idxstate-stream-64k-short -> the third corner of the amortisation table, with buckets.
 #       stats-stream-64k-x130 already showed that 64k prefill + 14 decode steps of RANDOM
 #       text falls back on 0.407/0.439 -- MORE than RULER's 0.305 -- so the short-decode

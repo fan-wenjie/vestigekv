@@ -159,6 +159,17 @@ def run_client(job, port):
                "--random-range-ratio", "1", "--max-concurrency", "1", "--warmup-requests", "0",
                "--output-details", "--output-file", out_jsonl]
         out = os.path.join(RESULTS, f"stream_{arm}_{job['id']}.log")
+    elif client == "continue":
+        # Continue a real novel: the natural-text column of the 2x2 against the
+        # random-token stream, holding context and request count fixed.
+        cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "continue_text.py"),
+               "--port", port, "--model", MODEL,
+               "--input-len", str(args.get("input_len", 65536)),
+               "--output-len", str(args.get("output_len", 14)),
+               "--num-prompts", str(args.get("num_prompts", 130))]
+        if "sub_domains" in args:
+            cmd += ["--sub-domains", args["sub_domains"]]
+        out = os.path.join(RESULTS, f"continue_{arm}_{job['id']}.log")
     elif client == "needle":
         cmd = [PY, os.path.join(ROOT, "mexp", "glm53", "needle.py"), str(args.get("reps", 330)), port]
         out = os.path.join(RESULTS, f"needle_{arm}_{job['id']}.log")
