@@ -440,7 +440,17 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       turn of the online-softmax recurrence O_n = lerp(O_{n-1}, v_n, sigmoid(s_n - lse)),
 #       and a synthetic row standing for the omitted set is exact only if it carries that
 #       set's weighted centroid.
-#       TWO JOBS, because the first raced a code change:
+#       THREE JOBS. The first two measured NOTHING and their numbers are void, not null:
+#         omit-blend-ruler-n10, omit-blend-exact-n10 -- decode replays a CUDA graph, so the
+#           router's python runs once at CAPTURE; the blend was installed per step from
+#           _recall_step, i.e. after capture, so its ops were never recorded and every replay
+#           ran the uncompensated path. The tell was two compensators that differ by a lot
+#           offline (0.367 vs 0.195) returning BIT-IDENTICAL answers on all 13 tasks over 650
+#           questions. Do not quote either; VOID.
+#         omit-blend-exact-n10-v2 -- the registered arm, commit 90df7a5: buffers allocated
+#           before capture and installed where rows_for_layer is, so the blend is IN the
+#           graph. Two log lines (VKBLEND active, VKBLEND fill) must appear in the server log
+#           or the run is void again and must not be read as a result.
 #         omit-blend-ruler-n10  the ARITHMETIC-mean variant (offline 0.367). It launched at
 #           11:06 from a working tree rewritten at 11:10, so it has NO commit. Indicative
 #           only; its numbers may not be quoted and do not go in the paper.
