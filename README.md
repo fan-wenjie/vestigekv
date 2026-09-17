@@ -423,6 +423,17 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       4096 steps, so only the amortisation changes. Near 0.0002 puts the cause on the step
 #       count; near 0.3-0.4 puts it on the context's provenance, and then "the speedup is a
 #       long-decode number" needs a second qualifier in the paper.
+#   idxstate-stream-64k-short -> the third corner of the amortisation table, with buckets.
+#       stats-stream-64k-x130 already showed that 64k prefill + 14 decode steps of RANDOM
+#       text falls back on 0.407/0.439 -- MORE than RULER's 0.305 -- so the short-decode
+#       regime reproduces the gap with no needle question anywhere. What that run predates is
+#       the index-state instrument, so it cannot say WHY. This is the same job (input 65536,
+#       output 14, 130 prompts) on ENGINE=engine-fused with the buckets on.
+#       PREDICTION before running: provisional serves ~80% of scans, matching RULER's 81%
+#       against the long stream's 0.6%, and the per-state overflow rates match both
+#       (prov ~0.32). FALSIFIER: a fresh-dominated mix here would mean the short-decode
+#       fallback has a second cause the index state does not explain, and the claim "the
+#       fallback rate is the state mix times the per-state rate" is wrong.
 #   omit-blend-ruler-n10 -> the omitted-mass arm, the one lever the six refutations left.
 #       Six independent measurements now say more rows cannot help multi-key: the margin
 #       sweep 0->3 does not move it, A2's corrected target nets zero, A4 has nothing to
