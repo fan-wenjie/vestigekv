@@ -474,6 +474,35 @@ take the maximum. Hoisting the test above the loop -- one loop over the page
 table, one over kept-plus-fetched -- makes the ranges disjoint. It grows the
 SASS, which is already 34% larger, and should remove the spill.
 
+### Retest without the spill: 1.251x, and the residual is a third of what it looked like
+
+`td-stream-256k-nospill`, same protocol, the only change being the value-select
+row read:
+
+| arm | 256k | speedup | p10-p90 |
+|---|---|---|---|
+| dense | 5.576 | 1.000 | |
+| origin (truncates) | 4.346 | 1.283 | [4.330-4.363] |
+| current default (CSR) | 4.771 | 1.169 | [4.751-4.786] |
+| tier-decode, spilling | 4.643 | 1.201 | [4.495-4.805] |
+| **tier-decode, no spill** | **4.456** | **1.251** | [4.440-4.465] |
+| nodense | 4.348 | 1.282 | [4.332-4.360] |
+
+The spill was worth **0.187 ms/step**, nearly twice the 0.10 estimated from
+the register counts, and the window closed from [4.495-4.805] to
+[4.440-4.465] -- a fixed per-step cost removed, not a rare one.
+
+That corrects the decomposition again. Handling an overflow costs **0.423
+ms/step** in the CSR design and **0.108** in the tier design, a 74% cut, and
+the residual against origin is 0.110 ms for rows origin drops. The earlier
+reading that "the remaining 0.295 ms is the feature" was wrong: two thirds of
+it was a spill.
+
+The instrument matters here. No profile attributed those 0.187 ms: a fence
+fires on a few percent of steps, so the per-kernel means averaged the spill
+tax and the fenced work together, and the two builds looked within a few
+microseconds of each other. The disassembly found it in one command.
+
 So closing the remaining gap to origin is not a kernel problem. It is either
 firing fewer rows (calibration -- origin fires fewer because it solves z
 against the kept maximum rather than the archived row's true score) or making
