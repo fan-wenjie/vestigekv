@@ -514,6 +514,18 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       Prints registers, spills and instruction counts for both and writes ptx.diff/sass.diff.
 #       It found the fenced build at 255 registers with 40 bytes of stack against 200 and none,
 #       which is a cost every step pays because register allocation is compile-time.
+#   mexp/kimi/z_topk_offline.py asks what the conformal z has to be to certify a query's
+#       top-k archived rows rather than its single best one, on the same dumped snapshots
+#       bucket_offline.py reads:
+#         python mexp/kimi/z_topk_offline.py --dir results/glm53/caldump --ks 1,3
+#       The calibration solves z_req = (true_best - idxs_best)/cert_best, so its guarantee is
+#       marginal and about ONE row, while a multi-key question needs k at once and a marginal
+#       guarantee does not compose (tau^k). Measured on 8 GLM-5.3 snapshots, certifying the
+#       top-3 instead of the top-1 costs a few percent of z and 10-33% more fired rows at p90
+#       -- cheap against the 0.14 the method loses on niah_multikey_3. GLM geometry, not
+#       Kimi's: the structure transfers, the numbers do not, and Kimi snapshots are not dumped.
+#       It also shows z at 6.98-8.31 on the 64k snapshots against Z_MAX 8.0, so that clamp is
+#       already binding and weakens the guarantee before k enters.
 #   mexp/kimi/ruler_diff.py compares two RULER arms question by question:
 #       python mexp/kimi/ruler_diff.py results/kimi/ruler/samples_<a>.json results/kimi/ruler/samples_<b>.json
 #       For arms that must be identical (a stats-on twin, or a change that moves no row such as
