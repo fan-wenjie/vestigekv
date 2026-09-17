@@ -379,6 +379,48 @@ ended this arm before the first RULER run.
 **Rejected.** The mass gap is real and remains the one unexplained term; the
 centroid is not the way to close it.
 
+## The fence closes the gap (2026-09-17), and what it cost
+
+Eight recall-side mechanisms were ruled out and the gap survived all of them,
+so the question changed from "recover the row" to "notice we cannot, and stop
+ranking". A fenced lane attends its full row set, which IS dense, so the fence
+is exactly right where the certificate is weakest. The detector is free: the
+scan's fired-row count already rises with how many archived rows a query needs.
+
+RULER 13 tasks, 4k-64k, n=10, `--vestigekv-multikey-fence-rows`:
+
+| task | A0 | fence 1 | fence 4 | dense |
+|---|---|---|---|---|
+| niah_multikey_2 | 0.920 | 1.000 | **1.000** | 1.000 |
+| niah_multikey_3 | 0.860 | 0.980 | **1.000** | 1.000 |
+| ruler_qa_hotpot | 0.680 | 0.760 | **0.760** | 0.760 |
+| **targeted mean** | 0.820 | 0.913 | **0.920** | **0.920** |
+| 13-task mean | 0.9179 | 0.9343 | **0.9360** | 0.9413 |
+| fallback @64k | 0.305 | 0.696 | 0.718 | -- |
+
+**All three targeted tasks reach dense exactly at fence 4.** Gates Q1 (>= 0.870)
+and Q2 (65-cell mean not below A0 - 0.010) pass.
+
+**Q3 fails on one task, and not as a cost of this arm.** `ruler_qa_squad` goes
+0.608 -> 0.535, past the 0.03 bar. But VestigeKV was ABOVE dense there (0.608
+against dense's 0.562): the compression was helping that task by accident, and
+a fence removes the accident by making the lane dense. What Q3 catches is the
+loss of a windfall, not a payment for multi-key. Every other task holds.
+
+**The cost is the fallback rate, and the knob is not yet calibrated.** The
+offline dumps put the fired-row count at a median of 0 to 13; serving puts it
+at 90 to 230. So fences at 1 and 4 both sit far below the real distribution,
+both fence about 70% of lanes, and their 0.02 difference in fallback is
+dynamics, not the threshold -- fence 4 is even slightly the more expensive.
+The cheap end of the curve has not been touched: `fence-mk64`, `-mk256` and
+`-mk1024` probe it.
+
+**This is the third time the calibration snapshots have misdescribed serving.**
+They are calibrated tiers (42 of 42 `need_more_hard: False`) sampled at eight
+consecutive steps right after the build, while 81% of RULER's scans run on a
+PROVISIONAL tier at answer positions. Every offline conclusion in this file
+inherits that gap, including "the certificate misses nothing".
+
 ## Adoption ruling (owner, 2026-09-17)
 
 If A2 passes every gate, it is adopted as the final algorithm without checking
