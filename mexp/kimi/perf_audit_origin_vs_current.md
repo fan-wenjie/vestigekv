@@ -503,6 +503,42 @@ fires on a few percent of steps, so the per-kernel means averaged the spill
 tax and the fenced work together, and the two builds looked within a few
 microseconds of each other. The disassembly found it in one command.
 
+### Affine page-table addressing closes it: 1.276x, and 95% of the overflow cost is gone
+
+`td-stream-256k-affine`, same protocol, adding
+`--enable-vestigekv-affine-page-table`:
+
+| arm | 128k | 256k | speedup at 256k |
+|---|---|---|---|
+| dense | 4.783 | 5.576 | 1.000 |
+| origin (truncates) | 4.181 | 4.346 | 1.283 |
+| current default (CSR) | 4.296 | 4.771 | 1.169 |
+| tier-decode, no spill | 4.227 | 4.456 | 1.251 |
+| **tier-decode + affine** | **4.153** | **4.369** | **1.276** |
+| nodense | 4.168 | 4.348 | 1.282 |
+
+The affine arm is worth a further 0.087 ms/step, and at 128k it passes origin
+outright (4.153 against 4.181).
+
+The three steps together:
+
+| stage | cost of handling an overflow |
+|---|---|
+| CSR pack (today's default) | 0.423 ms/step |
+| tier row read (no per-step copy) | 0.108 |
+| + affine addressing | **0.021** |
+
+**95% of it is gone**, and the residual against origin is 0.023 ms -- half a
+percent -- for rows origin drops and that C1 values at 0.057 of the 65-cell
+RULER mean. Keeping every certified row is now close to free.
+
+Each step was found by a different instrument, and none of them would have
+found the others: the stream timings found the CSR copy, the disassembler
+found the spill that no per-kernel profile could attribute, and the page-table
+probe established the precondition the affine arm needed. The arm was written
+only after `pagetable_affine` read 1.0000 and adopted only after the SASS
+showed the async copies it was written to enable (LDGSTS 4 -> 8).
+
 So closing the remaining gap to origin is not a kernel problem. It is either
 firing fewer rows (calibration -- origin fires fewer because it solves z
 against the kept maximum rather than the archived row's true score) or making
