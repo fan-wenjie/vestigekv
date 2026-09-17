@@ -253,6 +253,44 @@ set"); implementation starts only after every queued measurement has run, and
 lands only if the measured gain justifies changing the algorithm this close to
 the deadline (2026-09-26).
 
+## What the fallback rate actually tracks: how natural the text is
+
+The tier-1 signal is a spectral one: sigma is the norm of a row's residual
+after projecting the 4096-row close window onto a 31-dimensional trigonometric
+basis, so what it keeps is what the low-frequency structure of the block does
+not explain. That is a **prior about natural text**, and it is a shortcut for
+the ordinary case rather than a general-purpose relevance score. Where the text
+has no such structure the prior has nothing to stand on, and the scan fires
+indiscriminately -- which is the fallback doing its job, not failing at it.
+
+Ordered by how natural the text is, the measured rates are monotone:
+
+| workload | text | fallback TP0 / TP1 | quality against dense |
+|---|---|---|---|
+| stream 4k->256k | the model's own continuation | 0.003 / 0.055 | -- |
+| **LongBench v2** | **real documents** | **0.241 / 0.171** | **identical, 0.3333 both** |
+| RULER at 64k | natural haystack, inserted needles | 0.360 / 0.324 | -0.023 |
+| 64k random tokens | none | **0.407 / 0.439** | -- |
+
+Two things follow, and the second is the one that matters for the paper.
+
+- **The step-count reading is weaker than the naturalness one.** Amortisation
+  predicts LongBench, at one decode step per question, to fall back at least as
+  much as RULER's fourteen; measured it is 0.24 against 0.36, the wrong way
+  round. Naturalness predicts documents below needles below random tokens, and
+  that is what the numbers do. Both factors are present and the contexts differ
+  (LongBench up to 120k, RULER 4k-64k), so this orders them rather than
+  isolating one.
+- **A high fallback rate is not a quality problem.** On real documents the rate
+  is 24% and the accuracy is *identical to dense*, question by question over
+  300. The net is bounding exactly what the prior stops covering.
+
+An instrument caveat: LongBench's `fetch[p50=0 p90=0 p99=0]` is not usable.
+Its questions decode one token each, and `_account_step` histograms the
+*previous* step's `fetch_len`, which for a one-step request is always a stale
+zero. The fallback count is written by the compaction on the step itself and is
+sound.
+
 ## Where the fallback actually fires: two regimes, and a rank asymmetry
 
 VKSTATS is per rank, and reading one rank understated the streaming rate by
