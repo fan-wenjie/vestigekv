@@ -58,5 +58,18 @@ now, so both have to name the path they describe.
   answers and exactly +0.0000 for the tier row read; 40 of 650 and +0.0056 for
   the affine reordering, against a 40-of-650 run-to-run floor. Worth a sentence
   where the paper claims bit-exactness against dense.
+- **Every `fallback=` figure measured on `engine-fused` between 09-17 06:17
+  (`ff60fab`) and 09-17 10:5x (`69eefcb`) is wrong, low by the prologue's
+  call multiplicity (~3x).** `steps` and `scan_calls` counted once per
+  *entry* to `_decode_prologue`, which runs once per step but is called
+  twice-plus; `overflow` is a device counter incremented once, so the rate
+  divided. Affected done jobs: `current-stats-64k-eager`, `lb2-vestigekv-stats`,
+  `trunc-prefix-nofb`, `trunc-spread-nofb`, and the first `idxstate-*` pair.
+  **Not affected**: every accuracy number from those jobs (a stats counter does
+  not reach the answers); every per-call ratio (`fetched/call`, `kept/call`,
+  `attended_frac`), whose numerator and denominator inflate together; and
+  everything measured on `engine/`, which counts in `_ingraph_host_step`.
+  The dump now reports `calls/step` so the multiplicity is measured, not
+  inferred. Anything quoted from an affected job must be re-measured.
 - The fallback rate is **per rank**: TP0 0.0027 and TP1 0.0548 on the same 256k
   job. Any figure quoted from one rank understates it 20x.
