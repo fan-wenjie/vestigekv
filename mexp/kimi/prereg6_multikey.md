@@ -407,7 +407,32 @@ against dense's 0.562): the compression was helping that task by accident, and
 a fence removes the accident by making the lane dense. What Q3 catches is the
 loss of a windfall, not a payment for multi-key. Every other task holds.
 
-**The cost is the fallback rate, and the knob is not yet calibrated.** The
+### The fence curve, and the one point that passes every gate
+
+| fence | targeted | 13-task | fallback @64k | Q3 |
+|---|---|---|---|---|
+| off (A0) | 0.820 | 0.9179 | 0.305 | -- |
+| 1 | 0.913 | 0.9343 | 0.696 | fails: single_3 -0.04, qa_squad -0.06 |
+| 4 | **0.920** | 0.9360 | 0.718 | fails: qa_squad -0.073 |
+| 64 | 0.893 | 0.9296 | 0.638 | fails: qa_squad -0.033 |
+| **256** | **0.887** | **0.9310** | **0.445** | **passes** |
+| 1024 | 0.827 | 0.9154 | 0.379 | passes, but no gain left |
+| dense | 0.920 | 0.9413 | -- | -- |
+
+**fence 256 is the unique arm passing Q1, Q2 and Q3.** Q1 wants 0.870 and it
+gives 0.887, two thirds of the way from A0 to dense; the 13-task mean rises
+from 0.9179 to 0.9310; no task falls by more than 0.03. It costs 14 points of
+fallback, not the 40 the tighter fences cost. By the adoption ruling below --
+"among arms passing every gate, take the highest targeted mean" -- it is the
+only candidate, and `fence-mk256-n50` re-measures it at n=50 on the three
+targeted tasks plus the two that came closest to violating Q3.
+
+fence 4 buys the last 0.033 of targeted mean and reaches dense exactly, but
+only by fencing so much that `ruler_qa_squad` loses the windfall compression
+was giving it. fence 1024 has loosened past the point of doing anything: its
+targeted mean is A0's.
+
+**The cost is the fallback rate, and the knob was not calibrated by the dumps.** The
 offline dumps put the fired-row count at a median of 0 to 13; serving puts it
 at 90 to 230. So fences at 1 and 4 both sit far below the real distribution,
 both fence about 70% of lanes, and their 0.02 difference in fallback is
