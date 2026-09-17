@@ -427,6 +427,12 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       because origin's in-graph branch returns before its stats branch, so the instrument
 #       never runs under the production protocol; these two disable the cuda graph and read
 #       fetched=<n>/call at 64k. Their timings are meaningless and are not read.
+#   td-stream-256k-affine -> the same 256k stream with --enable-vestigekv-affine-page-table:
+#       a fenced lane computes its row ids as base+offset rather than loading them, which
+#       makes the K address affine and gives the loop its own async-copy pipeline (LDGSTS 4
+#       -> 8, checked with mexp/kimi/fence_disasm.py). It is an ASSERTION about the allocator,
+#       not a check: SGLANG_DEBUG_VESTIGEKV_STATS reports pagetable_affine, measured 1.0000
+#       over 258050 steps here, and a fragmented table would silently attend wrong rows.
 #   td-stream-256k-nospill -> the 256k retest after the fenced arm stopped spilling (255 regs
 #       and 40B of stack became 200 and none; see mexp/kimi/fence_disasm.py and the engine rule
 #       .claude/rules/disassemble-check-for-spills.md).
