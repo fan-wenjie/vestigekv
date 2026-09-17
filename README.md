@@ -423,6 +423,26 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       4096 steps, so only the amortisation changes. Near 0.0002 puts the cause on the step
 #       count; near 0.3-0.4 puts it on the context's provenance, and then "the speedup is a
 #       long-decode number" needs a second qualifier in the paper.
+#   fence-mk1-ruler, fence-mk4-ruler -> the retreat: fence multi-key instead of ranking it.
+#       Eight recall-side mechanisms are ruled out and the gap survives all of them, so this
+#       stops trying to recover the row and instead notices the case and attends densely. A
+#       fenced lane IS dense, so the fence is exactly right where the certificate is weakest;
+#       it costs fallback and nothing else. The detector is free: on the Kimi dumps the
+#       fired-row count rises monotonically with how many archived rows the query needs --
+#       median 0, 1, 2, 4, 13 for 0, 1, 2, 3, 4+ -- and per lane, fencing above ONE fired row
+#       catches 100% of the lanes where some head needs two or more, fencing 29.7% of lanes
+#       against the 0.305 RULER already pays.
+#       Two arms: --vestigekv-multikey-fence-rows 1 (catch everything) and 4 (59.5% of
+#       multi-key lanes, 13.5% of lanes). A0 at n=10 is multikey_2 0.920, multikey_3 0.860,
+#       qa_hotpot 0.680, 65-cell mean 0.9179.
+#       PREDICTION: multikey_2 and multikey_3 move toward dense (1.000) and the 65-cell mean
+#       does not fall; fallback at 64k rises from 0.305 toward 0.5 at fence 1.
+#       FALSIFIERS, either ending the retreat: (1) multi-key does NOT improve even though the
+#       fenced lanes are attending densely -- which would mean the failing steps are not the
+#       ones firing several rows, and the detector is aimed at the wrong thing; (2) any
+#       currently-perfect task falls, i.e. the fence costs accuracy somewhere it was fine.
+#       NOTE this is a SHORT-ANSWER knob: a long decode fires few rows per scan and would pay
+#       far more fallback for far less, so it defaults off and the paper must say so.
 #   lit-continue-64k-short, lit-continue-64k-long -> continue a NOVEL, to separate natural
 #       text from decode length. mexp/kimi/continue_text.py, new client "continue": real
 #       prose from LongBench v2's Literary and Detective sub-domains (Journey to the West,
