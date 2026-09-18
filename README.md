@@ -7,8 +7,11 @@
 > git submodule update --init --depth 1
 > ```
 > The only code dependency is `engine/` (an sglang fork, branch
-> `vestigekv`, one commit, shallow-cloned). Without it, everything under
-> `mexp/` raises `ImportError`.
+> `vestigekv`). Without it, everything under `mexp/` raises `ImportError`.
+> The branch is no longer the single commit it began as; the one-commit form
+> is preserved as `vestigekv-pre-rebase`. For a reviewer without this
+> repository, `tools/make_supplement.py` emits the same code as upstream
+> sglang at a pinned revision plus one patch.
 
 ## What it does
 
