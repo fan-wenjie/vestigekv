@@ -72,3 +72,42 @@ family for whichever passes. Against A0 at the same n.
 ## Not revised after the data
 
 The gates, and the n=10-then-n=50 order. Deadline 2026-09-26.
+
+## G1 FAILS at rank 128, and 192 cannot run at all (2026-09-18)
+
+`rank128-ruler`, 13 tasks, 4k-64k, n=10, against the matched `a0-stats-ruler-5len`:
+
+| task | A0 | rank 128 | delta |
+|---|---|---|---|
+| **niah_multikey_3** | 0.840 | **0.800** | **-0.040** |
+| **niah_multikey_2** | 0.920 | **0.900** | **-0.020** |
+| niah_multikey_1 | 1.000 | 1.000 | +0.000 |
+| ruler_cwe | 0.980 | 0.974 | -0.006 |
+| ruler_fwe | 0.900 | 0.887 | -0.013 |
+| ruler_qa_squad | 0.575 | 0.588 | +0.013 |
+| 13-task mean | 0.9141 | 0.9090 | -0.0051 |
+
+**G1 required `niah_multikey_3` to rise by >= 0.05 and `niah_multikey_2` not to
+fall. Both fell.** The multi-needle pair moves the wrong way, and multikey_3's
+-0.040 is four times the n=10 run-to-run floor of 0.010 recorded in
+pre-registration 8. Doubling the sketch rank does not resolve a query that must
+match several distinct keys; if anything it is slightly worse.
+
+**Rank 192 was never measured and will not be.** The rank is a Triton
+`constexpr` shape in `fused_prologue_split`, which requires a power of two, so
+the arm aborts during CUDA-graph capture with `Shape element 1 must be a power
+of 2`. The fix would be padding to 256, which makes 192 cost what 256 costs and
+tests nothing 128 has not already answered. The arm is withdrawn rather than
+repaired, because repairing it would spend GPU time on a direction the data has
+already refuted.
+
+**What this means, in the words this file fixed in advance.** This is the second
+outcome listed above: *G1 fails while the rank rises -- the ordering deficit is
+not resolvable by rank, which would point at the BASIS rather than its size. V
+is fitted to the archive's content by a rank-r decomposition, and a query
+matching several keys may need a basis fitted to something else. That is a
+harder problem and worth stating as one.*
+
+So it is stated as one. The strongest remaining candidate, and the only one
+aimed by a measurement of the failure rather than by inference, is spent. The
+multi-key gap stays open and the paper says so.
