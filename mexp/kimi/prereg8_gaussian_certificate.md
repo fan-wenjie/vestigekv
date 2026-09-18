@@ -122,6 +122,24 @@ model did not rescue, which is worth stating: the normality is real and the
 gain is not, and that would locate the failure somewhere other than the
 quantile.
 
+## The min_hard direction is retired (2026-09-18)
+
+`--vestigekv-min-hard-factor` was added to keep tiers on the Z_MAX clamp
+longer, because the clamp loses the top archived row on 16.0% of answer-step
+records against the fitted certificate's 22.85%. Its arms at x4 and x16 are
+**withdrawn before running**, by the owner, under the objective of raising
+accuracy at minimal cost to performance.
+
+The reason is that the clamp buys its lower miss rate by over-fetching -- a
+provisional tier fires 1663 to 5629 rows where a calibrated one fires 0 -- so
+it is the worst exchange rate available: a great deal of throughput for a
+bounded accuracy gain. And the small-sample variance it was meant to suppress
+is a property of the order statistic, which the parametric fit removes from the
+other end without spending anything.
+
+The flag stays in the tree at its historical default of 1.0. It is not to be
+proposed again without a reason that answers the exchange rate.
+
 ## Not revised after the data
 
 The gate thresholds, the target family, and G5's role in the description rather
