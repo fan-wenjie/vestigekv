@@ -10,3 +10,4 @@
 2026-09-18_11:00:35 OK runner=1 servers=1 daemon=0 job=ruler-baseline-long-mid done=117 failed=4 prog='7/130 [15:54<4:39:29, 136.34s/it]' new_err=0 gpu=88215/99% 88215/100%  disk_free=63G
 2026-09-18_11:15:35 OK runner=1 servers=1 daemon=0 job=ruler-baseline-long-mid done=117 failed=4 prog='13/130 [29:33<4:26:09, 136.49s/it]' new_err=0 gpu=88215/100% 88215/99%  disk_free=63G
 2026-09-18_11:30:35 OK runner=1 servers=1 daemon=0 job=ruler-baseline-long-mid done=117 failed=4 prog='20/130 [45:26<4:09:31, 136.11s/it]' new_err=0 gpu=88235/100% 88235/100%  disk_free=63G
+2026-09-18_11:45:36 OK runner=1 servers=1 daemon=0 job=ruler-baseline-long-mid done=117 failed=4 prog='26/130 [59:00<3:55:09, 135.67s/it]' new_err=0 gpu=88235/100% 88235/100%  disk_free=63G

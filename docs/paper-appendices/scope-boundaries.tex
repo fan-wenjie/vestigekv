@@ -1,6 +1,34 @@
 % ---------------------------------------------------------------------------
 % Not written into the paper, recorded here in case it is asked.
 %
+% Why the real-prose speedup stops at 256k, and why there is no long-novel
+% streaming run.
+%
+% 1. The corpus cannot go further. continue_text.py filters on input_len * 8
+%    characters; 512k tokens needs 4,194,304 and the longest document in the
+%    Literary and Detective sub-domains is 3,596,979. NO document qualifies, so
+%    a 512k single-document context cannot be built at all. (256k needs
+%    2,097,152 and four documents clear it; 128k, six; 64k, nineteen.)
+%
+% 2. A long streaming decode would not measure what its name suggests. In a
+%    4k -> 512k stream the seed is about 1% of the final context and the rest is
+%    the model's own continuation, so a novel-seeded stream converges on the
+%    synthetic one within a few thousand tokens. Pre-registration 6 measured the
+%    axis directly: at 4096 decode steps fallback is 0.0032 on a real novel
+%    against 0.0023 on random tokens, while decode length moves the same rate
+%    151x -- and self-continuation, which is what fills a long stream, is the
+%    most favourable text of all at 0.003.
+%
+% The litspeed design avoids that dilution on purpose: it pins the context at
+% 64k/128k/256k of real prose and decodes 4096, so the cache is real prose
+% throughout. That is the right form of the question and it is answered.
+% Above 256k the curve is synthetic, and the paper claims only that the curve is
+% not an artefact of synthetic input over the range where both exist.
+% ---------------------------------------------------------------------------
+
+% ---------------------------------------------------------------------------
+% Not written into the paper, recorded here in case it is asked.
+%
 % Why no LongBench v1. Its English split averages about 6.7k words, roughly 9k
 % tokens, and its longest tasks stay well under 32k. The serving crossover
 % measured here is ~28k (numbers.tex \serveCrossover, from the server-side
