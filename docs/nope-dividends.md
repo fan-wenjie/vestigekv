@@ -1,13 +1,17 @@
 # The dividend inside prior algorithms
 
-Technical note accompanying the VestigeKV paper. This material was an appendix
-(*The dividend inside prior algorithms*) and was moved here to keep the paper's
-appendix proportionate. Nothing in it is a new measurement: every item is a
-derivation from the setup of the paper's theory section, and where a measured
-record bounds the claim, the bound is stated.
+Technical note accompanying the VestigeKV paper's appendix *The dividend inside
+prior algorithms*, which carries the same derivations. **This file is not a
+substitute for that appendix and does not repeat it to be read instead** -- it
+exists because a reviewer has no obligation to read an appendix at all, so the
+material has to survive somewhere a reader who wants it can find it without the
+PDF, and because the status table at the end is easier to keep current here than
+in a frozen submission.
 
-The paper keeps a one-paragraph summary in its extended-related-work appendix
-and points here.
+Nothing in it is a new measurement: every item is a derivation from the setup of
+the paper's theory section, and where a measured record bounds the claim, the
+bound is stated. The bounds are the part worth carrying: three of the seven
+dividends are *empty* on this checkpoint.
 
 ## Why there is a family of them, not one
 

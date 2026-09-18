@@ -2,3 +2,4 @@
 2026-09-18_09:28:23 OK runner=1 servers=1 daemon=0 job=randfence-20-ruler done=110 failed=4 prog='404/650 [18:06<26:36,  6.49s/it]' new_err=0 gpu=89417/98% 88841/98%  disk_free=63G
 2026-09-18_09:29:31 OK runner=1 servers=1 daemon=0 job=randfence-20-ruler done=110 failed=4 prog='417/650 [19:16<12:37,  3.25s/it]' new_err=0 gpu=89417/97% 88841/96%  disk_free=63G
 2026-09-18_09:44:31 OK runner=1 servers=1 daemon=0 job=litspeed-64k-vk done=112 failed=4 prog='' new_err=0 gpu=88577/0% 88021/0%  disk_free=63G
+2026-09-18_09:59:31 OK runner=1 servers=1 daemon=0 job=litspeed-128k-vk done=114 failed=4 prog='' new_err=0 gpu=89137/100% 88581/100%  disk_free=63G
