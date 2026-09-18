@@ -61,6 +61,34 @@ All at n=50, 4k-64k, against A0 at the same n.
 An arm failing N1, N2 or N3 is reported failed and not adopted. N4 cannot
 block adoption; it decides what the paper is allowed to say.
 
+## N3 FAILS (2026-09-18): the fence is not free where the speedup lives
+
+Server-side ms/token, same script and window as the delivered curve,
+`td-stream-512k` against `fence-mk256-stream-256k`:
+
+| context | A0 | fence 256 | cost |
+|---|---|---|---|
+| 8k | 3.955 | 3.946 | 0% |
+| 32k | 4.088 | 4.141 | +1.3% |
+| 64k | 4.125 | 4.371 | **+6.0%** |
+| 128k | 4.184 | 4.737 | **+13.2%** |
+
+N3 allows 2%. At 128k the cost is 13.2% and **rising with context**, and it
+eliminates the speedup: dense is 4.786 there, A0's 4.184 is 1.144x, and the
+fence's 4.737 is 1.010x.
+
+**My prediction was wrong and the reason is worth keeping.** I argued the fence
+would be nearly free on a long decode because its fresh bucket fires 2.3 rows
+per scan (p50 0, p90 <= 2), far under a threshold of 256. The firing RATE is
+indeed low; what I ignored is the cost of each firing. A fenced lane attends
+its full row set, and at 128k that is about thirty times a compressed step, so
+a rare event at a divergent price still diverges. Rate alone never priced this.
+
+**Consequence.** By the adoption rule the arm is failed and not adopted as a
+default. What N3's own text already allowed stands: the fence may exist as a
+documented, off-by-default, short-answer knob, and the paper must say that the
+speedup is gone above about 64k with it on.
+
 ## Adoption
 
 If N1, N2 and N3 pass: the fence ships, with its default set by N3 -- on if the
