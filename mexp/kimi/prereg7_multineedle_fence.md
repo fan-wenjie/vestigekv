@@ -109,3 +109,31 @@ loses its top-scoring archived row on 22.85% of records against single_1's
 
 The target family, the gate thresholds, and the rule that N4 governs the claim
 rather than the adoption. The deadline is 2026-09-26.
+
+## N4 VERDICT: random does not match; the fired count is doing real work (2026-09-18)
+
+`randfence-20-ruler`, the matched-cost random fence, against A0 and fence 256 at
+n=10 over the same five lengths. Target family is the multi-needle pair.
+
+| | niah_multikey_2 | niah_multikey_3 | target mean | vs A0 | 13-task mean |
+|---|---|---|---|---|---|
+| A0 | 0.920 | 0.840 | 0.880 | -- | 0.9141 |
+| **random fence** | 0.960 | 0.880 | **0.920** | **+0.040** | 0.9237 |
+| fence 256 | 0.980 | 0.980 | 0.980 | +0.100 | 0.9310 |
+
+**N4 asked whether a random fence at matched cost reproduces the gain within
+0.02. It does not: +0.040 against +0.100, a shortfall of 0.060.** By the rule
+frozen before these data, the fired-row count is therefore doing real work and
+may be described as selecting, not merely as attending densely more often.
+
+**What the number does not license.** Random recovers 40% of the gain, so
+density alone is a large part of the effect and the count is not a clean
+detector -- consistent with the answer-step attribution in this file, which
+found the count covers 19.5% of the steps that lose their top row while fencing
+32% of records, worse than chance on that axis. The honest description is that
+the count is weakly informative and mostly buys density.
+
+**This changes nothing about adoption.** The fence failed N3 on latency -- +13.2%
+at 128k and rising, which eliminates the speedup -- and remains not adopted. N4
+governs description only, and the paper does not describe the fence at all any
+more; the verdict is recorded because the gate was frozen and is owed an answer.
