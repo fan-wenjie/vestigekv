@@ -31,6 +31,7 @@ LENGTH = {"short": "Short", "medium": "Medium", "long": "Long"}
 
 
 def _load(arm):
+    """arm is a filename stem: 'baseline', 'vestigekv', or a tagged variant."""
     path = os.path.join(RESULTS, f"results_{arm}.json")
     return json.load(open(path)) if os.path.exists(path) else None
 
@@ -61,6 +62,24 @@ def main():
             else:
                 lines.append(f"\\newcommand{{\\{name}}}{{{v:.3f}}}")
     d, v = loaded["baseline"], loaded["vestigekv"]
+    # Wall clock on the same 300 questions, matched arms. LongBench v2 is scored
+    # with max_tokens=1, so this is one prefill per question and essentially no
+    # decode: it prices VestigeKV's per-request setup where there is nothing to
+    # amortise it over, which is the floor of the method's cost on real text.
+    if d and v and d.get("wall_s") and v.get("wall_s"):
+        dw, vw = float(d["wall_s"]), float(v["wall_s"])
+        lines.append(f"\\newcommand{{\\lbKDWall}}{{{dw / 60:.1f}}}")
+        lines.append(f"\\newcommand{{\\lbKVWall}}{{{vw / 60:.1f}}}")
+        lines.append(f"\\newcommand{{\\lbKSpeed}}{{{dw / vw:.3f}}}")
+        lines.append(f"\\newcommand{{\\lbKCost}}{{{100 * (vw / dw - 1):+.1f}}}")
+        # The second vestigekv run bounds run-to-run spread on this harness.
+        v2 = _load("vestigekv_lb2-vestigekv-stats")
+        if v2 and v2.get("wall_s"):
+            lines.append(f"\\newcommand{{\\lbKVSpread}}{{"
+                         f"{100 * abs(float(v2['wall_s']) / vw - 1):.2f}}}")
+    else:
+        lines += [f"\\newcommand{{\\lbK{n}}}{{\\PENDING}}"
+                  for n in ("DWall", "VWall", "Speed", "Cost", "VSpread")]
     if d and v:
         delta = v["acc"] - d["acc"]
         lines.append(f"\\newcommand{{\\lbKDelta}}{{{delta:+.3f}}}")
