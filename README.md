@@ -385,6 +385,25 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       python mexp/glm53/compare_ruler.py --out results/kimi/ruler --n 50.
 #       Gates and interpretation rules for these three groups are pre-registered in
 #       mexp/kimi/prereg3_realdoc_and_fallback.md (frozen before any of them ran).
+#   litspeed-{64,128,256}k-{dense,vk} -> the speedup on REAL DOCUMENTS with a real decode,
+#       which the paper otherwise claims only from a synthetic stream of random tokens. Each job
+#       continues LongBench-v2 Literary/Detective novels (truncated to exactly --input-len, a
+#       different window per request so the radix cache cannot serve the second from the first)
+#       for 4096 tokens with ignore_eos, at bs=1 under the paper's serving config
+#       (MAX_REQS=1 MAMBA_SLOTS=8 CHUNK=4096 GRAPH_BS=1 RADIX=on; vk on ENGINE=engine-fused,
+#       3113f89790). Matched dense and vestigekv arms at each context, so the ratio is a real
+#       speedup rather than a one-armed rate:
+#         python mexp/kimi/continue_text.py --port 30000 --input-len {65536,131072,262144} \
+#           --output-len 4096 --num-prompts {8,6,4}
+#       Prompt counts are set by how many novels are long enough at the *8 chars/token filter:
+#       19 documents clear 64k, 6 clear 128k, 4 clear 256k. The script fails loudly rather than
+#       silently shortening if none does.
+#       WHY REAL TEXT IS THE CONSERVATIVE CASE, not the flattering one: fallback is HIGHER on
+#       novels than on random tokens at matched context and decode length (0.483 vs 0.407,
+#       pre-registration 6), so a speedup that survives here is not an artifact of synthetic
+#       input. This pairs with the LongBench-v2 quality run, which at max_tokens=1 prices the
+#       warm-up with nothing to amortise it over (+1.3%); these price the other end, where a
+#       4096-token decode has something to amortise it over.
 #   ruler-{baseline,vestigekv}-long-{mid,max} -> RULER above 64k, the evidence gap this study
 #       otherwise ships with: the paper claims 1.53x at 508k and a speedup at 256k while its
 #       capability evidence stops at a 128k needle, 64k RULER and LongBench under 120k. -mid is
