@@ -385,6 +385,22 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       python mexp/glm53/compare_ruler.py --out results/kimi/ruler --n 50.
 #       Gates and interpretation rules for these three groups are pre-registered in
 #       mexp/kimi/prereg3_realdoc_and_fallback.md (frozen before any of them ran).
+#   ruler-{baseline,vestigekv}-long-{mid,max} -> RULER above 64k, the evidence gap this study
+#       otherwise ships with: the paper claims 1.53x at 508k and a speedup at 256k while its
+#       capability evidence stops at a 128k needle, 64k RULER and LongBench under 120k. -mid is
+#       131072,262144 and -max is 524288 (1048576 was queued and dropped: nothing in the paper
+#       claims 1M, it was two thirds of that pair's cost, and at n=5 a dense control there does
+#       not carry a comparison). Served with CTX=1064960 MAX_REQS=2 GRAPH_BS=2 and
+#       SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1; the model declares model_max_length=1048576,
+#       so these sit inside its window rather than testing extrapolation.
+#         python mexp/glm53/run_ruler.py --arm {baseline,vestigekv} --port 30000 \
+#           --model moonshotai/Kimi-Linear-48B-A3B-Instruct --n 5 \
+#           --lengths 131072,262144 --out results/kimi/ruler --tag <job>
+#       READ THESE AT n=5, WHICH IS WHAT THEY ARE FOR. 13 tasks x 2 lengths x 5 = 130 prompts per
+#       arm puts 2 sigma on the arm mean at about 0.053, and the gap measured at 4k-64k is 0.020:
+#       these bound COLLAPSE, they do not measure the gap. A result of "vestigekv tracks dense"
+#       here means "it does not fall apart at 256k", and the sample size must be stated wherever
+#       the number appears so it is not read against the n=50 table.
 #   stream-vestigekv-256k-origin -> the same timed 4k->256k stream served from origin/vestigekv
 #       (the paper's backend, ENGINE=~/vestigekv-wt/engine-origin, a detached worktree at
 #       281abac) on this box and this protocol: the per-step cost of every commit since (fence,
