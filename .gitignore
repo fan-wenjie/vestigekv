@@ -35,3 +35,9 @@ results/kimi/queue_runner.log
 results/kimi/debug/
 results/kimi/bisect/
 results/kimi_queue_runner.log
+
+# Operational logs, not results: the health monitor and the queue runner write
+# these continuously, and results/ is meant to hold the figures and results.zip.
+results/*/health.log
+results/*_queue_runner.log
+results/*/queue_state.jsonl
