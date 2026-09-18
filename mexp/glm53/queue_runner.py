@@ -188,7 +188,12 @@ def run_client(job, port):
                "--model", MODEL, "--out", os.path.join(RESULTS, "longbench2")]
         if "limit" in args:
             cmd += ["--limit", str(args["limit"])]
-        if job.get("server_args") or "limit" in args or str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1":
+        # max_tokens>0 switches to the generating protocol, which is the only one
+        # that puts decode steps on the compressed path (see run_longbench2.py).
+        if args.get("max_tokens"):
+            cmd += ["--max-tokens", str(args["max_tokens"])]
+        if (job.get("server_args") or "limit" in args or args.get("max_tokens")
+                or str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1"):
             cmd += ["--tag", job["id"]]  # a variant must not overwrite the arm's plain run
         out = os.path.join(RESULTS, f"longbench2_{arm}_{job['id']}.log")
     elif client == "profile":

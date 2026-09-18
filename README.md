@@ -417,6 +417,29 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       python mexp/glm53/compare_ruler.py --out results/kimi/ruler --n 50.
 #       Gates and interpretation rules for these three groups are pre-registered in
 #       mexp/kimi/prereg3_realdoc_and_fallback.md (frozen before any of them ran).
+#   lb2gen-{dense,vk} -> LongBench v2 that actually reaches the compressed path. The existing
+#       lb2-{baseline,vestigekv} runs score the four choices from ONE token, whose logits come
+#       from the prefill's last position; vestigekv's forward_extend is the unmodified base
+#       kernel over the full pool (compression only changes forward_decode), so that protocol
+#       returns BIT-IDENTICAL logprobs on both arms by construction -- verified, 300/300
+#       questions, same floats -- and measures nothing about the cache policy. Those runs are
+#       kept: they are an exactness check on real documents and they price the compression
+#       events at +1.3% of prefill. They are not a retrieval result and the paper no longer
+#       calls them one.
+#       These two answer by GENERATING 128 tokens, so 128 decode steps run on the compressed
+#       path; 128 because the recall index needs ~18 calibration queries to leave the Z_MAX
+#       clamp and a shorter answer would measure only the warm-up.
+#       LAUNCH COMMANDS, exactly as the runner issues them (audited 2026-09-18):
+#         # server -- QUALITY line, RADIX unset so --disable-radix-cache is ON
+#         CTX=135168 MAX_REQS=1 MAMBA_SLOTS=8 CHUNK=4096 GRAPH_BS=1 \
+#           [ENGINE=$HOME/vestigekv-wt/engine-fused] bash mexp/kimi/{baseline,vestigekv}.sh
+#         # client
+#         python mexp/kimi/run_longbench2.py --arm {baseline,vestigekv} --port 30000 \
+#           --model moonshotai/Kimi-Linear-48B-A3B-Instruct \
+#           --out results/kimi/longbench2 --max-tokens 128 --tag lb2gen-{dense,vk}
+#       SEEDS: server --random-seed 0 (common.sh default); the client is temperature 0 and
+#       serial, so the run is deterministic. The answer is parsed as the first A/B/C/D in the
+#       generated text; questions where none appears are counted in choices_absent_from_topk.
 #   litspeed-{64,128,256}k-{dense,vk} -> the speedup on REAL DOCUMENTS with a real decode,
 #       which the paper otherwise claims only from a synthetic stream of random tokens. Each job
 #       continues LongBench-v2 Literary/Detective novels (truncated to exactly --input-len, a

@@ -37,6 +37,32 @@ TASK = "longbench2_kimi_120k"
 CHOICES = [" A", " B", " C", " D"]
 
 
+def generate(url, model, prompt, max_tokens, timeout):
+    """Answer by GENERATING, so the decode path actually runs.
+
+    The logprob protocol below scores the four choices from the first token,
+    whose logits come from the prefill's last position. VestigeKV's
+    forward_extend is the unmodified base kernel over the full pool -- the
+    compression only changes forward_decode -- so that protocol produces
+    bit-identical output on both arms by construction and measures nothing
+    about the cache policy. Generating a real answer puts max_tokens decode
+    steps on the compressed path, which is the thing under test.
+
+    Long enough to matter: the recall index needs ~18 calibration queries
+    before it leaves the Z_MAX clamp, so a handful of tokens would measure the
+    warm-up and nothing else."""
+    r = requests.post(
+        url,
+        json={"model": model, "prompt": prompt, "temperature": 0,
+              "max_tokens": max_tokens},
+        timeout=timeout,
+    )
+    r.raise_for_status()
+    text = r.json()["choices"][0]["text"]
+    m = re.search(r"\b([ABCD])\b", text)
+    return (m.group(1) if m else None), text
+
+
 def score(url, model, prompt, topk, timeout):
     r = requests.post(
         url,
@@ -58,6 +84,9 @@ def main():
     ap.add_argument("--tag", default="")
     ap.add_argument("--limit", type=int, default=None, help="first N questions only (smoke)")
     ap.add_argument("--topk", type=int, default=20)
+    ap.add_argument("--max-tokens", type=int, default=0,
+                    help="0 keeps the logprob protocol (prefill only, no decode); "
+                         ">0 generates that many tokens so the decode path runs")
     ap.add_argument("--timeout", type=int, default=3600)
     args = ap.parse_args()
 
@@ -75,13 +104,20 @@ def main():
     t0 = time.time()
     rows, missing = [], 0
     for doc in tqdm(docs, total=len(docs)):
-        lp = score(url, args.model, utils.doc_to_text(doc), args.topk, args.timeout)
-        present = [i for i in range(4) if lp[i] is not None]
-        missing += 4 - len(present)
-        picked = "ABCD"[max(present, key=lambda i: lp[i])] if present else None
+        if args.max_tokens:
+            picked, text = generate(url, args.model, utils.doc_to_text(doc),
+                                    args.max_tokens, args.timeout)
+            lp = None
+            missing += picked is None
+        else:
+            lp = score(url, args.model, utils.doc_to_text(doc), args.topk, args.timeout)
+            text = None
+            present = [i for i in range(4) if lp[i] is not None]
+            missing += 4 - len(present)
+            picked = "ABCD"[max(present, key=lambda i: lp[i])] if present else None
         rows.append({"_id": doc["_id"], "domain": doc["domain"], "length": doc["length"],
                      "difficulty": doc["difficulty"], "answer": doc["answer"],
-                     "picked": picked, "logprobs": lp,
+                     "picked": picked, "logprobs": lp, "text": text,
                      "acc": 1.0 if picked == doc["answer"] else 0.0})
 
     by = {k: collections.defaultdict(list) for k in ("domain", "length", "difficulty")}
@@ -92,7 +128,8 @@ def main():
                for k in by}
     out = {"arm": args.arm, "task": TASK, "n": len(rows),
            "acc": sum(r["acc"] for r in rows) / max(len(rows), 1),
-           "choices_absent_from_topk": missing, "topk": args.topk,
+           "unparsed" if False else "choices_absent_from_topk": missing,
+           "topk": args.topk, "max_tokens": args.max_tokens,
            "by": summary, "wall_s": time.time() - t0}
     os.makedirs(args.out, exist_ok=True)
     tag = args.arm + (f"_{args.tag}" if args.tag else "")
