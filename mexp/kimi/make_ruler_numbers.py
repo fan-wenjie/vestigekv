@@ -60,29 +60,40 @@ def paired(line, n, lengths):
 
     Scores are keyed by length inside each record, with -1.0 marking a length
     the item was not run at."""
-    f = {}
-    for arm in ("baseline", "vestigekv"):
-        base = os.path.join(ROOT, "results", line, "ruler",
-                            f"samples_{arm}_n{n}_{'-'.join(map(str, lengths))}")
-        p = base + ".json" if os.path.exists(base + ".json") else None
-        if p is None:
-            g = sorted(glob.glob(base + "_*.json"))
-            if not g:
-                return None
-            p = g[0]
-        f[arm] = json.load(open(p))
-    d = []
-    for t in f["baseline"]:
-        if t not in f["vestigekv"]:
+    d = os.path.join(ROOT, "results", line, "ruler")
+    red = os.path.join(d, "paired_scores.json")
+    reduced = json.load(open(red))["scores"] if os.path.exists(red) else {}
+
+    def scores(arm):
+        """{task: {"<doc_id>,<length>": score}}, full record or reduction.
+
+        The generations are 188 MB per arm and stay out of results.zip, so the
+        archive carries mexp/tools/reduce_ruler_samples.py's projection of them
+        instead -- the same per-item scores, three orders of magnitude smaller.
+        Prefer the full record when it is on disk (re-running a job writes it),
+        fall back to the reduction, so the macros come out the same either way."""
+        stem = f"{arm}_n{n}_{'-'.join(map(str, lengths))}"
+        p = os.path.join(d, f"samples_{stem}.json")
+        if not os.path.exists(p):
+            g = sorted(glob.glob(os.path.join(d, f"samples_{stem}_*.json")))
+            p = g[0] if g else None
+        if p:
+            raw = json.load(open(p))
+            return {t: {f"{s['doc_id']},{l}": s[str(l)] for s in recs
+                        for l in lengths if str(l) in s and s[str(l)] >= 0}
+                    for t, recs in raw.items()}
+        k = next((k for k in reduced if k.startswith(stem)), None)
+        return reduced[k] if k else None
+
+    b, v = scores("baseline"), scores("vestigekv")
+    if not b or not v:
+        return None
+    out = []
+    for t in b:
+        if t not in v or set(b[t]) != set(v[t]):   # items differ: pairing unsound
             return None
-        def index(recs):
-            return {(s["doc_id"], str(l)): s[str(l)] for s in recs
-                    for l in lengths if str(l) in s and s[str(l)] >= 0}
-        b, v = index(f["baseline"][t]), index(f["vestigekv"][t])
-        if set(b) != set(v):          # an arm dropped items: pairing is unsound
-            return None
-        d += [v[k] - b[k] for k in sorted(b)]
-    return d
+        out += [v[t][k] - b[t][k] for k in sorted(b[t])]
+    return out
 
 
 def signflip_p(d):
