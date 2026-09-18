@@ -1,27 +1,90 @@
-# results/ — frozen final measurements (the numbers in the paper)
+# results/
 
-Raw data first, figures derived; nothing here regenerates silently.
-Superseded protocol versions (`_v2`/`_v3`/`_v4b`, the retired `mauve64k`
-n=16 run, and the older `_base` latency/throughput sweeps) were pruned
-2026-09-13; the final frozen set below is what the paper's numbers come
-from. k = 1024 tokens throughout.
+This directory holds two figures and one archive:
 
-| file pattern | what it is |
+| | |
 |---|---|
-| `latency_stream_4k-512k_{vestigekv,dense}[_instruct].jsonl` | bs=1 streaming decode, one request 4k prefill -> 512k; official `sglang.benchmark.serving --output-details` records (per-token `itls`). Non-suffixed = Base (the paper figure), `_instruct` = the second-checkpoint replication |
-| `latency_stream_serverlog_{vestigekv,dense}[_instruct].log` | node-0 server logs of the same runs; the per-token authority above ~240k (client inter-token stamps degrade under stream batching) |
-| `throughput_64k+4k_bs{1,2,4,8,12,16,24,32}_{vestigekv,dense}[_instruct].jsonl` | throughput sweep, 64k prefill + 4k decode, `max_concurrency`=bs; bs 24/32 are the post-freeze sweep extension (the bs=32 dip on both arms is chunked prefill occupying the window) |
-| `quality_gsm8kplatinum_64shot_n1209_{dense,vestigekv}_{base,instruct}.txt` | GSM8K-Platinum 64-shot, n=1209, serial + radix-off |
-| `quality_mauve_scores_{base,instruct}.json` | MAUVE (gpt2-large featurizer) verdicts, 4k context |
-| `quality_mauve_texts_{dense,vestigekv}_{base,instruct}.json` | the generations the scores are computed over (16 ctx x 256 tokens, temp 1.0 top-p 0.95, seeds shared across arms) |
-| `quality_mauve_contexts_tokens.json` | the 16 shared fineweb-edu contexts (token ids) |
-| `quality_mauve64k64_{dense,vestigekv}[_instruct].json` + `_verdict[_instruct].json` | MAUVE at 64k prefill, n=64 (the n=16 first run saturated and was retired) |
-| `quality_needle{,32,_zh}_{dense,vestigekv}[_instruct].json` + `_verdict[_instruct].json` | serving needles: 128k x8, 128k x32 fixed-seed, and the Chinese (sanguoyanyi filler) variant |
-| `quality_needle_gptoss120b{,_verdict}.json` | gpt-oss-120b banded-sparse control (strict 5/8, digit-aware probe 8/8) |
-| `quality_continuation_*` | archived continuation-agreement runs (gate retired, ERRATA #20; kept for audit) |
-| `harness_anatomy_{base,instruct}.json`, `harness_needle_8192_{base,instruct}.json` | HF-forward harness outputs (model anatomy; prereg34 needle trials) |
-| `fig_latency_curve.png`, `fig_throughput.png` | the two README/paper figures, rendered from the files above by `mexp/bench/plot_*.py` |
+| `fig_latency_curve.png`, `fig_throughput.png` | the serving figures, kept outside the archive so they render in the browser |
+| `results.zip` | every run record behind every number in the paper (5 MB, tracked with git LFS) |
 
-Both arms of every run load byte-identical weights: each server launch log
-prints the checkpoint's content-level `WEIGHT-FP`, and the two serverlog
-files carry the same value.
+## Why the data is reduced, and what that cost
+
+The raw records do not fit anywhere they would be useful. A single 4k→512k
+streaming run writes one inter-token latency per generated token: at 520189
+tokens that is 10.9 MB of JSON for the array and 2.3 MB for the generated text,
+13.3 MB per repetition. The latency and throughput family came to **490 MB**,
+and the whole directory, with activation dumps and raw generations, to **14 GB**.
+A conference supplementary archive has a size limit an order of magnitude below
+that, so shipping the originals was never an option — postprocessing is not a
+convenience here, it is the only way the data travels at all.
+
+So the records are reduced rather than truncated, by
+[`mexp/tools/reduce_streams.py`](../mexp/tools/reduce_streams.py):
+
+- **Kept exactly.** The paper reads the latency curve as *the median of the
+  4096-token window ending at each context length*. Those medians — with mean,
+  p10, p90 and n — are computed from the **full array before it is discarded**
+  and stored on a 4096-token grid, together with exact global statistics. Every
+  number the paper reports is therefore still exact, not approximated.
+- **Kept as a sample.** A head- and tail-dense trace (cosine/Chebyshev spacing,
+  capped at 5% of tokens) for plotting and for looking at the shape. No reported
+  number is computed from it.
+- **Dropped.** The per-token array itself, and `generated_texts` — 2.3 MB of
+  random-token continuation that a latency benchmark emits and no analysis reads.
+
+That is **490 MB → 12.8 MB, a 38× reduction, with the reported statistics
+unchanged**. The script's `--verify` mode proves this per file: it recomputes
+every statistic both from the full array and from the stored summary and refuses
+to write on any mismatch. The claim was also checked end to end — the paper's
+serving curve regenerated from the reduced records is byte-identical to the
+curve from the originals:
+
+```
+  context    baseline   vestigekv   ratio
+       8k       3.889       3.944   0.986
+      16k       3.982       3.992   0.997
+      32k       4.117       4.048   1.017
+      64k       4.340       4.099   1.059
+     128k       4.770       4.191   1.138
+     256k      12.719       7.473   1.702
+```
+
+Reproduce that check with:
+
+```bash
+unzip -o results/results.zip -d results/
+python mexp/glm53/stream_curve.py --line kimi --prefill 4096 \
+       --output-len 258048 --arms baseline,vestigekv
+```
+
+`stream_curve.py` reads both formats, so the same command works on full records
+if you regenerate them.
+
+## What was removed entirely
+
+Two categories are not in the archive and are not reducible to summaries:
+
+- **Activation dumps** (`caldump/`, 7.1 GB of `.pt`). The paper already states
+  these are excluded for size and are regenerated by the included extraction
+  script from the public checkpoints.
+- **Raw RULER generations** (`samples_*.json`, 4.8 GB). No paper number depends
+  on them — `make_ruler_numbers.py` reads only the scored `results_*.json`,
+  which are 0.2 MB in total and *are* in the archive. The generations would only
+  be needed to re-score from raw text.
+
+Diagnostic dumps from closed investigations (`debug/`, `bisect/`, `profile/`,
+`memtrace/`) and runs superseded by a later arm are also gone.
+
+## Layout inside results.zip
+
+```
+kimi/ruler/results_*.json          scored RULER cells, 13 tasks x 5 lengths
+kimi/longbench2/                   LongBench v2 records and per-question samples
+kimi/latency_stream_*.jsonl        reduced streaming latency records
+glm53/ruler/results_*.json         the GLM-5.3 line
+throughput_*.jsonl                 reduced throughput records, bs 2-32
+latency_stream_4k-512k_*.jsonl     reduced base-model streaming records
+```
+
+Regenerate the paper's numeric macros from the archive with
+`mexp/kimi/make_ruler_numbers.py` and `mexp/kimi/make_lb2_numbers.py`.

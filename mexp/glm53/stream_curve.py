@@ -28,10 +28,35 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 
 
 def load(arm, prefill, out_len, line="glm53"):
+    """Return a curve that answers median-ms-at-context, from either the full
+    per-token array or the reduced record mexp/tools/reduce_streams.py writes.
+
+    The reduced record stores the window medians in the source unit (seconds),
+    computed from the full array before it was dropped, so both paths give
+    identical numbers -- see that script's --verify."""
     path = os.path.join(ROOT, "results", line, f"latency_stream_{prefill // 1024}k-{out_len}_{arm}.jsonl")
     with open(path) as f:
         d = json.loads(f.readlines()[-1])
-    return [x * 1000.0 for x in d["itls"][0]], d["input_lens"][0]  # seconds -> ms
+    if "itls" in d:
+        itls = [x * 1000.0 for x in d["itls"][0]]  # seconds -> ms
+        return {"full": itls, "inp": d["input_lens"][0],
+                "mean": statistics.mean(itls), "median": statistics.median(itls),
+                "n": len(itls)}
+    r = d["itls_reduced"][0]
+    g = r["itl_global"]
+    return {"full": None, "inp": r["input_len"],
+            "windows": {int(c): w for c, w in r["itl_windows"].items() if w},
+            "mean": g["mean"] * 1000.0, "median": g["median"] * 1000.0, "n": g["n"]}
+
+
+def median_at(c, ctx, window):
+    """Median inter-token latency (ms) over the `window` tokens ending at `ctx`."""
+    if c["full"] is not None:
+        end = ctx - c["inp"] - 1  # itls[i] is the gap before output token i+1
+        seg = c["full"][max(0, end - window):end]
+        return statistics.median(seg) if seg else float("nan")
+    w = c["windows"].get(ctx)
+    return w["median"] * 1000.0 if w else float("nan")
 
 
 def load_server(job, arm, line):
@@ -98,18 +123,15 @@ def main():
         row = f"{ctx // 1024:8d}k"
         vals = []
         for arm in arms:
-            itls, inp = curves[arm]
-            end = ctx - inp - 1  # itls[i] is the gap before output token i+1
-            seg = itls[max(0, end - args.window) : end]
-            v = statistics.median(seg) if seg else float("nan")
+            v = median_at(curves[arm], ctx, args.window)
             vals.append(v)
             row += f"{v:12.3f}"
         if len(arms) == 2:
             row += f"{vals[0] / vals[1]:8.3f}"
         print(row)
     for arm in arms:
-        itls, _ = curves[arm]
-        print(f"{arm}: mean {statistics.mean(itls):.3f} ms/token, median {statistics.median(itls):.3f}, tokens {len(itls) + 1}")
+        c = curves[arm]
+        print(f"{arm}: mean {c['mean']:.3f} ms/token, median {c['median']:.3f}, tokens {c['n'] + 1}")
 
 
 if __name__ == "__main__":
