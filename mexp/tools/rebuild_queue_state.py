@@ -32,6 +32,7 @@ import argparse
 import json
 import os
 import re
+import sys
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -86,6 +87,12 @@ def main():
                          "after a loss the file usually exists again with one record in "
                          "it -- refusing there would leave the whole queue re-running.")
     ap.add_argument("--report", action="store_true", help="print the evidence per job")
+    ap.add_argument("--reopen", default="", metavar="ID[,ID...]",
+                    help="drop these ids' records so the runner runs them again. For a job "
+                         "that failed for a reason that was not its own -- a server killed "
+                         "out from under it, a machine reboot. The runner treats failed as "
+                         "final, which is right for a job that failed on its own merits and "
+                         "wrong here, and there is no other way to undo it.")
     args = ap.parse_args()
 
     queue = args.queue or os.path.join(ROOT, "mexp", args.line, "queue.jsonl")
@@ -95,6 +102,28 @@ def main():
 
     jobs = [json.loads(l) for l in open(queue) if l.strip()]
     ids = [j["id"] for j in jobs]
+
+    if args.reopen:
+        want = {x.strip() for x in args.reopen.split(",") if x.strip()}
+        if not os.path.exists(state):
+            print(f"no {state} to reopen from", file=sys.stderr)
+            return 1
+        # Read fully before writing: this file is the queue's only memory.
+        recs = [json.loads(l) for l in open(state) if l.strip()]
+        keep = [r for r in recs if r.get("id") not in want]
+        dropped = len(recs) - len(keep)
+        unknown = want - {r.get("id") for r in recs}
+        if not args.write:
+            print(f"  would drop {dropped} record(s) for {sorted(want)}"
+                  + (f"; not present: {sorted(unknown)}" if unknown else ""))
+            print("\n(dry run; pass --write)")
+            return 0
+        with open(state, "w") as f:
+            for r in keep:
+                f.write(json.dumps(r) + "\n")
+        print(f"  dropped {dropped} record(s); {len(keep)} remain"
+              + (f"; not present: {sorted(unknown)}" if unknown else ""))
+        return 0
 
     logged = from_runner_log(runner_log)
     arts = from_artifacts(results, ids)
