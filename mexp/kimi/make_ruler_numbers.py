@@ -72,6 +72,15 @@ def main():
         if arms["D"] and arms["V"]:
             d = [cell(arms["V"], t, l) - cell(arms["D"], t, l) for t in TASKS for l in lengths]
             L.append(f"\\newcommand{{\\ruler{tag}Delta}}{{{sum(d) / len(d):+.3f}}}")
+            # Per-task deltas. The limitation section classifies the thirteen
+            # tasks by their generator parameters and shows the loss sitting
+            # only where the haystack is itself made of key-value pairs, so
+            # each delta has to be a macro rather than a number typed into
+            # prose that a re-run would silently invalidate.
+            for t in TASKS:
+                dv = [cell(arms["V"], t, l) - cell(arms["D"], t, l) for l in lengths]
+                L.append(f"\\newcommand{{\\ruler{tag}Delta{SHORT[t]}}}"
+                         f"{{{sum(dv) / len(dv):+.3f}}}")
             L.append(f"\\newcommand{{\\ruler{tag}Worse}}{{{sum(x < -1e-9 for x in d)}}}")
             L.append(f"\\newcommand{{\\ruler{tag}Better}}{{{sum(x > 1e-9 for x in d)}}}")
             L.append(f"\\newcommand{{\\ruler{tag}Cells}}{{{len(d)}}}")
