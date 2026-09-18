@@ -486,10 +486,15 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       4096-token decode has something to amortise it over.
 #   ruler-{baseline,vestigekv}-long-{mid,max} -> RULER above 64k, the evidence gap this study
 #       otherwise ships with: the paper claims 1.53x at 508k and a speedup at 256k while its
-#       capability evidence stops at a 128k needle, 64k RULER and LongBench under 120k. -mid is
-#       131072,262144 and -max is 524288 (1048576 was queued and dropped: nothing in the paper
-#       claims 1M, it was two thirds of that pair's cost, and at n=5 a dense control there does
-#       not carry a comparison). Served with CTX=1064960 MAX_REQS=2 GRAPH_BS=2 and
+#       capability evidence stops at a 128k needle and 64k RULER. ONLY -mid RUNS
+#       (131072,262144). -max was queued at 524288 and dropped, as 1048576 had been before it.
+#       The reason is measured, not estimated: 136 s/question at this shape, so the 512k pair is
+#       another ~8h on top of -mid's ~8h, while n=5 puts 2 sigma on the arm mean at ~0.053
+#       against a gap measured at 0.020 -- it can bound collapse and nothing finer, and at 512k
+#       the dense control is unlikely to be strong enough for even that to inform. 256k stays
+#       because it is where the headline speedup is claimed. (My original sizing said 1.4h for
+#       the -mid pair; it extrapolated prefill tokens linearly and ignored that attention grows
+#       superlinearly with context.) Served with CTX=1064960 MAX_REQS=2 GRAPH_BS=2 and
 #       SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1; the model declares model_max_length=1048576,
 #       so these sit inside its window rather than testing extrapolation.
 #       LAUNCH COMMANDS, exactly as the runner issues them (audited 2026-09-18):
