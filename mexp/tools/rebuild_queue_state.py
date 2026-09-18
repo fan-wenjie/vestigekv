@@ -17,6 +17,16 @@ is complete on its own:
    the job id as a tag. Survives across runner restarts, and can be read from
    `results.zip` when the loose files have been archived.
 
+**--reopen and this reconstruction fight each other, and the log wins.** The
+runner log keeps every completion line forever, so a job reopened after a
+spurious failure is marked failed again the next time the state is rebuilt from
+that log -- the reopen decision lives only in the file the rebuild overwrites.
+This happened on 2026-09-18: randfence-20-ruler failed at 07:32 because its
+server was killed out from under it, was reopened, restarted at 08:08, and was
+resurrected as failed by a rebuild two hours later. Until the reopen leaves a
+tombstone the rebuild can read, re-check every previously reopened id after any
+rebuild.
+
 A job that either source calls finished is written as done. That is the safe
 direction: wrongly marking a finished job pending costs a re-run, while wrongly
 marking a pending job done silently skips it -- so the reconstruction is
