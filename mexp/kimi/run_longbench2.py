@@ -59,8 +59,17 @@ def generate(url, model, prompt, max_tokens, timeout):
     )
     r.raise_for_status()
     text = r.json()["choices"][0]["text"]
-    m = re.search(r"\b([ABCD])\b", text)
-    return (m.group(1) if m else None), text
+    # This model reasons before answering, so a bare \b[ABCD]\b matches a letter
+    # inside the reasoning. Prefer an explicit verdict, then a parenthesised
+    # choice, then the last standalone letter; record misses so a protocol that
+    # stops parsing is visible instead of collapsing both arms onto the floor.
+    for pat in (r"(?:correct )?answer is[^A-D]{0,12}\(?([ABCD])\)?",
+                r"\(([ABCD])\)(?!.*\(([ABCD])\))",
+                r"\b([ABCD])\b(?!.*\b[ABCD]\b)"):
+        m = re.search(pat, text, re.S | re.I)
+        if m:
+            return m.group(1).upper(), text
+    return None, text
 
 
 def score(url, model, prompt, topk, timeout):

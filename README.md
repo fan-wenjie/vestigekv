@@ -426,9 +426,13 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       kept: they are an exactness check on real documents and they price the compression
 #       events at +1.3% of prefill. They are not a retrieval result and the paper no longer
 #       calls them one.
-#       These two answer by GENERATING 128 tokens, so 128 decode steps run on the compressed
-#       path; 128 because the recall index needs ~18 calibration queries to leave the Z_MAX
-#       clamp and a shorter answer would measure only the warm-up.
+#       These two answer by GENERATING 1024 tokens, so 1024 decode steps run on the compressed
+#       path. NOT 128: utils.py already records that measurement -- this model reasons before
+#       answering and reaches the answer line in 1% of 300 questions inside 128 tokens, both
+#       arms at the 0.25 floor -- and 1024 is also far past the ~18 calibration queries the
+#       recall index needs to leave the Z_MAX clamp. The letter is parsed by an explicit
+#       verdict, then a parenthesised choice, then the last standalone letter; misses are
+#       counted so a protocol that stops parsing is visible.
 #       LAUNCH COMMANDS, exactly as the runner issues them (audited 2026-09-18):
 #         # server -- QUALITY line, RADIX unset so --disable-radix-cache is ON
 #         CTX=135168 MAX_REQS=1 MAMBA_SLOTS=8 CHUNK=4096 GRAPH_BS=1 \
@@ -436,7 +440,7 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #         # client
 #         python mexp/kimi/run_longbench2.py --arm {baseline,vestigekv} --port 30000 \
 #           --model moonshotai/Kimi-Linear-48B-A3B-Instruct \
-#           --out results/kimi/longbench2 --max-tokens 128 --tag lb2gen-{dense,vk}
+#           --out results/kimi/longbench2 --max-tokens 1024 --tag lb2gen-{dense,vk}
 #       SEEDS: server --random-seed 0 (common.sh default); the client is temperature 0 and
 #       serial, so the run is deterministic. The answer is parsed as the first A/B/C/D in the
 #       generated text; questions where none appears are counted in choices_absent_from_topk.
