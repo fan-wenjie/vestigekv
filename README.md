@@ -393,8 +393,29 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       (MAX_REQS=1 MAMBA_SLOTS=8 CHUNK=4096 GRAPH_BS=1 RADIX=on; vk on ENGINE=engine-fused,
 #       3113f89790). Matched dense and vestigekv arms at each context, so the ratio is a real
 #       speedup rather than a one-armed rate:
-#         python mexp/kimi/continue_text.py --port 30000 --input-len {65536,131072,262144} \
-#           --output-len 4096 --num-prompts {8,6,4}
+#       LAUNCH COMMANDS, exactly as the runner issues them (audited 2026-09-18 against
+#       queue_runner.py run_client()/ServerHandle.ensure() and mexp/kimi/common.sh):
+#         # server, dense arm            CTX: 64k->73728, 128k->135168, 256k->270336
+#         CTX=<ctx> MAX_REQS=1 MAMBA_SLOTS=8 CHUNK=4096 GRAPH_BS=1 RADIX=on \
+#           bash mexp/kimi/baseline.sh
+#         # server, vestigekv arm
+#         CTX=<ctx> MAX_REQS=1 MAMBA_SLOTS=8 CHUNK=4096 GRAPH_BS=1 RADIX=on \
+#           ENGINE=$HOME/vestigekv-wt/engine-fused bash mexp/kimi/vestigekv.sh
+#         # client, both arms            input-len/num-prompts: 65536/8, 131072/6, 262144/4
+#         python mexp/kimi/continue_text.py --port 30000 \
+#           --model moonshotai/Kimi-Linear-48B-A3B-Instruct \
+#           --input-len <N> --output-len 4096 --num-prompts <K>
+#       RADIX=on is not a tuning choice: mexp/kimi/common.sh documents it as the production
+#       default and the protocol the paper's serving numbers were taken under, and it is what
+#       drops --disable-radix-cache -- this is the PERFORMANCE line; every quality-line job
+#       leaves RADIX unset, which is off, and 0 of the 126 queued jobs violates that (audited
+#       2026-09-18). ENGINE is consumed by that same file
+#       (PYTHONPATH=${ENGINE:-$ROOT/engine}/python), so the vk arm runs the tree the serving
+#       figure used. SEEDS: the server is --random-seed 0 (common.sh default, not overridden
+#       by any job); continue_text.py takes no seed because it has no random source -- the
+#       novels are sorted longest-first and each request's window is offset by a fixed
+#       (i // n_docs) * 997 -- and the client sends ignore_eos, temperature 0, max_tokens 4096,
+#       so the run is deterministic end to end.
 #       Prompt counts are set by how many novels are long enough at the *8 chars/token filter:
 #       19 documents clear 64k, 6 clear 128k, 4 clear 256k. The script fails loudly rather than
 #       silently shortening if none does.
@@ -412,9 +433,17 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       not carry a comparison). Served with CTX=1064960 MAX_REQS=2 GRAPH_BS=2 and
 #       SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1; the model declares model_max_length=1048576,
 #       so these sit inside its window rather than testing extrapolation.
+#       LAUNCH COMMANDS, exactly as the runner issues them (audited 2026-09-18):
+#         # server -- QUALITY line, so RADIX stays unset i.e. --disable-radix-cache is ON
+#         CTX=1064960 MAX_REQS=2 MAMBA_SLOTS=2 CHUNK=4096 GRAPH_BS=2 \
+#           SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 VK_JOB=<job> \
+#           bash mexp/kimi/{baseline,vestigekv}.sh
+#         # client                       -mid: --lengths 131072,262144   -max: --lengths 524288
 #         python mexp/glm53/run_ruler.py --arm {baseline,vestigekv} --port 30000 \
 #           --model moonshotai/Kimi-Linear-48B-A3B-Instruct --n 5 \
-#           --lengths 131072,262144 --out results/kimi/ruler --tag <job>
+#           --lengths <lengths> --out results/kimi/ruler --tag <job>
+#       SEEDS: server --random-seed 0 (common.sh default); run_ruler.py --seed 0 sets the
+#       lm-eval random, numpy and torch seeds together, and requests are serial and greedy.
 #       READ THESE AT n=5, WHICH IS WHAT THEY ARE FOR. 13 tasks x 2 lengths x 5 = 130 prompts per
 #       arm puts 2 sigma on the arm mean at about 0.053, and the gap measured at 4k-64k is 0.020:
 #       these bound COLLAPSE, they do not measure the gap. A result of "vestigekv tracks dense"
