@@ -89,6 +89,43 @@ regime that matters, and the parametric fit fires FEWER rows. That is a cost
 finding, not an accuracy one, and it is outside the gates below, which were
 written for the multi-key question.
 
+## The matched baseline lands, and reverses the cost reading (2026-09-18)
+
+`a0-stats-ruler-5len`, same thirteen tasks, same five lengths, same stats
+setting:
+
+| arm | fallback | vs A0 | multi-needle | 13-task |
+|---|---|---|---|---|
+| **A0 (matched)** | **0.175** | -- | 0.880 | 0.9141 |
+| gauss 0.99 | 0.195 | **+0.020** | 0.890 | 0.9179 |
+| fence 1024 | 0.379 | +0.204 | 0.890 | 0.9154 |
+| fence 256 | 0.445 | **+0.270** | 0.980 | 0.9310 |
+| fence 64 / 4 / 1 | 0.638 / 0.718 / 0.696 | +0.46 to +0.54 | | |
+
+**Both of my earlier readings were wrong, and in the wrong direction.** I read
+the Gaussian's 0.195 first as a 36% cut against 0.305, then revised to "maybe
+49% against ~0.38". It is an INCREASE of 0.020. The offline prediction had it
+right all along -- a higher target gives a larger zp, which fires more rows --
+and the story I invented to explain the reversal, that serving fits on few
+enough samples for the conformal maximum to overshoot, was wrong too.
+
+The cause each time was an unmatched baseline: 0.305 is a 65536-only run and
+these are five-length runs. That is the third time today the same mistake has
+produced a confident number.
+
+**The fence's cost is also far larger than I have been quoting**: +0.270 at
+fence 256, not the +14 points and then +6.5 points I said. Even fence 1024,
+which barely fires, costs +0.204.
+
+**A useful by-product**: two A0 runs at n=10 differ by 0.010 on the
+multi-needle pair and 0.0038 on the 13-task mean. That is the run-to-run floor,
+and it is the reason the Gaussian's +0.010 is not a gain.
+
+**Verdict under the stated objective** (accuracy up at least cost): the
+Gaussian buys nothing and costs a little, so it is not a candidate. It remains
+correct, stable and better-founded than the order statistic, which is worth a
+sentence in the paper about method rather than results.
+
 ## Gates
 
 At n=50, 4k-64k, against A0 at the same n. Target family is multi-needle
