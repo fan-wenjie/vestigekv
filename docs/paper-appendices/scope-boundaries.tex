@@ -1,3 +1,29 @@
+% ---------------------------------------------------------------------------
+% Not written into the paper, recorded here in case it is asked.
+%
+% Why no LongBench v1. Its English split averages about 6.7k words, roughly 9k
+% tokens, and its longest tasks stay well under 32k. The serving crossover
+% measured here is ~28k (numbers.tex \serveCrossover, from the server-side
+% gen-throughput logs: the ratio crosses 1.0 between the 20k-28k bucket at 0.999
+% and the 28k-36k bucket at 1.005), so nearly every v1 sample sits in the regime
+% the paper itself calls parity. A null result there supports nothing and a
+% negative one is hard to read, because compression has barely engaged: a 9k
+% prompt closes two 4096-token blocks.
+%
+% What v1 would have added -- generative and extractive scoring on real text,
+% which LongBench v2's four-way task lacks -- the paper already has at a length
+% it controls: RULER's qa_squad and qa_hotpot embed real questions in real
+% paragraphs from their own corpora and are answered extractively over 4k-64k,
+% and MAUVE at 64k prefill generates 256 tokens at temperature 1.0. The
+% diffuse-dependence case that summarization would probe is covered
+% synthetically by cwe/fwe.
+%
+% This is deliberately not in the paper. A 'why not X' note is an unbounded
+% list: explaining one absent benchmark makes the absence of the next one
+% conspicuous, and the complement cannot be enumerated. The scope table states
+% coverage positively instead, by what was measured.
+% ---------------------------------------------------------------------------
+
 \section{Scope boundaries: full table}\label{app:limits}
 
 \paragraph{What RULER measures here: synthetic answers AND short decodes.}
