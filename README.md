@@ -446,7 +446,7 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       generated text; questions where none appears are counted in choices_absent_from_topk.
 #   litspeed-{64,128,256}k-{dense,vk} -> the speedup on REAL DOCUMENTS with a real decode,
 #       which the paper otherwise claims only from a synthetic stream of random tokens. Each job
-#       continues LongBench-v2 Literary/Detective novels (truncated to exactly --input-len, a
+#       continues full-length published novels (truncated to exactly --input-len, a
 #       different window per request so the radix cache cannot serve the second from the first)
 #       for 4096 tokens with ignore_eos, at bs=1 under the paper's serving config
 #       (MAX_REQS=1 MAMBA_SLOTS=8 CHUNK=4096 GRAPH_BS=1 RADIX=on; vk on ENGINE=engine-fused,
@@ -476,6 +476,12 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       (i // n_docs) * 997 -- and the client sends ignore_eos, temperature 0, max_tokens 4096,
 #       so the run is deterministic end to end.
 #       Prompt counts are set by how many novels are long enough at the *8 chars/token filter:
+#       PROVENANCE: the text is ordinary long-form fiction -- The Count of Monte Cristo, Don
+#       Quixote and Moby-Dick are identifiable among the eight used at 64k. They are read
+#       from the Literary and Detective sub-domains of THUDM/LongBench-v2 because that is a
+#       convenient packaged source of very long prose, NOT because anything here is a
+#       LongBench measurement: no question, choice or score of that benchmark is used, only
+#       its `context` field. The paper says 'published novels' for that reason.
 #       19 documents clear 64k, 6 clear 128k, 4 clear 256k. The script fails loudly rather than
 #       silently shortening if none does.
 #       WHY REAL TEXT IS THE CONSERVATIVE CASE, not the flattering one: fallback is HIGHER on
