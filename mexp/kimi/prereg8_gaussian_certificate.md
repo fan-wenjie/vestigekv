@@ -61,6 +61,34 @@ the maximum of eighteen samples, and a G1 failure alongside confirmed normality
 locates the defect in the sketch rather than the quantile -- which is the
 conclusion pre-registration 9 acts on.
 
+## Result of the 0.99 arm, n=10 (2026-09-18)
+
+**G1 fails exactly as the amendment predicted.** niah_multikey_2 and
+niah_multikey_3 both move by +-0.000; twelve of thirteen tasks are unchanged
+and only ruler_vt moves, by -0.012. The 13-task mean is 0.9179 against A0's
+0.9179, identical to four decimals. An independent arm therefore confirms the
+stepattr2 diagnosis: the deficit is in the ORDER idxs induces, and changing the
+inflation does not touch it.
+
+**An unexpected cost result, and a comparison I had to withdraw.** The arm
+reports fallback 0.195. I first read that against 0.305 and called it a 36%
+reduction; 0.305 is from a 65536-only run and this shape is five lengths, so
+the comparison was invalid. There is no matched A0 with stats at this shape --
+`a0-stats-ruler-5len` is queued to supply one. The same-shape fence arms
+bracket it: fence 1024 barely fires and reports 0.379, so A0 here is likely
+near 0.38, which would make the Gaussian fit a ~49% cut AND would mean the
+fence-256 cost I have been quoting as +14 points is nearer +6.5. Both numbers
+are suspended until the baseline lands.
+
+**Why the direction reversed.** Offline, at n=128, the Gaussian point at 0.99
+(2.759) sits ABOVE the conformal quantile (1.999), so I expected more rows
+fired. In serving a tier leaves the clamp at min_hard = 18 samples, where the
+conformal quantile IS the maximum of eighteen draws and systematically
+overshoots mu + 2.33 sigma. So conformal is the larger of the two in the
+regime that matters, and the parametric fit fires FEWER rows. That is a cost
+finding, not an accuracy one, and it is outside the gates below, which were
+written for the multi-key question.
+
 ## Gates
 
 At n=50, 4k-64k, against A0 at the same n. Target family is multi-needle
