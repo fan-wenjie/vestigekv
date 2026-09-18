@@ -532,6 +532,39 @@ k=0 to 0.965 at k>=4 -- so closing it is not obviously worth anything.
 Same caveat as everything else in this file: measured on calibrated tiers at
 calibration positions.
 
+## The failure is the sketch's ORDERING, not the certificate's inflation (2026-09-18)
+
+`stepattr2-mk3`, answer steps, calibrated tiers, 420 records that lost the
+top-scoring row of the whole context:
+
+| | p50 | p90 | max |
+|---|---|---|---|
+| rank of that row under the certified score | **24** | **1177** | **8747** |
+| its certified score minus max1 | **-7.06** | | p10 -11.98 |
+
+Archive 59521 rows. **A shortfall of 7.06 scaled logits is e^7 ~ 1100x**, so no
+margin closes it, and raising zp from 2.0 to 3.7 (the 0.999 Gaussian point)
+adds only 1.7 * cert with cert of order 1. The clamp at z = 8.0 adds about
+6 * cert, which nearly covers 7.06 -- and that is exactly why the clamp loses
+the row on 16.0% of records against the fitted certificate's 22.85%. The
+numbers are consistent.
+
+So `idxs = q_side . side + q_sk . csk` ranks the context's true best row 24th
+at the median and a thousandth in the tail. **The rank-64 sketch does not
+resolve a multi-key query.** That is the first mechanism this line has found
+that the measurements point at rather than away from, and it predicts that
+pre-registration 8's parametric certificate will not rescue multi-key: it
+changes the inflation, and the deficit is in the ordering.
+
+### Correction to the 2026-09-17 entry
+
+"single_1 loses the top row on 0.00% of CALIBRATED records" was an empty-set
+artifact: `stepattr2-s1` has **zero** calibrated records, because a
+single-needle answer is too short for any tier to finish calibrating, and the
+rate was computed as 0 / max(0, 1). The valid contrast is over all records --
+multikey_3 20.07%, single_1 6.90% -- and the calibrated-only comparison is
+withdrawn.
+
 ## Adoption ruling (owner, 2026-09-17)
 
 If A2 passes every gate, it is adopted as the final algorithm without checking

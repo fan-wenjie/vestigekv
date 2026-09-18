@@ -46,6 +46,21 @@ the same "be dense more often" trade as the fence, with a principled knob
 instead of a fitted constant.** `randfence-20-ruler` bounds how much of any
 gain is attributable to density alone, and applies here too.
 
+## Amendment, before the arms report (2026-09-18)
+
+`stepattr2-mk3` landed after this file was frozen and predicts G1 will fail.
+The rows that go missing fall **7.06 scaled logits** short of max1 and rank
+24th at the median under the certified score; the 0.999 Gaussian point adds
+1.7 * cert where cert is of order 1, which does not close a deficit of 7. The
+defect is in the ORDERING that `idxs` produces, and a parametric fit changes
+only the inflation.
+
+The arms still run, and the thresholds are NOT revised. What they now test is
+narrower and still worth having: the fit is stable where the order statistic is
+the maximum of eighteen samples, and a G1 failure alongside confirmed normality
+locates the defect in the sketch rather than the quantile -- which is the
+conclusion pre-registration 9 acts on.
+
 ## Gates
 
 At n=50, 4k-64k, against A0 at the same n. Target family is multi-needle
