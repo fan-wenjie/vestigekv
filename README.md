@@ -519,6 +519,19 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       these bound COLLAPSE, they do not measure the gap. A result of "vestigekv tracks dense"
 #       here means "it does not fall apart at 256k", and the sample size must be stated wherever
 #       the number appears so it is not read against the n=50 table.
+#       DEVIATION, recorded 2026-09-18, after the run. The band above treats the two arms as
+#       independent; they are not, since both answer the same items under seed 0. A PAIRED
+#       reading of the retained samples_*.json (exact sign-flip permutation, macros
+#       \rulerKLPaired{N,Delta,TwoSigma,P} and \rulerKLDisagree*) gives 2 sigma 0.035 on the
+#       measured -0.046, p=0.008, with all 8 disagreeing items against vestigekv. This analysis
+#       was NOT pre-registered and was chosen after seeing the data; it is reported because it
+#       cuts AGAINST this method -- it upgrades the 128k-256k gap from "unresolved" to real --
+#       and the paper prints the pre-registered reading first and labels the paired one post-hoc.
+#       The n=50 grid cannot be re-read this way: its samples_*.json were deleted in the results
+#       reduction (results/README.md, "What was removed entirely"), and its vestigekv arm's
+#       record predates the seed field, so item identity across its arms is not provable from
+#       the records either. Its bands stay unpaired, hence conservative in the direction that
+#       flatters the localisation claim. DO NOT delete samples_*.json for a compared arm again.
 #   stream-vestigekv-256k-origin -> the same timed 4k->256k stream served from origin/vestigekv
 #       (the paper's backend, ENGINE=~/vestigekv-wt/engine-origin, a detached worktree at
 #       281abac) on this box and this protocol: the per-step cost of every commit since (fence,

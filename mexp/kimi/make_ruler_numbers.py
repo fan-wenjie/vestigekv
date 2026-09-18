@@ -11,9 +11,13 @@ The recall-margin sweep comes from results/kimi/ruler_vestigekv_margin-*.log.
 
 import argparse
 import glob
+import itertools
 import json
+import math
 import os
+import random
 import re
+import statistics
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -29,8 +33,79 @@ LEN = {4096: "FourK", 8192: "EightK", 16384: "SixteenK", 32768: "ThirtyTwoK", 65
 
 
 def load(line, arm, n, lengths):
-    p = os.path.join(ROOT, "results", line, "ruler", f"results_{arm}_n{n}_{'-'.join(map(str, lengths))}.json")
-    return json.load(open(p)) if os.path.exists(p) else None
+    """Exact filename first, then the tagged variant the runner writes.
+
+    A job whose queue entry carries a tag lands as
+    results_<arm>_n<N>_<lengths>_<tag>.json, so the untagged path misses it and
+    the macros silently come out PENDING -- which is how a finished run can look
+    like an unfinished one."""
+    base = os.path.join(ROOT, "results", line, "ruler",
+                        f"results_{arm}_n{n}_{'-'.join(map(str, lengths))}")
+    if os.path.exists(base + ".json"):
+        return json.load(open(base + ".json"))
+    tagged = sorted(glob.glob(base + "_*.json"))
+    return json.load(open(tagged[0])) if tagged else None
+
+
+def paired(line, n, lengths):
+    """Item-level paired differences, when both arms kept their sample records.
+
+    The two arms answer the *same* generated items under the same seed, so the
+    arms are not independent samples and a band built as if they were charges
+    the estimate with between-item variance that pairing removes -- on the long
+    line that band is 0.059 against a paired 0.035, which is the difference
+    between calling the gap noise and resolving it. The paired vector is the
+    right object, and it is available only where samples_*.json survives: the
+    n=50 grid kept one arm's, so it has none.
+
+    Scores are keyed by length inside each record, with -1.0 marking a length
+    the item was not run at."""
+    f = {}
+    for arm in ("baseline", "vestigekv"):
+        base = os.path.join(ROOT, "results", line, "ruler",
+                            f"samples_{arm}_n{n}_{'-'.join(map(str, lengths))}")
+        p = base + ".json" if os.path.exists(base + ".json") else None
+        if p is None:
+            g = sorted(glob.glob(base + "_*.json"))
+            if not g:
+                return None
+            p = g[0]
+        f[arm] = json.load(open(p))
+    d = []
+    for t in f["baseline"]:
+        if t not in f["vestigekv"]:
+            return None
+        def index(recs):
+            return {(s["doc_id"], str(l)): s[str(l)] for s in recs
+                    for l in lengths if str(l) in s and s[str(l)] >= 0}
+        b, v = index(f["baseline"][t]), index(f["vestigekv"][t])
+        if set(b) != set(v):          # an arm dropped items: pairing is unsound
+            return None
+        d += [v[k] - b[k] for k in sorted(b)]
+    return d
+
+
+def signflip_p(d):
+    """Two-sided exact sign-flip permutation p-value on the mean difference.
+
+    Under exchangeability of the two arms within an item, each non-zero
+    difference is equally likely to carry either sign; zeros contribute nothing
+    to the statistic and are dropped, which is what makes the enumeration
+    affordable here (8 non-zero differences out of 130 items). Falls back to
+    sampling if the enumeration would be large."""
+    nz = [x for x in d if x != 0]
+    if not nz:
+        return 1.0
+    s = abs(sum(nz))
+    if len(nz) <= 22:
+        hit = sum(abs(sum(g * x for g, x in zip(signs, nz))) >= s - 1e-9
+                  for signs in itertools.product((1, -1), repeat=len(nz)))
+        return hit / 2 ** len(nz)
+    rng = random.Random(0)
+    trials = 200000
+    hit = sum(abs(sum(x if rng.random() < 0.5 else -x for x in nz)) >= s - 1e-9
+              for _ in range(trials))
+    return hit / trials
 
 
 def cell(r, t, l):
@@ -51,7 +126,7 @@ def main():
     # n is per line, not global: the Kimi grid is measured at 50 per cell (one
     # sample moves a cell by 0.02), the long grid at 5, GLM-5.3 at 10.
     for line, tag, n, lengths in (("kimi", "K", 50, [4096, 8192, 16384, 32768, 65536]),
-                                  ("kimi", "KL", 5, [131072, 262144, 524288, 1048576]),
+                                  ("kimi", "KL", 5, [131072, 262144]),   # 512k/1M dropped: see README
                                   ("glm53", "G", 10, [4096, 8192, 16384, 32768, 65536])):
         arms = {"D": load(line, "baseline", n, lengths), "V": load(line, "vestigekv", n, lengths)}
         for a, r in arms.items():
@@ -84,6 +159,37 @@ def main():
             L.append(f"\\newcommand{{\\ruler{tag}Worse}}{{{sum(x < -1e-9 for x in d)}}}")
             L.append(f"\\newcommand{{\\ruler{tag}Better}}{{{sum(x > 1e-9 for x in d)}}}")
             L.append(f"\\newcommand{{\\ruler{tag}Cells}}{{{len(d)}}}")
+            # Resolution of the line, as 2 sigma on the mean difference.
+            #
+            # Two bands, and they are not interchangeable. The *unpaired* one
+            # treats each cell as n Bernoulli trials and the arms as independent
+            # runs (variance = sum over cells and arms of p(1-p)/n, over
+            # cells^2). That is what the line supports when only one arm kept
+            # its sample records -- and it is conservative in a direction that
+            # flatters this paper, because a band too wide makes a real gap read
+            # as noise and a localisation claim read as cleaner than it is.
+            #
+            # The arms answer the *same* items under the same seed, so where
+            # both arms' samples survive the *paired* band is the correct one
+            # and is much tighter (0.035 vs 0.059 on the long line). The paired
+            # macros carry a P suffix; the body cites those wherever they exist.
+            var = sum(p * (1 - p) / n
+                      for a in ("D", "V") for t in TASKS for l in lengths
+                      for p in (cell(arms[a], t, l),)) / len(d) ** 2
+            L.append(f"\\newcommand{{\\ruler{tag}TwoSigma}}{{{2 * math.sqrt(var):.3f}}}")
+            pd = paired(line, n, lengths)
+            if pd:
+                nz = [x for x in pd if x != 0]
+                L.append(f"\\newcommand{{\\ruler{tag}PairedN}}{{{len(pd)}}}")
+                L.append(f"\\newcommand{{\\ruler{tag}PairedDelta}}"
+                         f"{{{statistics.mean(pd):+.3f}}}")
+                L.append(f"\\newcommand{{\\ruler{tag}PairedTwoSigma}}"
+                         f"{{{2 * statistics.stdev(pd) / math.sqrt(len(pd)):.3f}}}")
+                L.append(f"\\newcommand{{\\ruler{tag}PairedP}}"
+                         f"{{{signflip_p(pd):.3f}}}")
+                L.append(f"\\newcommand{{\\ruler{tag}Disagree}}{{{len(nz)}}}")
+                L.append(f"\\newcommand{{\\ruler{tag}DisagreeDown}}"
+                         f"{{{sum(x < 0 for x in nz)}}}")
     # The serving telemetry these macros come from lives in the server logs,
     # which are not retained in the archive (see results/kimi/vkstats_extract.json).
     # Prefer the log when it is there -- re-running a job regenerates it -- and
