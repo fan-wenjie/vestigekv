@@ -1,0 +1,100 @@
+\begin{table}[H]
+\centering
+\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lll}
+\toprule
+measurement & NoPE (Kimi) & RoPE (DSV2)\\
+\midrule
+branch/content row norm (max) & \rowNormMaxKimi$\times$ & \rowNormMaxDsv$\times$\\
+score-variance share (11\% of dims) & \scoreVarShare & (branch is positional)\\
+top-1 retention, branch only & \branchTopOne & n/a\textsuperscript{$\ast$}\\
+top-1 retention, content only & \contentTopOne & n/a\textsuperscript{$\ast$}\\
+normalization & \multicolumn{2}{l}{content is RMSNormed; the branch is the row's only magnitude path}\\
+\bottomrule
+\end{tabular}
+\caption{The branch is the trained salience channel. Static rows from weights alone;
+behavioral rows from 512 real queries $\times$ 32 heads.
+$^{\ast}$Retention is a norm-type ranking and rotations are isometries, so
+the statistic is insensitive to RoPE by construction (measured: 0.99 on DSV2
+as well) --- it cannot discriminate the arms. The discriminating measurement
+is the end-to-end dual-arm selector (\ropeVKxThirtyTwo{} on DSV2).}
+\label{tab:anatomy}
+\end{table}
+
+\begin{table}[H]
+\centering\small
+\caption{General language-modeling cost ($\Delta$CE, nats/token, held-out; the
+top row is the deployed two-tier form, the lower rows its ablations
+continuation, 6 docs). The standard configuration is effectively lossless
+(${\sim}0.0006$ bits/byte at $32\times$ for ${\sim}4$-byte tokens). The
+recent-only floor matches on CE while scoring $+15$ nats on needle --- continuation
+loss alone cannot arbitrate retrieval, which is why needle is the primary metric.}
+\label{tab:bpb}
+\begin{tabular}{lccc}
+\toprule
+$\Delta$CE & $8\times$ & $32\times$ & $128\times$\\
+\midrule
+eviction $+$ recall tier (standard) & \bpbTTxEight & \bpbTTxThirtyTwo & \bpbTTxOTE\\
+eviction only & \bpbDigxEight & \bpbDigxThirtyTwo & \bpbDigxOTE\\
+recent-only floor & \bpbRecxEight & \bpbRecxThirtyTwo & \bpbRecxOTE\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering\small
+\caption{Left: end-to-end recovery ($L{=}8192$, 24 trials) --- the tier restores
+what eviction loses, admitting only \ttMaskExtra{} extra rows per query. Right: the
+index-rank knob --- a larger sketch cuts trigger rate and fetch volume while recall
+\emph{rises} (tighter bounds rank better). Rows/query is a document-perplexity
+figure; retrieval-heavy steps legitimately fetch more (5--37 rows per layer at
+$r{=}192$ on needle contexts, recovery still 1.00).}
+\label{tab:tier}
+\begin{tabular}{lcc}
+\toprule
+ & $32\times$ & $128\times$\\
+\midrule
+eviction only & \vkEightKxThirtyTwo & \vkEightKxOTE\\
+$+$ recall tier & \ttxThirtyTwo & \ttxOTE\\
+\bottomrule
+\end{tabular}\hspace{1.6em}
+\begin{tabular}{lcccc}
+\toprule
+sketch rank $r$ & 64 & 128 & 192 & 256\\
+\midrule
+fire rate & \rsSixtyFourFire & \rsOneTwoEightFire & \rsOneNineTwoFire & \rsTwoFiveSixFire\\
+rows/query & \rsSixtyFourRows & \rsOneTwoEightRows & \rsOneNineTwoRows & \rsTwoFiveSixRows\\
+hard recall & \rsSixtyFourRec & \rsOneTwoEightRec & \rsOneNineTwoRec & \rsTwoFiveSixRec\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{ll>{\raggedright\arraybackslash}p{5.7cm}}
+\toprule
+parameter & recommended & basis\\
+\midrule
+ratio $\rho$ & $1/8$ lossless; $1/32$ default & Table~\ref{tab:main}\\
+bandwidth $\kappa$ & 16 (fixed) & the query-grounded criterion peaks at 16
+ and is flat to $\pm0.3\%$ over $\kappa\in[4,64]$; data-driven selection
+ has nothing to win\\
+sinks / tail & first 4 / unclosed tail ($<$ one block) & sink dominance of
+ attention mass; decoded tokens live in the unclosed tail\\
+sketch rank $r$ & 64 & minimizes per-step scan bytes (reads
+ 26\% of full at $r{=}64$ vs 47\% at $r{=}192$; the 16-bit index halves both);
+ larger $r$ buys only a lower fire rate (\rsOneNineTwoFire{} at $r{=}192$,
+ recall \rsOneNineTwoRec) that the fused pipeline no longer needs\\
+fetch & no quota; buffer 4096 & the fired set is the certificate's decision,
+ not a top-$k$; the buffer is an engineering width (CUDA graphs bake it) and an
+ overflow attends densely, which is exact. The HF-forward harness offers a
+ $\mathrm{topj}{=}16$ cap instead (recall 0.93--0.98); serving does not\\
+trigger $z$ & conformal quantile at $\tau_s$, from $\tau{=}0.90$ & closed form; in-context; no external corpus\\
+entropy gate & auto-off if cal.\ fire rate $>60\%$ & self-deciding; saves the scan only where it filters\\
+tier-2 placement & GPU-resident & fetch free; per-step reads
+ $1152\to{\sim}294$ bytes/token (16-bit index)\\
+\bottomrule
+\end{tabular}
+\caption{Empirical defaults. Every value traces to a pre-registered measurement.}
+\label{tab:config}
+\end{table}

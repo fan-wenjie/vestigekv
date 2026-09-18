@@ -1,0 +1,19 @@
+\begin{table}[H]
+\centering
+\caption{Tier-1 ablation (recall tier off; not the deployed form). Rates at
+8k and 32k pool seeds 11$+$12 under the frozen rule of the pre-registration
+archive ($n{=}24$--$36$); 65k is single-seed ($n{=}12$).
+Branch-only selection (VestigeKV, reads \readCost{} of each row) vs.\
+full-row selection at matched budget.}
+\label{tab:main}
+\footnotesize
+\begin{tabular}{lccccccccc}
+\toprule
+ & \multicolumn{3}{c}{$L{=}8192$} & \multicolumn{3}{c}{$L{=}32768$} & \multicolumn{3}{c}{$L{=}65536$}\\
+ & $32\times$ & $64\times$ & $128\times$ & $32\times$ & $64\times$ & $128\times$ & $32\times$ & $64\times$ & $128\times$\\
+\midrule
+VestigeKV & \vkEightKxThirtyTwo & \vkEightKxSixtyFour & \vkEightKxOTE & \vkThirtyTwoKxThirtyTwo & \vkThirtyTwoKxSixtyFour & \vkThirtyTwoKxOTE & \vkSixtyFiveKxThirtyTwo & \vkSixtyFiveKxSixtyFour & \vkSixtyFiveKxOTE\\
+Full-row selection & \fullEightKxThirtyTwo & \fullEightKxSixtyFour & \fullEightKxOTE & \fullThirtyTwoKxThirtyTwo & \fullThirtyTwoKxSixtyFour & \fullThirtyTwoKxOTE & \fullSixtyFiveKxThirtyTwo & \fullSixtyFiveKxSixtyFour & \fullSixtyFiveKxOTE\\
+\bottomrule
+\end{tabular}
+\end{table}

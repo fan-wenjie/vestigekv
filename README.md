@@ -94,6 +94,34 @@ below) — invoke or read the skill to reproduce that one experiment.
 | `mexp/` | active experiment scripts: data collection + what sglang lacks (see `mexp/README.md`) |
 | `tools/` | health check, config check, serving launch harness |
 | `archive/` | frozen scripts of published gates (mini-sglang era; not runnable — its dependency is retired) |
+| `docs/` | the third tier of the paper's evidence --- see below |
+| `results/` | two figures and `results.zip`; run records for every number (`results/README.md`) |
+
+### `docs/` --- evidence graded out of the paper
+
+The paper grades its evidence into three tiers so a reader can tell what the
+argument rests on. The body (9 pages) carries the core performance data and
+whatever is needed to understand the algorithm and its implementation. The
+appendix (7 pages) defends the claims a reviewer is most likely to contest ---
+the proofs, why NoPE is required, the full RULER grid, what the baselines
+actually do here, the measurement gates, where the gap is, and the cost
+accounting. Everything true but not load-bearing for either lands here.
+
+| path | what it is |
+|---|---|
+| `docs/paper-appendices/` | material cut from the paper, each file the LaTeX exactly as it stood, with `README.md` giving the reason for each |
+| `docs/paper-appendices/deployment-spec.tex` | the per-stage operational specification: block close, index build, decode step, per-layer cascade |
+| `docs/paper-appendices/related-work-taxonomy.tex` | every family sorted by what its warm-up costs and whether its decision is reversible |
+| `docs/paper-appendices/scope-boundaries.tex` | the long form of the limitation: three factors, the direction each pushes, the remove-one-factor evidence |
+| `docs/paper-appendices/supporting-tables.tex` | four cited-but-unprinted tables (branch anatomy, bits/byte, per-tier recovery, defaults) |
+| `docs/paper-appendices/tier1-ablation.tex` | the tier-1-only ablation, a configuration the paper does not ship |
+| `docs/paper-appendices/interval-estimates.tex` | Wilson intervals on the small-n needle rates |
+| `docs/nope-dividends.md` | what NoPE-MLA confers on seven prior algorithms; no new measurements, three empty on this checkpoint |
+| `docs/INFRA_OPTIMIZATIONS.md` | serving-stack tuning notes |
+| `docs/whitepaper/`, `docs/defense/` | earlier write-ups, kept as dated records |
+
+Numbers in the `.tex` files are macros generated from `results/results.zip` by
+the same scripts the paper uses, so these files and the paper cannot disagree.
 
 `mexp/_bootstrap.py` puts the submodule's `python/` on `sys.path`; a sibling
 checkout at `/home/user/fft/sglang` takes over when present.
