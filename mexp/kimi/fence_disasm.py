@@ -23,7 +23,7 @@ POOL, R1, CAP, FW, R2T = 4096, 4, 512, 128, 1024
 LK, LV, H, SPLITS = 576, 512, 16, 8
 
 
-def _rows(fence):
+def _rows(fence, affine=False):
     import torch
 
     from sglang.srt.layers.attention.vestigekv.decode_fork import VestigeKVRows
@@ -41,10 +41,11 @@ def _rows(fence):
         seq=torch.full((1,), 777, dtype=torch.int64, device="cuda"),
         loc=torch.full((1,), POOL - 1, dtype=torch.int64, device="cuda"),
         fence=fence,
+        affine=affine,
     )
 
 
-def _compile(fence):
+def _compile(fence, affine=False):
     """Run the launcher once and hand back the kernel Triton compiled for it."""
     import torch
 
@@ -62,13 +63,13 @@ def _compile(fence):
     cache = df._vk_fwd_grouped_kernel_stage1.device_caches[torch.cuda.current_device()][0]
     before = set(cache)
     df.decode_grouped_att_m_fwd(
-        q, pool, pool[:, :, :LV], out, lse, indptr, indices, _rows(fence),
+        q, pool, pool[:, :, :LV], out, lse, indptr, indices, _rows(fence, affine),
         splits, SPLITS, 1.0 / (LK**0.5), 0.0, has_mla=True,
     )
     torch.cuda.synchronize()
     new = set(cache) - before
     if not new:
-        raise RuntimeError(f"no new compilation for fence={fence}; clear ~/.triton/cache")
+        raise RuntimeError(f"no new compilation for fence={fence} affine={affine}")
     return cache[new.pop()]
 
 
@@ -92,9 +93,9 @@ def main():
     os.makedirs(args.out, exist_ok=True)
 
     kinds = {}
-    for fence in (False, True):
-        k = _compile(fence)
-        name = "fence_on" if fence else "fence_off"
+    for fence, affine in ((False, False), (True, False), (True, True)):
+        k = _compile(fence, affine)
+        name = "fence_off" if not fence else ("fence_on_affine" if affine else "fence_on")
         md = k.metadata
         ptx = k.asm["ptx"]
         open(os.path.join(args.out, name + ".ptx"), "w").write(ptx)
@@ -106,6 +107,12 @@ def main():
               f"warps={getattr(md, 'num_warps', '?')} "
               f"ptx_lines={len(ptx.splitlines())} "
               f"sass_lines={len(sass.splitlines()) if sass else 'n/a'}")
+
+    for name, (_, _, sass) in kinds.items():
+        if sass:
+            n = {op: sum(1 for l in sass.splitlines() if op in l)
+                 for op in ("LDL", "STL", "LDGSTS", "UBLKCP", "LDGDEPBAR")}
+            print(f"{name:16s} " + " ".join(f"{k}={v}" for k, v in n.items()))
 
     for what, idx in (("ptx", 1), ("sass", 2)):
         a, b = kinds["fence_off"][idx], kinds["fence_on"][idx]

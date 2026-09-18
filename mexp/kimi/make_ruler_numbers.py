@@ -75,6 +75,28 @@ def main():
             L.append(f"\\newcommand{{\\ruler{tag}Worse}}{{{sum(x < -1e-9 for x in d)}}}")
             L.append(f"\\newcommand{{\\ruler{tag}Better}}{{{sum(x > 1e-9 for x in d)}}}")
             L.append(f"\\newcommand{{\\ruler{tag}Cells}}{{{len(d)}}}")
+    # The serving telemetry these macros come from lives in the server logs,
+    # which are not retained in the archive (see results/kimi/vkstats_extract.json).
+    # Prefer the log when it is there -- re-running a job regenerates it -- and
+    # fall back to the extract so the macros stay reproducible either way.
+    _vk_extract = {}
+    _xp = os.path.join(ROOT, "results", "kimi", "vkstats_extract.json")
+    if os.path.exists(_xp):
+        _vk_extract = {k: v for k, v in json.load(open(_xp)).items()
+                       if not k.startswith("_")}
+
+    def vkstats(job):
+        s = os.path.join(ROOT, "results", "kimi", f"server_vestigekv_{job}.log")
+        if os.path.exists(s):
+            last = [l for l in open(s, errors="replace") if "VKSTATS" in l and "TP1]" not in l]
+            m = re.search(r"steps=(\d+).*?fetch\[p50=(\d+) p90=(\d+) p99=(\d+)\] fallback=([0-9.]+)",
+                          last[-1]) if last else None
+            if m:
+                return {"steps": int(m.group(1)), "fetch_p50": int(m.group(2)),
+                        "fetch_p90": int(m.group(3)), "fetch_p99": int(m.group(4)),
+                        "fallback": float(m.group(5))}
+        return _vk_extract.get(job)
+
     # recall-margin sweep (per-job client logs; the targeted tasks at 16k/32k/64k)
     for job, mac in (("margin-0", "Zero"), ("margin-1", "One"), ("margin-2", "Two"), ("margin-3", "Three"),
                      ("margin-lse-2.3", "LseA"), ("margin-lse-4.6", "LseB")):
@@ -95,26 +117,19 @@ def main():
             L.append(f"\\newcommand{{\\sweep{mac}Targeted}}{{{sum(tgt) / len(tgt):.3f}}}")
             L.append(f"\\newcommand{{\\sweep{mac}MKc}}{{{sum(cells['niah_multikey_3']) / 3:.3f}}}")
             L.append(f"\\newcommand{{\\sweep{mac}QAhp}}{{{sum(cells['ruler_qa_hotpot']) / 3:.3f}}}")
-        s = os.path.join(ROOT, "results", "kimi", f"server_vestigekv_{job}.log")
-        if os.path.exists(s):
-            last = [l for l in open(s, errors="replace") if "VKSTATS" in l and "TP1]" not in l]
-            if last:
-                m = re.search(r"fetch\[p50=(\d+) p90=(\d+) p99=(\d+)\] fallback=([0-9.]+)", last[-1])
-                if m:
-                    L.append(f"\\newcommand{{\\sweep{mac}FetchFifty}}{{{m.group(1)}}}")
-                    L.append(f"\\newcommand{{\\sweep{mac}Fallback}}{{{float(m.group(4)):.2f}}}")
+        v = vkstats(job)
+        if v:
+            L.append(f"\\newcommand{{\\sweep{mac}FetchFifty}}{{{v['fetch_p50']}}}")
+            L.append(f"\\newcommand{{\\sweep{mac}Fallback}}{{{v['fallback']:.2f}}}")
     # calibrated-regime stats (stream 128k, stats on) and the 64k short-answer regime
     for job, mac in (("stats-vestigekv-stream-128k", "StreamOneTwoEight"), ("stats-vestigekv-ruler-64k", "RulerSixtyFour")):
-        s = os.path.join(ROOT, "results", "kimi", f"server_vestigekv_{job}.log")
-        if os.path.exists(s):
-            last = [l for l in open(s, errors="replace") if "VKSTATS" in l and "TP1]" not in l]
-            m = re.search(r"steps=(\d+).*?fetch\[p50=(\d+) p90=(\d+) p99=(\d+)\] fallback=([0-9.]+)", last[-1]) if last else None
-            if m:
-                L.append(f"\\newcommand{{\\stats{mac}Steps}}{{{int(m.group(1))}}}")
-                L.append(f"\\newcommand{{\\stats{mac}FetchFifty}}{{{m.group(2)}}}")
-                L.append(f"\\newcommand{{\\stats{mac}FetchNinety}}{{{m.group(3)}}}")
-                L.append(f"\\newcommand{{\\stats{mac}FetchNinetyNine}}{{{m.group(4)}}}")
-                L.append(f"\\newcommand{{\\stats{mac}Fallback}}{{{float(m.group(5)):.3f}}}")
+        v = vkstats(job)
+        if v:
+            L.append(f"\\newcommand{{\\stats{mac}Steps}}{{{v['steps']}}}")
+            L.append(f"\\newcommand{{\\stats{mac}FetchFifty}}{{{v['fetch_p50']}}}")
+            L.append(f"\\newcommand{{\\stats{mac}FetchNinety}}{{{v['fetch_p90']}}}")
+            L.append(f"\\newcommand{{\\stats{mac}FetchNinetyNine}}{{{v['fetch_p99']}}}")
+            L.append(f"\\newcommand{{\\stats{mac}Fallback}}{{{v['fallback']:.3f}}}")
     open(args.out, "w").write("\n".join(L) + "\n")
     print(f"wrote {args.out}: {len(L)} macros")
 

@@ -72,6 +72,24 @@ Two categories are not in the archive and are not reducible to summaries:
   which are 0.2 MB in total and *are* in the archive. The generations would only
   be needed to re-score from raw text.
 
+### One thing was lost, not reduced
+
+The serving-telemetry logs `results/kimi/server_vestigekv_*.log` were **never
+tracked by git** and were deleted in this reduction before it was noticed that
+`make_ruler_numbers.py` reads them: they supply 22 macros, 9 of which the paper
+cites (the VKSTATS fetch/fallback figures for the 128k stream, the 64k RULER
+regime, and the recall-margin sweep).
+
+The values themselves are intact -- the generator had already extracted them
+into the committed macro file -- and they now live in
+`kimi/vkstats_extract.json`, which the generator reads when the log is absent,
+so the archive still regenerates all 537 macros byte-for-byte. But the raw logs
+behind those nine numbers are gone and cannot be re-derived from this archive;
+re-running the jobs named in `EXPERIMENTS.md` regenerates them. This is recorded
+here rather than quietly patched over, because the difference between "reduced
+to its exact statistics" and "lost, with the statistics preserved" matters when
+someone is deciding how far to trust a number.
+
 Diagnostic dumps from closed investigations (`debug/`, `bisect/`, `profile/`,
 `memtrace/`) and runs superseded by a later arm are also gone.
 
