@@ -134,62 +134,48 @@ no topj cap). FULL = attend all rows (== baseline); VESTIGE = attend the kept
 set. Arms switch on a running server via the `/tmp/vestigekv_full` flag, so both
 replay the identical graph and code path.
 
-### The recall fetch cap (topj): **default is UNCAPPED — a cap must be set explicitly**
+### The recall fetch cap: a fixed 4096-row buffer, overflow attends densely
 
-> **Fool-proof by design: the serving default fetches the FULL
-> fired recall set (`SGLANG_VESTIGEKV_TOPJ=-1`). There is no silent partial
-> default — if you want a bounded fetch, YOU state the bound.** This is
-> deliberate: the cap is the one knob that trades recall completeness for a
-> worst-case latency bound, and the engineer setting it should know what it
-> bounds (fetch ≤ topj × num_heads rows / step / layer) and why — see
-> PREREG33/34 and the paper's "recommended configuration".
+The admission rule is uncapped: every decode step the tier-2 index scans the
+archived rows and fires the ones whose certificate says the current query might
+need them, with no top-k ranking the survivors. The *fetch* is capped, because
+an unbounded one is not implementable here and would not be wanted if it were
+-- CUDA graphs require a static shape, and a step is only as fast as its worst
+fetch.
 
-**What the cap does.** Every decode step, the tier-2 index scans the evicted
-rows and *fires* the ones whose certificate says the current query might need
-them; the fired rows are fetched back into that step's attention. Uncapped,
-the fired set is whatever the certificates produce — usually small, but with
-**no upper bound** (observed worst case: 3,983 rows in one step, PREREG30
-telemetry). `topj` caps the fetch to the **top-j scored rows per head**,
-giving the hard guarantee *fetch ≤ topj × num_heads rows / step / layer*.
-That bound is what makes the method non-degenerate by construction: no
-adversarial context can push a step back toward attending the whole cache,
-and in the host-offload variant it bounds per-step PCIe traffic.
-
-**Recommended cap: `topj = 16`, with the evidence:**
-
-| leg | capped (16) vs uncapped | source |
-|---|---|---|
-| worst-case fire / step | **296 vs 3,983 rows (13×)** — the bound the cap buys | PREREG30/33 |
-| needle recovery | 4/4 vs 4/4 — identical (the needle row always sits in the top-16) | PREREG33 |
-| generation | **bit-identical text**; MAUVE unchanged | PREREG34 |
-| likelihood (bpb vs engine) | +0.145% vs +0.102% — cap costs **0.04 pp**, inside the ±0.001-bpb neutral band | PREREG34 |
-| wall clock (batch=1, ≤32k) | 8k: 40.5→40.1 ms (−1%); 32k: 40.3→41.8 ms (+4%) — cap ≈ free | PREREG33 |
-
-Note a property classic sparse attention does not have: with recall on,
-per-step attention volume is *query-dependent and variable* (0 to the
-observed 3,983-row worst case). The cap is therefore the latency-determinism
-switch, not just an optimization -- capped, per-step work is hard-bounded;
-uncapped, the *theoretical worst case is degeneration to naive MLA plus the
-scan overhead* for that step (quality unharmed -- the extra rows are exact;
-steps independent). Measured worst fire is 3,983 rows, an observation, not a
-bound; an uncapped SLO must quote naive-MLA-plus-scan as its per-step worst
-case.
-
-So j=16 sits exactly at the knee: large enough that every measured retrieval
-target lands inside it (quality legs all tie), small enough that the fetch
-bound tightens 13×. Honest scoping from PREREG33: at batch=1/short context
-the cap does **not** buy wall clock (attention is a small step fraction
-there); its value is the worst-case bound, which matters precisely in the
-long-context + large-batch regime where attention dominates.
-
-```bash
-# production launch with the recommended bounded-fetch cap (explicit opt-in):
-SGLANG_VESTIGEKV_TOPJ=16 MODEL_PATH=<kimi-ckpt> \
-    mexp/launch_vestige_server.sh <node_rank> <dist_addr:port>
-
-# research / quality-ceiling runs (the default; equivalent to omitting it):
-MODEL_PATH=<kimi-ckpt> mexp/launch_vestige_server.sh <node_rank> <dist_addr:port>
 ```
+--vestigekv-recall-capacity 4096        rows per layer, request and decode step
+--disable-vestigekv-recall-overflow-fallback    truncate instead of falling back
+```
+
+**Where 4096 comes from.** The fired set is query-dependent and variable, and
+its observed worst case on the reference stack was **3,983 rows in one step**
+(PREREG30 telemetry). 4096 sits just above that, so the cap is a buffer sized
+by measurement rather than a quality knob.
+
+**What overflow does, and why the cap is cheap.** A step that fires more than
+the capacity attends the request's *full row set* -- dense, and therefore
+exact. So the cap is spent in throughput and never in recall, which is what
+makes a fixed width acceptable at all. This is not a rare path: the overflow
+rate is what the paper reports as the fallback rate, 0.360 of scans at 64k
+RULER against 0.0032 on a long decode, the difference being how much of a
+request runs before its index calibrates.
+`--disable-vestigekv-recall-overflow-fallback` truncates instead and trades the
+no-under-recall property for a bounded per-step cost.
+
+**Capping the fetch is ArkVale's design, moved.** There the cap is a top-k page
+quota and therefore *is* the admission rule, so a page past the quota is not
+recalled and the cap is paid in answers. Here the rule stays uncapped and the
+cap sits behind it, on the buffer, which gives overflow somewhere exact to go.
+
+> **Removed.** The earlier per-head `topj` cap (guarantee: fetch <= topj x
+> num_heads rows/step/layer, recommended 16) is gone from serving --
+> `SGLANG_VESTIGEKV_TOPJ` is registered deprecated in `environ.py` and is
+> IGNORED if set. Its evidence legs (needle 4/4 either way, bit-identical
+> generation, bpb +0.04 pp, 296 vs 3,983 rows) are archived in PREREG33/34 and
+> are what established that the fired set's tail is not load-bearing for
+> quality. `topj=16` survives only in the HF-forward algorithm harness
+> (`harness/e2e.py`).
 
 **All recommended values live in one file: [`config/recommended.json`](config/recommended.json)** —
 each entry carries `value` / `why` / `evidence` / `class`. `operational` entries

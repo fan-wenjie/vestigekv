@@ -4,8 +4,10 @@
 # values (the cap above all) are NOT auto-applied -- type them explicitly:
 #
 #   usage: launch_vestige_server.sh <node_rank 0|1> <dist_init_addr> [extra sglang args...]
-#   cap:   SGLANG_VESTIGE_TOPJ=16 launch_vestige_server.sh ...   # bounded fetch (recommended cap; see README)
-#          (omit for the uncapped default; the choice is yours to state)
+#   cap:   the recall fetch is capped by --vestigekv-recall-capacity (4096 rows per
+#          layer, request and decode step); a step that fires more attends the full
+#          row set, which is dense and exact. The old per-head SGLANG_VESTIGE_TOPJ
+#          knob is removed from serving and ignored if set.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 CFG=$HERE/../config/recommended.json

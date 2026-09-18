@@ -235,15 +235,19 @@ below exports `NCCL_P2P_DISABLE=1`; TP collectives then go over SHM.
 
 ```bash
 # --- launch the vestigekv arm (single node, 2 GPUs, TP=2) ---------------
-# SGLANG_VESTIGEKV_ACTIVATION_MIN_TOKENS=0 disables the short-context dense
-# fallback (default 32768): every request takes the compressed path from
-# token 0, so the numbers below measure the method itself at every length,
-# including the short-context regime where its fixed cost is a disadvantage.
+# --vestigekv-activation-min-tokens 0 serves every request through the
+# compressed path from token 0 rather than dense below a threshold, so the
+# numbers below measure the method itself at every length, including the
+# short-context regime where its fixed cost is a disadvantage. It is passed
+# explicitly although 0 is now the default, because the command is the record.
+# (The old SGLANG_VESTIGEKV_ACTIVATION_MIN_TOKENS env is deprecated and IGNORED;
+# so is SGLANG_VESTIGEKV_TOPJ, whose per-head cap became
+# --vestigekv-recall-capacity 4096 with a dense fallback on overflow.)
 NCCL_P2P_DISABLE=1 PYTHONPATH=$PWD/engine/python \
-SGLANG_VESTIGEKV_ACTIVATION_MIN_TOKENS=0 \
 python -m sglang.launch_server \
   --model-path <kimi-linear-48b> --trust-remote-code \
   --attention-backend vestigekv_mla --tp-size 2 \
+  --vestigekv-activation-min-tokens 0 \
   --context-length 524288 --max-total-tokens 589824 \
   --cuda-graph-max-bs 2 --disable-custom-all-reduce --sampling-backend pytorch
 # (radix cache stays ON here too; if the radix-on mamba bookkeeping leaves
@@ -271,8 +275,8 @@ PYTHONPATH=$PWD/engine/python python -m sglang.benchmark.serving --backend sglan
 # The sweep below uses only exactly-captured batch sizes
 # (bs=[1,2,4,8,12,16,24,32]), so no padding waste in either arm.
 # No --max-total-tokens: let the pool auto-size so bs=16..32 are not
-# capacity-bound. The vestigekv arm keeps
-# SGLANG_VESTIGEKV_ACTIVATION_MIN_TOKENS=0.)
+# capacity-bound. The vestigekv arm passes
+# --vestigekv-activation-min-tokens 0.)
 # Radix-on correctness of the vestigekv arm is covered by
 # mexp/radix_probe.py (fresh vs full-prefix-hit outputs; vestigekv matches
 # the triton backend's radix behavior exactly -- see ERRATA #13).
@@ -291,7 +295,7 @@ done
 # known label noise, so the legacy n=800 subset protocol is retired.
 # relaunch with --context-length 16384 --cuda-graph-max-bs 4 (same flags, incl. --disable-custom-all-reduce)
 #   --max-running-requests 4 --disable-radix-cache
-# (the vestigekv arm keeps SGLANG_VESTIGEKV_ACTIVATION_MIN_TOKENS=0, so
+# (the vestigekv arm passes --vestigekv-activation-min-tokens 0, so
 # gsm8k/MAUVE measure the compressed path, not the dense fallback).
 # Quality is the REPRODUCIBILITY line, unlike the perf line above: radix
 # OFF (cache hits shift chunk boundaries and flip greedy near-ties --

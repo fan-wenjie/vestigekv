@@ -11,11 +11,9 @@
     "evidence": "paper sec 'Recommended configuration'; PREREG curve legs",
     "class": "algorithm"
   },
-  "topj": {
-    "value": 16,
-    "why": "recall fetch cap: bounded-fetch guarantee fetch<=topj*num_heads rows/step/layer; worst-case fire 3983->296 rows (13x) at zero measured quality cost (generation bit-identical, bpb delta 0.04pp inside neutral band). SERVING DEFAULT IS UNCAPPED (-1): set SGLANG_VESTIGEKV_TOPJ=16 explicitly to enable",
-    "evidence": "PREREG33 (wall clock, recovery), PREREG34 (bpb/MAUVE), PREREG30 (fire telemetry)",
-    "class": "algorithm"
+  "recall_capacity": {
+    "value": 4096,
+    "why": "recall fetch cap, per layer/request/decode step. A fixed buffer width, because CUDA graphs bake the shape in and a step is only as fast as its worst fetch; 4096 sits above the largest fire observed on the reference stack. The admission rule itself is uncapped (a row fires iff its certified score beats its own head's kept maximum, no top-k), so the cap sits behind the rule: a step that overflows attends the request's full row set, which is dense and exact. The cap is therefore spent in throughput and never in recall; the overflow rate is what the paper reports as the fallback rate. Flag: --vestigekv-recall-capacity. --disable-vestigekv-recall-overflow-fallback truncates instead and gives up the no-under-recall property. The per-head topj cap this entry used to describe is REMOVED from serving (SGLANG_VESTIGEKV_TOPJ is registered deprecated and ignored); it survives only in harness/e2e.py."
   },
   "index_rank": {
     "value": 64,
@@ -86,7 +84,7 @@
   },
   "recall_tier": {
     "value": "required",
-    "why": "necessary at long context: 99.8% per-step trigger at S=512k with quality passing; the partition invariant is only meaningful if the archive is consulted. NOT closeable; the only knob is the explicit fetch cap (topj)",
+    "why": "necessary at long context: 99.8% per-step trigger at S=512k with quality passing; the partition invariant is only meaningful if the archive is consulted. NOT closeable; the only knob is the fetch capacity (recall_capacity)",
     "evidence": "PREREG31/32; rule recorded 2026-09-06",
     "class": "algorithm"
   }

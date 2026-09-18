@@ -11,7 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CFG = json.load(open(ROOT / "config" / "recommended.json"))
-SGL = ROOT.parent / "sglang" / "python" / "sglang" / "srt" / "layers" / "attention"
+ENG = ROOT / "engine" / "python" / "sglang" / "srt"
+SGL = ENG / "layers" / "attention"
 
 failures, checked = [], 0
 
@@ -49,12 +50,21 @@ for name in ("RECENT_WINDOW", "SINKS", "RHO", "INDEX_RANK"):
     checked += 1
     if re.search(rf"^_{name} = ", src, re.M):
         failures.append(f"{name} re-declared in vestigekv_mla_backend.py")
-# fool-proof invariant: the SERVING default for the cap must be uncapped (-1),
-# NOT the recommended value -- the recommendation is typed by the engineer.
-m = re.search(r"topj: int = (-?\d+),", src)
+# The fetch cap: the json must state the flag's real default, not an aspiration.
+# topj is gone from serving -- this used to assert topj == -1 against a source
+# path that no longer existed, so it crashed instead of checking, which is how
+# the json came to describe a knob the engine had removed.
+args_src = (ENG / "arg_groups" / "fields" / "exec_.py").read_text()
+m = re.search(r"vestigekv_recall_capacity:.*?\]\s*=\s*(\d+)", args_src, re.S)
 if not m:
-    sys.exit("ABORT: topj default not found")
-check("topj serving default (must stay -1/uncapped)", int(m.group(1)), -1)
+    sys.exit("ABORT: vestigekv_recall_capacity default not found")
+check("recall_capacity default", int(m.group(1)), CFG["recall_capacity"]["value"])
+checked += 1
+# A KEY named topj, not the word: the recall_capacity entry explains on purpose
+# that topj was removed, and a substring test flagged its own explanation.
+if "SGLANG_VESTIGEKV_TOPJ" in (ENG / "environ.py").read_text() and "topj" in CFG:
+    failures.append("recommended.json still has a topj key, which serving deprecated")
+checked += 1
 
 # launch script carries no magic numbers for the operational keys
 launch = (ROOT / "mexp" / "launch_vestige_server.sh").read_text()

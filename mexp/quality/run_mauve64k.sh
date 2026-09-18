@@ -18,11 +18,6 @@ run_cell() {
   [ "$arm" = vestigekv ] && backend=vestigekv_mla
   pkill -9 -f "sglang[.]launch_server" 2>/dev/null; sleep 3
   local log="runs/$DATE/server_mauve64k_${tag}.log"
-  if [ "$arm" = vestigekv ]; then
-    export SGLANG_VESTIGEKV_ACTIVATION_MIN_TOKENS=0
-  else
-    unset SGLANG_VESTIGEKV_ACTIVATION_MIN_TOKENS
-  fi
   echo "== CELL $tag: server ($backend) =="
   nohup $PY -m sglang.launch_server --model-path "$model" --trust-remote-code \
     --attention-backend "$backend" --tp-size 2 --context-length 139264 \
