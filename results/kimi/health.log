@@ -4,3 +4,6 @@
 2026-09-18_09:44:31 OK runner=1 servers=1 daemon=0 job=litspeed-64k-vk done=112 failed=4 prog='' new_err=0 gpu=88577/0% 88021/0%  disk_free=63G
 2026-09-18_09:59:31 OK runner=1 servers=1 daemon=0 job=litspeed-128k-vk done=114 failed=4 prog='' new_err=0 gpu=89137/100% 88581/100%  disk_free=63G
 2026-09-18_10:14:31 OK runner=1 servers=1 daemon=0 job=litspeed-256k-vk done=116 failed=4 prog='' new_err=0 gpu=88887/98% 88331/100%  disk_free=63G
+2026-09-18_10:29:31 SERVER_ERRORS runner=1 servers=1 daemon=0 job=ruler-baseline-long-mid done=117 failed=4 prog='5/5 [00:00<00:00,  5.52it/s]' new_err=6 gpu=87947/0% 87947/0%  disk_free=63G
+2026-09-18_10:30:35 OK runner=1 servers=1 daemon=0 job=ruler-baseline-long-mid done=117 failed=4 prog='5/5 [00:00<00:00,  5.52it/s]' new_err=0 gpu=87947/0% 87947/0%  disk_free=63G
+2026-09-18_10:45:35 OK runner=1 servers=1 daemon=0 job=ruler-baseline-long-mid done=117 failed=4 prog='0/130 [00:00<?, ?it/s]' new_err=0 gpu=88173/99% 88173/97%  disk_free=63G

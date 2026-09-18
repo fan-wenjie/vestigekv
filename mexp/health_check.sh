@@ -34,7 +34,12 @@ while true; do
   # tracebacks in the newest server log, counted per file: a switch to a new log restarts
   # the count instead of differencing against the previous log's total
   [ "$slog" != "$prev_slog" ] && prev_err=0; prev_slog=$slog
-  err=$( [ -n "$slog" ] && grep -ac "Scheduler hit an exception\|OutOfMemoryError\|CUDA error\|Traceback" "$slog" )
+  # Anchored on real failures. "CUDA error" unanchored matched sglang's own
+  # benign context-length warning, whose text ends "...or CUDA errors.", so every
+  # long-context job (CTX above the model's derived length, which is deliberate
+  # and passed with SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN) reported
+  # SERVER_ERRORS while running correctly.
+  err=$( [ -n "$slog" ] && grep -ac "Scheduler hit an exception\|OutOfMemoryError\|CUDA error:\|^Traceback\|^\[[^]]*\] Traceback" "$slog" )
   new_err=$(( ${err:-0} - prev_err )); prev_err=${err:-0}
   gpu=$(nvidia-smi --query-gpu=memory.used,utilization.gpu --format=csv,noheader,nounits | awk '{printf "%s/%s%% ", $1, $2}' | tr -d ',')
   disk=$(df -h "$ROOT" | awk 'NR==2{print $4}')
