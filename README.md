@@ -1143,6 +1143,23 @@ with the isolated target dir on PYTHONPATH (checkpoints as plain dirs, see
 `pip install --target=$HOME/.cache/vestigekv/tf457 transformers==4.57.1 "huggingface-hub<1.0" "kernels<=0.9,>=0.6.1"`
 `export PYTHONPATH=$HOME/.cache/vestigekv/tf457`
 
+### Experiments are scripts, not typed commands
+
+`mexp/exp/` holds one shell script per registered experiment, and
+`bash mexp/exp/audit.sh` is run before any of them. The rule exists because
+hand-typed runs went wrong twice in ways a script could have caught: an OOM
+from `--gpu-expert-layers 99`, and a wrong protocol from `--rhos 0.03125` where
+that flag wants a compression RATIO. The audit refuses on exactly those, plus a
+missing guard, an `--out` that already exists, and any script this README does
+not mention. `_lib.sh` carries the guards: refuse to start while a server, the
+queue runner or another harness run holds the GPU; refuse to overwrite a record;
+refuse a model directory that is not a plain dir.
+
+| script | what it registers |
+|---|---|
+| `mexp/exp/kvzip-needle-8k.sh` | head-to-head against KVzip, the query-independent baseline the PAT review asked for three times, at 32x and 128x -- where THIS paper operates. Our transcription of the authors' scoring rule in our harness, at a matched budget |
+| `mexp/exp/kvzip-inrange-8k.sh` | the same three arms at 2x, 4x, 8x -- where KVZIP operates, its README claiming 3-4x with minimal degradation. Reporting only the first script would repeat the criticism the review made of the H2O table: a method evaluated outside its stated range collapses by construction and says nothing. Also carries the timing reference, whose limits its header states |
+
 ```bash
 # needle + observed-attention baselines at 8k (Table: baselines / tab:main)
 python harness/e2e.py --arch kimi --seq-len 8192 --n-docs 0 \

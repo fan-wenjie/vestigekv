@@ -4,7 +4,7 @@ real cross-entropy + needle retrieval. Per PREREG2.md.
 Intervention point: [RMSNorm(c) | k_rot] inside KimiMLAAttention.forward, which
 is exactly what an MLA deployment caches -- both K and V are derived from it.
 """
-import argparse, json, math, os, torch, torch.nn.functional as F
+import argparse, json, math, os, time, torch, torch.nn.functional as F
 from extract import ARCH, build_device_map, MLA_LAYERS_FIXED
 
 STATE = {"op": None, "T": None, "rows": 0, "layers": 0, "keep": None,
@@ -379,6 +379,22 @@ def make_op(name, m, frac=0.25):
                 return _invbranch(C, m, "drop", r=rr)
             return f
         table[f"dig_r{rr}"] = mkr()
+    def kvzip(C):
+        """KVzip eviction at the authors' GLOBAL cross-layer threshold.
+
+        Their _threshold sorts every (layer, head, position) score flat and cuts
+        at the target ratio, so a layer's budget is whatever its scores earn --
+        not the per-layer rho every other op here uses. Preserved, because the
+        variable budget is the method; only the head axis is reduced away (an
+        MLA row is one latent for all heads). Total kept over all layers is the
+        same rho*L*T, so the comparison is budget-matched."""
+        thr = STATE.get("kvzip_thr")
+        sc = STATE.get("imp_kvzip", {}).get(STATE["cur_layer"])
+        assert thr is not None and sc is not None, "ABORT kvzip: no scoring pass"
+        keep = sc[:C.shape[0]] > thr
+        keep[:4] = True                     # sinks, as in the authors' cat()
+        return C, keep
+    table["kvzip"] = kvzip
     def digk64(C):
         # sidecar-only selection with detector bandwidth 64 -- the bandwidth
         # the long-context sweeps found optimal at L>=32768
@@ -445,6 +461,45 @@ def patched_forward(self, hidden_states, attention_mask=None, past_key_values=No
     STATE["eastats"] = getattr(self, "_eastats", None)
     STATE["pca"] = getattr(self, "_pca", None)
     STATE["tbasis"] = getattr(self, "_tbasis", None)
+    if STATE.get("kvzip_pass") is not None:
+        # KVzip (Kim et al., NeurIPS 2025), scoring rule transcribed from the
+        # authors' attention/score.py::_get_score and model/wrapper.py::self_task:
+        # re-feed the context under "Repeat the previous context exactly",
+        # softmax the repeat queries over [sinks | context chunk | repeat
+        # window] with the window causally masked, and score each context
+        # position by the MAXIMUM weight any repeat query gives it.
+        #
+        # Two deviations, both forced and both declared in the paper:
+        #  * the authors keep a per-(layer, head) budget. An MLA row is ONE
+        #    latent shared by every head, so per-head eviction does not exist
+        #    in this architecture at all; we reduce the score over heads with
+        #    amax, which is the granularity this cache manages.
+        #  * the global cross-layer threshold is preserved (their _threshold).
+        Tc, q0 = STATE["kvzip_pass"]
+        sc_ = getattr(self, "softmax_scale", None) or getattr(self, "scaling")
+        Hh = self.num_heads; dn = self.qk_nope_head_dim
+        Wb_ = self.kv_b_proj.weight.view(Hh, -1, self.kv_lora_rank)[:, :dn, :]
+        C_ = torch.cat([c, k_rot], -1)[0].float()          # (s, 576) all keys
+        qe_ = torch.cat([torch.einsum('hsd,hdc->hsc', q_pass[0, :, q0:].float(),
+                                      Wb_.float()), q_rot[0, :, q0:].float()], -1)
+        nq = qe_.shape[1]
+        neg = torch.finfo(torch.float32).min
+        best = torch.full((Tc,), neg, device=C_.device)
+        for i0 in range(0, nq, 128):
+            j0 = min(i0 + 128, nq)
+            # keys: the whole context [0,Tc) plus the repeat window itself,
+            # so the softmax normalises over what the authors' cat() builds.
+            w = torch.einsum('hqc,tc->hqt', qe_[:, i0:j0], C_) * sc_
+            qpos = torch.arange(q0 + i0, q0 + j0, device=C_.device)
+            kpos = torch.arange(C_.shape[0], device=C_.device)
+            w = w.masked_fill(kpos[None, None, :] > qpos[None, :, None], neg)
+            w = torch.softmax(w, -1)[..., :Tc]
+            best = torch.maximum(best, w.amax(dim=(0, 1)))
+            del w
+        acc = STATE.setdefault("imp_kvzip", {})
+        prev = acc.get(self.layer_idx)
+        acc[self.layer_idx] = best if prev is None else torch.maximum(prev, best)
+        del qe_, C_
     keeps = None
     if op is not None:
         # op may be a single callable (applied to every batch element) or a
@@ -712,9 +767,13 @@ def main():
     import importlib as _il
     _ad = _il.import_module("transformers.utils.auto_docstring")
     _orig_ppt = _ad._process_parameter_type
-    def _ppt_safe(param, param_name, func):
+    def _ppt_safe(param, *args, **kw):
+        # Signature-agnostic on purpose: transformers 5.12 narrowed this from
+        # (param, param_name, func) to (param), and pinning either spelling
+        # breaks the harness on the other. The patch exists only to stop a
+        # docstring-builder AttributeError on the trust_remote_code model.
         try:
-            return _orig_ppt(param, param_name, func)
+            return _orig_ppt(param, *args, **kw)
         except AttributeError:
             return (str(param.annotation), False)
     _ad._process_parameter_type = _ppt_safe
@@ -763,6 +822,47 @@ def main():
             docs.append(torch.tensor(buf[:L], dtype=torch.long)); buf = buf[L:]
         if len(docs) >= a.n_docs + a.needle_trials:
             break
+
+    def kvzip_scoring(ids_pre, Tc, chunk=2000, prev_postfix=8):
+        """KVzip's importance pass, following model/wrapper.py::self_task.
+
+        The context is chunked; each chunk is re-fed behind "Repeat the previous
+        context exactly" (later chunks carry the previous chunk's last tokens as
+        the starting hint, as the authors do), and the attention those repeat
+        queries pay to each context position is scored by its maximum. The cost
+        is a second pass over the context, which is the ~2x prefill the paper
+        attributes to this family.
+
+        Returns nothing; leaves per-layer scores in STATE["imp_kvzip"] and the
+        authors' global threshold in STATE["kvzip_thr"]."""
+        STATE.pop("imp_kvzip", None)
+        torch.cuda.synchronize(); _t0 = time.perf_counter()
+        ctx = ids_pre[0, :Tc].tolist()
+        for i0 in range(0, Tc, chunk):
+            part = ctx[i0:i0 + chunk]
+            if i0 == 0:
+                q_ids = tok("\n\nRepeat the previous context exactly.")["input_ids"]
+            else:
+                hint = tok.decode(ctx[i0 - prev_postfix:i0])
+                q_ids = tok("\n\nRepeat the part of the previous context exactly, "
+                            f"starting with {hint}")["input_ids"]
+            ids_r = torch.tensor(ctx + q_ids + part, dtype=torch.long)[None].cuda()
+            STATE["kvzip_pass"] = (Tc, Tc)      # queries are everything after the context
+            STATE["op"], STATE["T"] = None, Tc
+            with torch.no_grad():
+                model(ids_r, use_cache=False)
+            STATE["kvzip_pass"] = None
+        assert STATE.get("imp_kvzip"), "ABORT kvzip scoring produced nothing"
+        torch.cuda.synchronize()
+        STATE["kvzip_score_s"] = time.perf_counter() - _t0
+
+    def kvzip_threshold(ratio):
+        """The authors' _threshold: sort every score flat, cut at the ratio."""
+        acc = STATE["imp_kvzip"]
+        flat = torch.stack([acc[l] for l in sorted(acc)]).reshape(-1)
+        flat = torch.sort(flat, descending=True).values
+        n = max(int(len(flat) * ratio) - 1, 0)
+        STATE["kvzip_thr"] = flat[n].item()
 
     def run(ids, op, fn):
         STATE["op"] = op; STATE["rows"] = 0; STATE["layers"] = 0
@@ -865,7 +965,9 @@ def main():
         ids = torch.tensor(pre + q, dtype=torch.long)[None].cuda()
         ans_start = len(pre) + len(q) - ans_n
         STATE["T"] = len(pre)
+        torch.cuda.synchronize(); _tb = time.perf_counter()
         base = run(ids, None, lambda x: nll_of_answer(model, x, ans_start))
+        torch.cuda.synchronize(); STATE["base_fwd_s"] = time.perf_counter() - _tb
         jobs = [(rho, max(2, int(round(len(pre) * rho))), nm, bo, fr)
                 for rho in RHOS for nm, bo, fr in OPS]
 
@@ -886,8 +988,14 @@ def main():
             if dev > 1e-3:
                 raise SystemExit("ABORT batching changes the result")
 
+        if any(nm.split("@")[0] == "kvzip" for _, _, nm, _, _ in jobs):
+            # scores do not depend on rho, the threshold does: score once.
+            kvzip_scoring(ids, len(pre))
         for i0 in range(0, len(jobs), a.batch):
             chunk = jobs[i0:i0 + a.batch]
+            if any(nm.split("@")[0] == "kvzip" for _, _, nm, _, _ in chunk):
+                assert len(chunk) == 1, "ABORT kvzip needs batch 1: one threshold per run"
+                kvzip_threshold(chunk[0][0])
             nb = len(chunk)
             idsB = ids.expand(nb, -1).contiguous() if nb > 1 else ids
             opsB = [make_op(bo, m, fr) for _, m, _, bo, fr in chunk]
@@ -897,7 +1005,10 @@ def main():
                                   [nll_of_answer(model, x, ans_start)]))
             for (rho, m, nm, _, _), v in zip(chunk, vals):
                 res.append(dict(kind="needle", trial=ti, rho=rho, m=m, op=nm,
-                                base=base, val=v, d=v - base))
+                                base=base, val=v, d=v - base,
+                                base_fwd_s=STATE.get("base_fwd_s"),
+                                kvzip_score_s=(STATE.get("kvzip_score_s")
+                                               if nm.split("@")[0] == "kvzip" else None)))
         print(f"[needle {ti+1}/{a.needle_trials}] {city} base_nll={base:.3f}  " +
               "  ".join(f"{r['op']}:{r['d']:+.2f}" for r in res[-len(OPS):]), flush=True)
         STATE["T"] = T
