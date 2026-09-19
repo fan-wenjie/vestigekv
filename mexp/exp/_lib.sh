@@ -11,9 +11,23 @@ set -euo pipefail
 
 ROOT="$HOME/vestigekv"
 PY="/home/user/.conda/envs/sglang-dev/bin/python"
-export PYTHONPATH="${PYTHONPATH:-}:$ROOT/engine/python"
+
+# WHICH ENGINE TREE. The paper's numbers were taken on the frozen tree in
+# engine/ (branch vestigekv, upstream base 17ba2c2e7c). New experiments run on
+# ENGINE=$HOME/vestigekv-wt/engine-v0520 (branch vestigekv-v0520, rebased onto
+# upstream tag v0.5.20), which is the stable tag to build on from here.
+#
+# The trees are NOT interchangeable and a number from one must never be
+# compared against a number from the other without saying so -- the PAT review
+# already raised the frozen-vs-patched split as a concern, and this makes a
+# third tree. Every script states which tree it used; the default stays the
+# frozen one so nothing silently moves.
+ENGINE="${ENGINE:-$ROOT/engine}"
+[ -d "$ENGINE/python/sglang" ] || die_early "ENGINE has no python/sglang: $ENGINE"
+export PYTHONPATH="${PYTHONPATH:-}:$ENGINE/python"
 
 die() { echo "ABORT: $*" >&2; exit 1; }
+die_early() { echo "ABORT: $*" >&2; exit 1; }
 
 require_free_gpu() {
   # Clearing or writing results while another job holds the GPU has cost this
