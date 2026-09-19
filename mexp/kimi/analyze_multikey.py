@@ -144,6 +144,48 @@ def verbatim_in_context(rec, got):
     return got.strip().rstrip(".") in txt
 
 
+UUID_RE = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+
+
+def key_adjacent(rec, got):
+    """Provenance check: is the answer the value sitting next to the asked key?
+
+    Stronger than verbatim_in_context and for a structural reason. A mis-copied
+    answer is not next to the key because it is not in the text at all; a
+    mis-SELECTED answer is in the text but next to a DIFFERENT key. One check
+    sees both, where the verbatim one sees only the first.
+
+    Measured on mk3-copyfidelity-n50's compressed arm, niah_multikey_3, 100
+    items: 88 correct answers pass with ZERO alarms, and all 12 errors are
+    flagged -- 6 mis-copied and 6 mis-selected. Every error this run produced.
+
+    The cost is string work over the prompt and no attention at all: find the
+    key the question names, take the UUID that follows each of its occurrences
+    in the haystack, and ask whether the answer is among them. A per-request
+    index built during prefill makes it a lookup.
+
+    The limit is the honest one: this parses a known answer format. It is a
+    provenance check for structured retrieval -- key-value stores, logs, JSON,
+    tables -- not a hallucination detector for open generation. And 12 errors
+    is a thin base, however clean the split looks. It detects without
+    correcting, though the overflow path already attends the full row set
+    exactly, so an alarm has somewhere to escalate to."""
+    doc = rec.get("doc")
+    if doc is None:
+        return None
+    txt = doc if isinstance(doc, str) else json.dumps(doc)
+    q = re.search(r"What is the special magic uuid for (" + UUID_RE + r")", txt)
+    if not q:
+        return None
+    key, body = q.group(1), txt[:q.start()]
+    vals = []
+    for m in re.finditer(re.escape(key), body):
+        v = re.search(UUID_RE, body[m.end():m.end() + 200])
+        if v:
+            vals.append(v.group(0))
+    return (got.strip().rstrip(".") in vals) if vals else None
+
+
 def classify(path, threshold):
     """[(task, length, doc_id, kind, target, response, similarity)] for one arm.
 
