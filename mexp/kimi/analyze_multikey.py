@@ -25,8 +25,24 @@ This splits every wrong answer into:
   near   similarity to the target above --threshold: the right row, mis-copied.
   wrong  below it: a different row's value, which is the selection failure.
 
-and reports the split per task. `niah_single_3` is the control: the same UUID
-copy, the same length, but a haystack of essays rather than of key-value pairs.
+and then asks of every near miss whether the wrong character came from a
+COMPETING needle, which is the obvious suspect in a haystack of hundreds of
+UUIDs. On the measured arms it did not, three ways:
+
+  - no near-miss output is any UUID in its own haystack, so nothing was
+    swapped wholesale;
+  - at each substituted position the emitted character appears in 6.4% and
+    6.1% of the other haystack UUIDs, against 1/16 = 6.25% for a hex digit
+    drawn at random -- the chance rate, with no enrichment toward competitors;
+  - the same failure shape appears in `niah_single_3`, whose haystack holds
+    exactly ONE UUID, so it happens with zero competing keys.
+
+So the near-miss class is a copy-fidelity failure, not retrieval and not
+interference between rows. A key-value haystack raises its RATE (4 in 50
+against 1 in 50 on the same UUID copy in prose) without changing its
+mechanism. Only the `wrong` class is about selection. `niah_single_3` is the
+control throughout: same UUID copy, same length, essays instead of key-value
+pairs.
 
     python mexp/kimi/analyze_multikey.py --samples results/kimi/ruler/samples_*.json
     python mexp/kimi/analyze_multikey.py --line kimi --examples 6
@@ -38,6 +54,7 @@ import difflib
 import glob
 import json
 import os
+import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -50,6 +67,41 @@ def response(s):
 def target(s):
     t = s.get("target")
     return (t[0] if isinstance(t, list) else str(t))
+
+
+UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+
+def interference(rec, tgt, got):
+    """Did the wrong character come from a competing needle, or from nowhere?
+
+    The near-miss class has an obvious suspect: a haystack of key-value pairs
+    holds hundreds of other UUIDs, so a substituted character could be the
+    model blending the target row with a competitor. That is testable without
+    re-running anything, because the prompt is in the record.
+
+    Two checks. Is the emitted string one of the haystack's UUIDs (a wholesale
+    swap)? And at each substituted position, how many OTHER haystack UUIDs
+    carry the emitted character there -- against 1/16, the rate for a hex digit
+    drawn at random? Enrichment over 1/16 is interference; agreement with it is
+    not.
+
+    Returns (n_haystack, emitted_is_a_haystack_uuid, [(pos, want, got, share)])
+    or None when the record carries no prompt."""
+    doc = rec.get("doc")
+    if doc is None:
+        return None
+    txt = doc if isinstance(doc, str) else json.dumps(doc)
+    hay = set(UUID.findall(txt))
+    hits = []
+    if len(tgt) == len(got):
+        for i, (a, b) in enumerate(zip(tgt, got)):
+            if a == b:
+                continue
+            others = [u for u in hay if u != tgt and len(u) > i and u[i] == b]
+            share = len(others) / max(1, len(hay) - 1)
+            hits.append((i, a, b, share))
+    return len(hay), got in hay, hits
 
 
 def classify(path, threshold):
@@ -103,11 +155,25 @@ def main():
             err = near + wrong
             frac = f"{near}/{err}" if err else "-"
             print(f"{task:20s} {len(t):>4} {ok:>4} {near:>5} {wrong:>6}   {frac:>8}")
+        raw = json.load(open(p))
         ex = [r for r in rows if r[3] == "near"][:args.examples]
         for task, l, doc, _, tgt, got, sim in ex:
             print(f"  near  {task} doc{doc} {l}  sim={sim:.2f}")
             print(f"        want {tgt}")
             print(f"        got  {got}")
+            rec = next((x for x in raw[task] if x["doc_id"] == doc), None)
+            info = interference(rec, tgt, got) if rec else None
+            if info is None:
+                print("        (no prompt in record; interference untestable)")
+                continue
+            n_hay, swapped, hits = info
+            print(f"        haystack UUIDs {n_hay}; output is one of them: {swapped}")
+            for i, a, b, share in hits:
+                print(f"        pos {i}: {a!r}->{b!r}; {100 * share:.1f}% of the "
+                      f"others carry {b!r} there (chance 6.25%)")
+            if not hits:
+                print("        length differs: an insertion or deletion, not a "
+                      "substitution")
     return 0
 
 

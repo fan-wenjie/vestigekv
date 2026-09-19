@@ -417,6 +417,32 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       python mexp/glm53/compare_ruler.py --out results/kimi/ruler --n 50.
 #       Gates and interpretation rules for these three groups are pre-registered in
 #       mexp/kimi/prereg3_realdoc_and_fallback.md (frozen before any of them ran).
+#   mk3-copyfidelity-n50-{baseline,vestigekv} -> the multi-key study. The generations say the
+#       multikey_3 gap is TWO failures, not one: 6 of 9 errors across two arms return the correct
+#       UUID with one character wrong, and 3 return a different needle. Only the second is the
+#       selection failure the paper describes. Three checks (mexp/kimi/analyze_multikey.py) rule
+#       out interference as the cause of the first: no near-miss output is any UUID in its own
+#       haystack; the substituted character appears in 6.4% and 6.1% of the other haystack UUIDs
+#       against 1/16 = 6.25% for a hex digit at chance; and the same shape appears in
+#       niah_single_3, whose haystack holds ONE UUID. So it is copy fidelity, and a key-value
+#       haystack raises its RATE (4/50 vs 1/50) without changing its mechanism.
+#       THIS RUN TESTS THAT RATE CLAIM, which 4-vs-1 cannot carry. Two tasks only --
+#       niah_multikey_3 (key-value haystack) and niah_single_3 (prose haystack), the same
+#       36-char UUID copy in both, so the haystack is the only difference -- at 32k and 64k,
+#       n=50, BOTH arms. The dense arm is not a formality: it says whether the copy ever fails
+#       without compression, and the whole reading depends on the answer.
+#       Samples MUST be kept: the split is invisible in the scores (results/README.md).
+#       LAUNCH COMMANDS, exactly as issued (registered 2026-09-19 before the run):
+#         # server -- quality line, so common.sh defaults apply (CTX=73728, radix OFF, seed 0)
+#         VK_JOB=mk3-copyfidelity-n50 bash mexp/kimi/{baseline,vestigekv}.sh
+#         # client
+#         python mexp/glm53/run_ruler.py --arm {baseline,vestigekv} --port 30000 \
+#           --model moonshotai/Kimi-Linear-48B-A3B-Instruct --n 50 \
+#           --tasks niah_multikey_3,niah_single_3 --lengths 32768,65536 \
+#           --out results/kimi/ruler --tag mk3-copyfidelity-n50
+#       READ IT AS A RATE COMPARISON, not a quality number: 100 items per (task, arm).
+#       The prediction under test is near-miss rate on multikey_3 > on single_3 in the
+#       compressed arm, with neither showing near misses in the dense arm.
 #   lb2gen-{dense,vk} -> LongBench v2 that actually reaches the compressed path. The existing
 #       lb2-{baseline,vestigekv} runs score the four choices from ONE token, whose logits come
 #       from the prefill's last position; vestigekv's forward_extend is the unmodified base
