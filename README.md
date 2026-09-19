@@ -109,6 +109,7 @@ accounting. Everything true but not load-bearing for either lands here.
 
 | path | what it is |
 |---|---|
+| `docs/multikey-findings.md` | working notes on the multi-key gap: the two mechanisms and their split, what was ruled out (and two earlier arguments that do not hold), the open per-step question and the free instrument queued for it, and three detection checks with their measured cost and false-alarm rates. Most of it is NOT in the paper; the file says which parts are |
 | `docs/paper-appendices/` | material cut from the paper, each file the LaTeX exactly as it stood, with `README.md` giving the reason for each |
 | `docs/paper-appendices/deployment-spec.tex` | the per-stage operational specification: block close, index build, decode step, per-layer cascade |
 | `docs/paper-appendices/related-work-taxonomy.tex` | every family sorted by what its warm-up costs and whether its decision is reversible |
