@@ -118,6 +118,32 @@ def interference(rec, tgt, got):
     return len(hay), got in hay, hits
 
 
+def verbatim_in_context(rec, got):
+    """Cheap hallucination check: does the answer occur verbatim in the prompt?
+
+    An extractive answer is a span the model is copying, so it must appear in
+    its own context. A mis-copied character breaks that; a mis-SELECTED row does
+    not, because the wrong needle is a real span of the same haystack. The check
+    therefore sees exactly the failure class selection-side work cannot reach,
+    and is blind to the one it can -- they are complementary, not redundant.
+
+    Measured on mk3-copyfidelity-n50 (400 items, both arms): 388 correct answers
+    raise ZERO alarms, 5 of 6 near misses are caught, 0 of 6 wrong-row errors
+    are. The one near miss it misses is a truncation, and a truncated copy is
+    still a substring of what it was copied from -- length or format validity
+    would catch that, at the price of knowing what shape the answer should be.
+
+    It is a copy check, not a hallucination detector in general: it applies only
+    where the answer is supposed to be a span of the context. It also detects
+    rather than corrects, though this architecture has somewhere to escalate to
+    -- the overflow path already attends the full row set exactly."""
+    doc = rec.get("doc")
+    if doc is None:
+        return None
+    txt = doc if isinstance(doc, str) else json.dumps(doc)
+    return got.strip().rstrip(".") in txt
+
+
 def classify(path, threshold):
     """[(task, length, doc_id, kind, target, response, similarity)] for one arm.
 
