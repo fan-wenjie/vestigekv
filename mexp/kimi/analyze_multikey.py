@@ -27,22 +27,35 @@ This splits every wrong answer into:
 
 and then asks of every near miss whether the wrong character came from a
 COMPETING needle, which is the obvious suspect in a haystack of hundreds of
-UUIDs. On the measured arms it did not, three ways:
+UUIDs. The decisive test is the DISTANCE one below: is the emitted string
+closer to some other haystack UUID than to the target? On mk3-copyfidelity-n50
+it never is -- all six near misses sit at edit distance 1-2 from the target and
+21-24 from the nearest competitor. The right row was reached and one or two
+tokens came out wrong.
 
-  - no near-miss output is any UUID in its own haystack, so nothing was
-    swapped wholesale;
-  - at each substituted position the emitted character appears in 6.4% and
-    6.1% of the other haystack UUIDs, against 1/16 = 6.25% for a hex digit
-    drawn at random -- the chance rate, with no enrichment toward competitors;
-  - the same failure shape appears in `niah_single_3`, whose haystack holds
-    exactly ONE UUID, so it happens with zero competing keys.
+A weaker check is also reported, and is worth naming as weak: the share of
+other haystack UUIDs carrying the emitted character at that position, against
+1/16 = 6.25% for a hex digit at chance. Measured shares run 6.1-7.9%, i.e.
+chance -- but this statistic has NO POWER against blending with a single
+competitor, because one competitor's character is as rare among the rest as any
+other. It rules out a broad pull toward the haystack, nothing more. The
+distance test is what rules out blending.
 
-So the near-miss class is a copy-fidelity failure, not retrieval and not
-interference between rows. A key-value haystack raises its RATE (4 in 50
-against 1 in 50 on the same UUID copy in prose) without changing its
-mechanism. Only the `wrong` class is about selection. `niah_single_3` is the
-control throughout: same UUID copy, same length, essays instead of key-value
-pairs.
+What the n=50 run establishes (100 items per task and arm, mainline config):
+
+  dense            niah_multikey_3 100/100   niah_single_3 100/100
+  vestigekv        niah_multikey_3  88/100   niah_single_3 100/100
+
+so the copy never fails without compression, and under compression it never
+fails in a haystack of prose either. The same 36-character UUID copy fails
+12 times in 100 when the haystack is itself key-value pairs, and those 12 split
+exactly in half: 6 `wrong` (a different needle -- the selection failure the
+paper describes) and 6 `near` (the right needle, mis-copied). `niah_single_3`
+is the control throughout: same copy, same length, essays instead of pairs.
+
+An earlier version of this file claimed niah_single_3 showed the same near-miss
+shape. That came from the randfence ablation arm, not the shipped one; in the
+mainline configuration single_3 does not fail at all.
 
     python mexp/kimi/analyze_multikey.py --samples results/kimi/ruler/samples_*.json
     python mexp/kimi/analyze_multikey.py --line kimi --examples 6
