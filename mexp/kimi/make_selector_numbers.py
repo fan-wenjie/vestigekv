@@ -1,27 +1,45 @@
 #!/usr/bin/env python3
-"""Compare selecting on the vestige branch against selecting on the whole row.
+"""Audit the branch-vs-full-row selector grid before anything cites it.
 
-The paper's thesis is that the 64-dim decoupled branch carries the cache's
-salience signal, so selection can read 11% of each row instead of all of it.
-The control for that is `full-row eviction` -- the identical policy scoring on
-the full 576-dim latent -- and the two were measured on the same grid of
-(context length, compression ratio) operating points.
+The paper's thesis is that the 64-dim decoupled branch carries the salience
+signal, so selection can read it instead of the whole 576-dim latent. The
+control is `full-row eviction`, and numbers.tex holds nine (length, ratio)
+points for each arm. Counted naively the branch ties at six, wins at three and
+never loses -- which looks like nine points of support for the thesis.
 
-Nine points exist. The paper cited one of them, in the RoPE control table,
-which is the point where the branch happens to win; the other eight were
-measured and never reached the prose. That is the wrong way round: the
-interesting result is not that the branch wins somewhere, it is that reading a
-ninth of the row is not a lossy proxy for reading all of it ANYWHERE on the
-grid. This emits that comparison as macros so the body can state it in one
-sentence and a re-run cannot silently invalidate it.
+**It is not, and this script exists to say why rather than to emit the count.**
 
-Source of record is `numbers.tex`. That file is hand-maintained (its own header
-says so, and the generator that once wrote it is gone), and these nine values
-each carry the run record they came from in a trailing comment. Reading it here
-rather than re-deriving from results/ keeps one copy of the numbers: if a value
-is corrected there, this follows.
+Three problems, all readable in numbers.tex's own provenance comments:
 
-    python mexp/kimi/make_selector_numbers.py [--out ~/vestigekv_paper/selector_numbers.tex]
+1. *The pairs are not matched.* Only four of nine take both arms from the same
+   record: the three 8k points (both "pooled") and 65k at 32x/128x (both
+   sidecar_65536.json). The rest cross record files -- 32k pairs a "pooled" vk
+   against sidecar/gapfix full-row numbers, and 65k at 64x pairs floor64
+   against gapfix64.
+
+2. *The arms mix detector bandwidths.* `dig_r64` takes `_invbranch`'s default
+   k=16; `digk64` and `sel_k64` set k=64. The paper's shipped constant is
+   kappa=16. So the grid is not at one bandwidth, and not uniformly at the
+   deployed one. Note that the `k64` in both op names is the low-pass
+   BANDWIDTH, not a read width: sel_k64 scores all 576 dims, digk64 scores 64.
+   Reading those names as "both 64-dim" makes two arms that differ by 512
+   dimensions look identical.
+
+3. *The records are gone.* sidecar_*.json, gapfix64_*.json, floor64_*.json and
+   digestwidth_8192.json are in no surviving tree, so none of this can be
+   re-derived -- the comments are the whole evidence.
+
+The verifiable claim left standing is narrow: at 65k, from one file and one
+bandwidth, branch-only scoring equals full-row scoring at 32x and at 128x
+(0.92/0.92 and 0.58/0.58). Two matched points, not nine.
+
+    python mexp/kimi/make_selector_numbers.py            # print the audit
+    python mexp/kimi/make_selector_numbers.py --emit ... # only if all pairs match
+
+`--emit` writes macros for the counts, and refuses when any pair is
+cross-record. It refuses today. That is the intended behaviour: the tool is
+here so a future re-run that DOES produce a matched grid can be cited, not so
+this one can.
 """
 from __future__ import annotations
 
@@ -30,7 +48,6 @@ import os
 import re
 import sys
 
-# (macro suffix, context label, ratio label) -- the grid both selectors ran on.
 GRID = [("EightKxThirtyTwo", "8k", "32x"),
         ("EightKxSixtyFour", "8k", "64x"),
         ("EightKxOTE", "8k", "128x"),
@@ -42,48 +59,66 @@ GRID = [("EightKxThirtyTwo", "8k", "32x"),
         ("SixtyFiveKxOTE", "65k", "128x")]
 
 
+def record(comment):
+    """The record a value came from, as its provenance comment names it.
+
+    Comments are either a filename plus an op ("sidecar_65536.json digk64") or
+    a pooling note ("pooled 25/36 seeds 11+12"). The first token identifies the
+    record in both forms."""
+    return comment.strip().split()[0] if comment.strip() else "?"
+
+
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--numbers", default=os.path.expanduser(
         "~/vestigekv_paper/numbers.tex"))
-    ap.add_argument("--out", default=os.path.expanduser(
-        "~/vestigekv_paper/selector_numbers.tex"))
-    ap.add_argument("--show", action="store_true", help="print the grid")
+    ap.add_argument("--emit", default="",
+                    help="write count macros here; refuses on any unmatched pair")
     args = ap.parse_args()
 
-    d = dict(re.findall(r"\\newcommand\{\\(\w+)\}\{([^}]*)\}",
-                        open(args.numbers).read()))
-    same = vk_win = full_win = 0
-    gap = 0.0
-    rows = []
-    for suf, ctx, ratio in GRID:
+    src = open(args.numbers).read()
+    d = {n: (v, c) for n, v, c in re.findall(
+        r"\\newcommand\{\\((?:vk|full)[A-Z]\w*)\}\{([^}]*)\}[^\n%]*%\s*(.*)", src)}
+
+    same = branch = full = 0
+    unmatched = []
+    print(f"{'point':>10}   {'branch':<7}{'record':<26}{'full':<7}{'record':<26}pair")
+    for suf, L, R in GRID:
         a, b = d.get("vk" + suf), d.get("full" + suf)
-        if a is None or b is None:
-            # A missing pair means the grid changed; refuse rather than emit a
-            # count over a different set of points than the sentence claims.
-            print(f"missing pair for {suf}: vk={a} full={b}", file=sys.stderr)
+        if not a or not b:
+            print(f"{L:>4} {R:>5}   missing pair")
+            unmatched.append((L, R, "missing"))
+            continue
+        ra, rb = record(a[1]), record(b[1])
+        ok = ra == rb
+        if not ok:
+            unmatched.append((L, R, f"{ra} vs {rb}"))
+        av, bv = float(a[0]), float(b[0])
+        same += av == bv
+        branch += av > bv
+        full += av < bv
+        print(f"{L:>4} {R:>5}   {a[0]:<7}{ra:<26}{b[0]:<7}{rb:<26}"
+              f"{'matched' if ok else 'CROSS-RECORD'}")
+
+    print(f"\nnaive count: tie {same}, branch ahead {branch}, full ahead {full}")
+    print(f"matched pairs: {len(GRID) - len(unmatched)} of {len(GRID)}")
+    for L, R, why in unmatched:
+        print(f"  unmatched {L} {R}: {why}")
+
+    if args.emit:
+        if unmatched:
+            print("\nrefusing to emit: a count over a mixed-provenance grid would "
+                  "read as one experiment. See this script's docstring.",
+                  file=sys.stderr)
             return 1
-        a, b = float(a), float(b)
-        same += a == b
-        vk_win += a > b
-        full_win += a < b
-        gap = max(gap, a - b)
-        rows.append((ctx, ratio, a, b))
-
-    if args.show:
-        for ctx, ratio, a, b in rows:
-            print(f"  {ctx:>4} {ratio:>5}  branch {a:.2f}  full-row {b:.2f}")
-
-    L = ["% Generated by mexp/kimi/make_selector_numbers.py from numbers.tex. "
-         "Do not edit by hand.",
-         f"\\newcommand{{\\selPoints}}{{{len(GRID)}}}",
-         f"\\newcommand{{\\selSame}}{{{same}}}",
-         f"\\newcommand{{\\selBranchBetter}}{{{vk_win}}}",
-         f"\\newcommand{{\\selFullBetter}}{{{full_win}}}",
-         f"\\newcommand{{\\selMaxGap}}{{{gap:.2f}}}"]
-    open(args.out, "w").write("\n".join(L) + "\n")
-    print(f"wrote {args.out}: {len(GRID)} points, "
-          f"same={same} branch={vk_win} full={full_win}")
+        open(args.emit, "w").write(
+            "% Generated by mexp/kimi/make_selector_numbers.py. Do not edit by hand.\n"
+            f"\\newcommand{{\\selPoints}}{{{len(GRID)}}}\n"
+            f"\\newcommand{{\\selSame}}{{{same}}}\n"
+            f"\\newcommand{{\\selBranchBetter}}{{{branch}}}\n"
+            f"\\newcommand{{\\selFullBetter}}{{{full}}}\n")
+        print(f"wrote {args.emit}")
     return 0
 
 
