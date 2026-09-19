@@ -138,6 +138,11 @@ def main():
     # sample moves a cell by 0.02), the long grid at 5, GLM-5.3 at 10.
     for line, tag, n, lengths in (("kimi", "K", 50, [4096, 8192, 16384, 32768, 65536]),
                                   ("kimi", "KL", 5, [131072, 262144]),   # 512k/1M dropped: see README
+                                  # Table 1's Base column, same protocol as the Instruct grid
+                                  # above so the two halves of that row compare; separate
+                                  # directory because the filenames share arm/n/lengths.
+                                  ("kimi_base", "KB", 50,
+                                   [4096, 8192, 16384, 32768, 65536]),
                                   ("glm53", "G", 10, [4096, 8192, 16384, 32768, 65536])):
         arms = {"D": load(line, "baseline", n, lengths), "V": load(line, "vestigekv", n, lengths)}
         for a, r in arms.items():

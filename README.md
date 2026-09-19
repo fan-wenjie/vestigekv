@@ -417,6 +417,37 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       python mexp/glm53/compare_ruler.py --out results/kimi/ruler --n 50.
 #       Gates and interpretation rules for these three groups are pre-registered in
 #       mexp/kimi/prereg3_realdoc_and_fallback.md (frozen before any of them ran).
+#   base-ruler-probe -> whether Table 1's RULER row CAN have a Base column. That row reads
+#       "---" for both Base arms and the caption says every row passes, which is a claim about
+#       the cells that exist. GSM8K (64-shot) and MAUVE (continuation) work on a base model;
+#       RULER asks zero-shot instruction-style questions, which a model with no instruction
+#       tuning may simply not answer -- and if DENSE Base cannot do the task, the dense/vestigekv
+#       comparison on that row is vacuous and the dash is the honest entry, not a gap.
+#       One arm only (dense Base), two tasks, one length, n=10: enough to see whether the
+#       baseline is on the floor. Run the full 13x5 grid on Base only if this says otherwise.
+#         MODEL=moonshotai/Kimi-Linear-48B-A3B-Base VK_JOB=base-ruler-probe \
+#           bash mexp/kimi/baseline.sh
+#         python mexp/glm53/run_ruler.py --arm baseline --port 30000 \
+#           --model moonshotai/Kimi-Linear-48B-A3B-Base --n 10 \
+#           --tasks niah_single_1,ruler_qa_squad --lengths 32768 \
+#           --out results/kimi/ruler --tag base-ruler-probe
+#       READ: dense Base near 0 on both tasks => the dash stays and the caption says why.
+#       Dense Base comparable to Instruct => the row is fillable and the full grid is worth 4.7h.
+#       RESULT 2026-09-19, 1.1 min: niah_single_1 1.00, ruler_qa_squad 0.62 with sensible
+#       answers ("France", "10th and 11th centuries"). Instruct dense is 0.75 on qa_squad at
+#       32k, so Base is in the same band, not on the floor. The row is fillable; the hypothesis
+#       that a base model cannot answer RULER's zero-shot prompts is WRONG. Full grid follows.
+#   ruler-base-n50-{baseline,vestigekv} -> Table 1's missing Base column, at the Instruct line's
+#       own protocol so the two halves of that row are comparable: 13 tasks x 4k-64k, n=50,
+#       both arms, quality line (radix off, seed 0). Writes to results/kimi_base/ruler so it
+#       cannot collide with the Instruct grid, whose files carry the same arm/n/lengths stem.
+#         MODEL=moonshotai/Kimi-Linear-48B-A3B-Base VK_JOB=ruler-base-n50 \
+#           bash mexp/kimi/{baseline,vestigekv}.sh
+#         python mexp/glm53/run_ruler.py --arm {baseline,vestigekv} --port 30000 \
+#           --model moonshotai/Kimi-Linear-48B-A3B-Base --n 50 \
+#           --lengths 4096,8192,16384,32768,65536 --out results/kimi_base/ruler
+#       Macros come from make_ruler_numbers.py's kimi_base line (tag KB); Table 1's two dashes
+#       become \rulerKBDMean and \rulerKBVMean.
 #   mk3-copyfidelity-n50-{baseline,vestigekv} -> the multi-key study. The generations say the
 #       multikey_3 gap is TWO failures, not one: 6 of 9 errors across two arms return the correct
 #       UUID with one character wrong, and 3 return a different needle. Only the second is the
