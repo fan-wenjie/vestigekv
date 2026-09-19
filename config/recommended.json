@@ -29,8 +29,8 @@
   },
   "recent_window": {
     "value": 256,
-    "why": "recent tail always kept regardless of sigma; admitted arbitrary - no evidence this is the right threshold, safe to tune by quality",
-    "evidence": "vestigekv_mla_backend.py _RECENT_WINDOW comment (admission of arbitrariness)",
+    "why": "NO LONGER A KEEP RULE. The deployed policy is sigma-top-m plus 4 sinks plus the UNCLOSED TAIL -- the up-to-one-block remainder of not-yet-closed rows, attended unconditionally -- and that tail subsumes the recent-window role; select_kept's contract is top-m by sigma plus sinks and nothing else. The constant survives only as the row-invariant checker's scale. Recorded so the 256-row window is not reintroduced as a policy.",
+    "evidence": "vestigekv/eviction.py select_kept docstring; vestigekv_mla_backend.py blockwise-sigma comment ('it subsumes the recent-window role')",
     "class": "algorithm"
   },
   "attention_backend": {
@@ -84,8 +84,8 @@
   },
   "recall_tier": {
     "value": "required",
-    "why": "necessary at long context: 99.8% per-step trigger at S=512k with quality passing; the partition invariant is only meaningful if the archive is consulted. NOT closeable; the only knob is the fetch capacity (recall_capacity)",
-    "evidence": "PREREG31/32; rule recorded 2026-09-06",
+    "why": "necessary at long context, and NOT closeable: the partition invariant is only meaningful if the archive is consulted, and with recall off the selector alone drops to 0.89 at 32x and 0.69 at 128x where both tiers recover every trial. The only knob is the fetch capacity (recall_capacity). The '99.8% per-step trigger at S=512k' this entry used to claim is REMOVED: its evidence pointed at PREREG31/32, which do not exist (the pre-registrations are prereg2..prereg10 and prereg_recall_margin), no measurement of it survives, and it contradicted the paper's own finding that a trigger firing on ~99.5% of steps is no compression at all while the adopted conformal trigger fires on 1.9%.",
+    "evidence": "tier-1 ablation (paper Appendix 'Baseline behaviour on this model'); rule recorded 2026-09-06",
     "class": "algorithm"
   }
 }
