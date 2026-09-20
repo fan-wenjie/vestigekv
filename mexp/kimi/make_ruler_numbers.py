@@ -129,6 +129,14 @@ def fmt(v):
     return "\\PENDING" if v is None else f"{v:.2f}"
 
 
+def fmt3(v):
+    return "\\PENDING" if v is None else f"{v:.3f}"
+
+
+def fmtwall(r):
+    return "\\PENDING" if r is None else f"{r['wall_s'] / 60:.0f}"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.expanduser("~/vestigekv_paper/ruler_numbers.tex"))
@@ -151,15 +159,19 @@ def main():
                 for l, v in zip(lengths, vals):
                     L.append(f"\\newcommand{{\\ruler{tag}{a}{SHORT[t]}{LEN[l]}}}{{{fmt(v)}}}")
                 m = None if any(v is None for v in vals) else sum(vals) / len(vals)
-                L.append(f"\\newcommand{{\\ruler{tag}{a}{SHORT[t]}Mean}}{{{'\\PENDING' if m is None else f'{m:.3f}'}}}")
+                # fmt3() rather than an inline conditional: a backslash inside
+                # an f-string expression is a SyntaxError before Python 3.12,
+                # so this one line decided whether a reader on 3.11 could
+                # regenerate any of this file's 685 macros.
+                L.append(f"\\newcommand{{\\ruler{tag}{a}{SHORT[t]}Mean}}{{{fmt3(m)}}}")
             for l in lengths:
                 vals = [cell(r, t, l) if r else None for t in TASKS]
                 m = None if any(v is None for v in vals) else sum(vals) / len(vals)
-                L.append(f"\\newcommand{{\\ruler{tag}{a}Mean{LEN[l]}}}{{{'\\PENDING' if m is None else f'{m:.3f}'}}}")
+                L.append(f"\\newcommand{{\\ruler{tag}{a}Mean{LEN[l]}}}{{{fmt3(m)}}}")
             allv = [cell(r, t, l) if r else None for t in TASKS for l in lengths]
             m = None if any(v is None for v in allv) else sum(allv) / len(allv)
-            L.append(f"\\newcommand{{\\ruler{tag}{a}Mean}}{{{'\\PENDING' if m is None else f'{m:.3f}'}}}")
-            L.append(f"\\newcommand{{\\ruler{tag}{a}Wall}}{{{'\\PENDING' if r is None else f'{r['wall_s'] / 60:.0f}'}}}")
+            L.append(f"\\newcommand{{\\ruler{tag}{a}Mean}}{{{fmt3(m)}}}")
+            L.append(f"\\newcommand{{\\ruler{tag}{a}Wall}}{{{fmtwall(r)}}}")
         if arms["D"] and arms["V"]:
             d = [cell(arms["V"], t, l) - cell(arms["D"], t, l) for t in TASKS for l in lengths]
             L.append(f"\\newcommand{{\\ruler{tag}Delta}}{{{sum(d) / len(d):+.3f}}}")

@@ -92,12 +92,15 @@ def control_check(paths):
     return a
 
 
-def log_step(rows):
-    """Tokens between the server's decode log lines, read off the log.
+def check_even(rows):
+    """The log lines must cover equal numbers of tokens, and here is why.
 
-    Hardcoding it would be a silent scale error the day the interval changes:
-    it is how many tokens each reported throughput covers, so a wrong value
-    rescales every duration and the curve still looks entirely reasonable.
+    A bucket's cost is the time it took divided by the tokens it decoded:
+    sum(step/tput) / sum(step). When every line covers the same step, the step
+    cancels and the cost is just the mean of the per-line ms/token -- no
+    constant enters the arithmetic and none can go stale. When the lines cover
+    different spans that identity fails and an unweighted mean silently
+    overweights the short intervals, so this refuses rather than computing it.
     """
     gaps = {b - a for (a, _), (b, _) in zip(rows, rows[1:]) if b > a}
     if len(gaps) != 1:
@@ -105,16 +108,17 @@ def log_step(rows):
     return gaps.pop()
 
 
-def window(rows, ctx, step):
+def window(rows, ctx):
     """Milliseconds per token over the 4096-token bucket centred on ctx: the
-    bucket's total decode time divided by the tokens it decoded."""
-    secs = [step / tput for n, tput in rows if ctx - HALFWIDTH < n <= ctx + HALFWIDTH]
-    return 1000.0 * sum(secs) / (step * len(secs)) if secs else None
+    bucket's total decode time divided by the tokens it decoded. Equal log
+    spacing (check_even) is what makes that the plain mean below."""
+    ms = [1000.0 / tput for n, tput in rows if ctx - HALFWIDTH < n <= ctx + HALFWIDTH]
+    return sum(ms) / len(ms) if ms else None
 
 
-def slope(rows, lo, hi, step):
+def slope(rows, lo, hi):
     """ns per decoded step per cached token, over the span the figure plots."""
-    a, b = window(rows, lo, step), window(rows, hi, step)
+    a, b = window(rows, lo), window(rows, hi)
     return (b - a) * 1e6 / (hi - lo)
 
 
@@ -129,10 +133,10 @@ def main():
             raise SystemExit(f"ABORT: missing server log {p}")
     knobs = control_check(paths)
     arms = {arm: read(p) for arm, p in paths.items()}
-    steps = {arm: log_step(rows) for arm, rows in arms.items()}
+    steps = {arm: check_even(rows) for arm, rows in arms.items()}
     if len(set(steps.values())) != 1:
         raise SystemExit(f"ABORT: the arms logged at different intervals: {steps}")
-    step = next(iter(steps.values()))
+    step = next(iter(steps.values()))  # reported, not used: it cancels
 
     # The rightmost point is not a constant: it is the last context the +/-2k
     # median rule fully covers. The previous one, 507904, was inherited from a
@@ -145,7 +149,7 @@ def main():
     grid = [8192, 16384, 20480, 24576, 28672, 32768, 65536, 131072, 262144, top]
     table = []
     for ctx in grid:
-        d, v = window(arms["dense"], ctx, step), window(arms["vestigekv"], ctx, step)
+        d, v = window(arms["dense"], ctx), window(arms["vestigekv"], ctx)
         if d and v:
             table.append((ctx, d, v, d / v))
 
@@ -155,8 +159,8 @@ def main():
     cross = next((c for c, _, _, r in table if r >= 1.0), None)
     at256 = next(r for c, _, _, r in table if c == 262144)
     at508 = next(r for c, _, _, r in table if c == top)
-    sl_v = slope(arms["vestigekv"], 8192, top, step)
-    sl_d = slope(arms["dense"], 8192, top, step)
+    sl_v = slope(arms["vestigekv"], 8192, top)
+    sl_d = slope(arms["dense"], 8192, top)
 
     # The memory-time product divides cache growth by this same speedup, so it
     # is not a separate measurement and must not be a separately kept number:

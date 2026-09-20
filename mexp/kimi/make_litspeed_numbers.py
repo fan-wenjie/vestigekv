@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import collections
 import re
 import statistics
 import sys
@@ -36,20 +37,48 @@ ARMS = {"baseline": "dense", "vestigekv": "vk"}
 
 
 def decode_ms(arm, job):
-    """Median ms/token over the server's decode lines, TP0 only.
+    """Mean ms/token over the server's decode lines, TP0 only.
+
+    Mean and not median, for the reason make_serving_speed_numbers.py gives at
+    length: a median is a cost with the expensive steps removed, and only one
+    arm here has expensive steps. VestigeKV closes a block and rebuilds an
+    index every 4096 tokens; dense decode has no periodic work at all, so
+    summarising the tail away discounts our own cost and nobody else's.
+
+    Each line covers the same number of tokens, so the mean of the per-line
+    ms/token IS the total time over the tokens decoded -- the span cancels.
+    That equality is checked below rather than assumed.
 
     TP1 is excluded because the two ranks report separately and their rates
     differ; TP0 is the rank the serving figure reads."""
     p = os.path.join(RESULTS, f"server_{arm}_{job}.log")
     if not os.path.exists(p):
         return None
-    v = []
+    v, ns = [], []
     for line in open(p, errors="replace"):
         if "TP0]" in line and "Decode batch" in line:
             m = re.search(r"gen throughput \(token/s\): ([0-9.]+)", line)
+            n = re.search(r"#full token:\s*(\d+)", line)
             if m and float(m.group(1)) > 0:
                 v.append(1000.0 / float(m.group(1)))
-    return statistics.median(v) if v else None
+                ns.append(int(n.group(1)) if n else -1)
+    if not v:
+        return None
+    # This log holds several requests, so a gap is either the steady-state
+    # logging span or a jump into the next request. Keep the steady-state
+    # lines: a line covering a whole new prefill is not a decode interval, and
+    # averaging it in would price prefill into a decode number.
+    gaps = collections.Counter(b - a for a, b in zip(ns, ns[1:]) if b > a)
+    if not gaps:
+        return None
+    span, n_span = gaps.most_common(1)[0]
+    if n_span < 0.9 * sum(gaps.values()):
+        raise SystemExit(
+            f"ABORT: {os.path.basename(p)} logs uneven decode spans "
+            f"({span} covers only {n_span}/{sum(gaps.values())} intervals); an "
+            "unweighted mean would overweight the short ones")
+    keep = [ms for ms, a, b in zip(v[1:], ns, ns[1:]) if b - a == span]
+    return sum(keep) / len(keep) if keep else None
 
 
 def wall_s(arm, job):
