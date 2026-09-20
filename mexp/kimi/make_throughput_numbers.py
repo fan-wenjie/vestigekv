@@ -1,98 +1,110 @@
 #!/usr/bin/env python3
-"""Figure 2's right panel, reduced from the tput32 sweep.
+"""Figure 2's right panel: decode throughput against batch, at two contexts.
 
-    python mexp/kimi/make_throughput_numbers.py --emit
-    python mexp/kimi/make_throughput_numbers.py --check   # exit 1 on a mismatch
+    python mexp/kimi/make_throughput_numbers.py            # report
+    python mexp/kimi/make_throughput_numbers.py --emit     # write the macros
+    python mexp/kimi/make_throughput_numbers.py --check    # exit 1 on a mismatch
 
-WHY THIS EXISTS AS A CHECK AND NOT ONLY A GENERATOR. The caption already
-states the sweep's configuration -- radix cache off on both arms, every point
-served by a graph captured at bs=32 -- while serving_numbers.tex still holds
-the previous sweep's values, taken with the radix cache on and at a capture
-width no surviving record names. A caption describing one run above numbers
-from another is the exact failure that cost this paper its RoPE table, and it
-is invisible to every other check we have: the macros are defined, the paper
-compiles, the figure renders.
+THE METRIC, AND THE TWO THINGS IT REPLACED. A point is the mean of the
+server's own `gen throughput (token/s)` over a window in which `#running-req`
+is constant and equal to the batch the point claims. That column is the
+batch's decoded tokens per second, so it excludes prefill by construction and
+assumes nothing about how many requests were resident.
 
-So this refuses. Until the tput32 records exist, --check fails and says the
-caption is ahead of its data; once they exist, --emit replaces the macros and
---check holds them to the records from then on. Run --check before submitting.
+It replaces `output_throughput` from the client, which divides decoded tokens
+by the whole benchmark -- a third of which is prefill at bs=1, and prefill is
+where VestigeKV is slower, so the dilution ran against us.
+
+It also replaces `bs / mean_itl`, which excluded prefill correctly and was
+still wrong: an average ITL says nothing about how many requests produced it.
+The server log says the batch frequently was not the batch requested --
+
+    64k   bs=1..24  #running-req exactly bs on every decode line   valid
+    64k   bs=32     31 for 102 lines, then one request alone       invalid
+    128k  bs=4      2 for all 102 lines, 8080 decoded of 16382     invalid
+    128k  bs=8      5 for all 102 lines                            invalid
+
+-- because 131072 tokens of prefill per request take long enough that early
+requests finish their 4096 decoded tokens before late ones finish prefilling.
+At 64k the scheduler completed every prefill before decoding began, the batch
+was exact, and the defect was invisible.
+
+So the plateau is not a convenience: it is the only part of a run where the
+number on the x-axis is true. A point with no plateau is refused rather than
+averaged, because an average over a collapsing batch looks entirely reasonable
+and means nothing.
 """
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
+import statistics
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RESULTS = os.path.join(ROOT, "results", "kimi")
 PAPER = os.path.expanduser("~/vestigekv_paper")
 OUT = os.path.join(PAPER, "serving_numbers.tex")
 
-# The full grid the previous sweep used. The first draft of this script took a
-# subset -- 1, 4, 12, 24, 32 -- for no recorded reason, and the point it left
-# out was bs=16, which is exactly where the old records claimed the peak 1.14x.
-# A grid that skips the comparison's strongest point is not a re-measurement.
 BATCHES = [1, 2, 4, 8, 12, 16, 24, 32]
-# Two contexts, not one. 64k is the weakest context this method has -- the bs=1
-# latency curve reads 1.052 there and 1.136 at 128k -- so a throughput panel
-# that stops at 64k understates it at the context the paper argues for. The
-# pair is also the only thing that shows the advantage growing with context at
-# FIXED batch, which a single-context sweep cannot say at all.
-CONTEXTS = {65536: ("SixtyFour", "tput32"), 131072: ("OneTwentyEight", "tput128k")}
 WORD = {1: "One", 2: "Two", 4: "Four", 8: "Eight", 12: "Twelve", 16: "Sixteen",
         24: "TwentyFour", 32: "ThirtyTwo"}
+CONTEXTS = {65536: ("SixtyFour", "tput32"), 131072: ("OneTwentyEight", "tput128k")}
+ARMS = {"baseline": "dense", "vestigekv": "vestigekv"}
+# 40 decode-log lines is 1600 forward steps: long enough that a rate is a rate
+# and not a moment, short enough that a genuine plateau is not thrown away.
+MIN_PLATEAU = 40
+
+DECODE = re.compile(r"#running-req:\s*(\d+).*?gen throughput \(token/s\):\s*([\d.]+)")
 
 
-def record(ctx, bs, arm):
-    """The client JSONL the runner writes for this sweep point."""
-    shape = f"{ctx // 1024}k-4096" + (f"-x{bs}-c{bs}" if bs > 1 else "")
-    return os.path.join(RESULTS, f"latency_stream_{shape}_{arm}.jsonl")
+def plateau(path, bs):
+    """(tokens/s, lines) over the longest run with exactly `bs` requests live."""
+    rows = []
+    for line in open(path, errors="ignore"):
+        if "Decode batch" not in line:
+            continue
+        m = DECODE.search(line)
+        if m:
+            rows.append((int(m.group(1)), float(m.group(2))))
+    best, cur = [], []
+    for live, tput in rows:
+        if live == bs and tput > 0:
+            cur.append(tput)
+        else:
+            best, cur = (cur if len(cur) > len(best) else best), []
+    best = cur if len(cur) > len(best) else best
+    if len(best) < MIN_PLATEAU:
+        seen = sorted({live for live, _ in rows})
+        return None, f"no run of {MIN_PLATEAU}+ decode lines at {bs} live (saw {seen})"
+    # drop the plateau's first line: its interval starts before the batch
+    # reached this width, so it prices part of another regime
+    return statistics.fmean(best[1:]), len(best) - 1
 
 
-def throughput(path, bs):
-    """Decoded tokens per second, prefill excluded.
-
-    The client's own `output_throughput` divides the decoded tokens by the
-    whole benchmark, prefill included -- 8.4 of the 26.4 seconds at bs=1, a
-    third of the wall clock -- and this paper does not count prefill. It also
-    dilutes in the one direction that matters: prefill is where VestigeKV is
-    slightly SLOWER, paying to build its index, so the diluted figure reports
-    1.030x at bs=1 where the decode is 1.050x, which is what the latency curve
-    independently measures at the same context.
-
-    With every request submitted at once, the batch decodes together and the
-    steady-state rate is bs / mean_itl. Checked against the residual
-    duration - ttft below, because a mean ITL that quietly included the
-    prefill step would reproduce the very error this replaces."""
-    blob = json.loads(open(path).read())
-    itl = float(blob["mean_itl_ms"]) / 1000.0
-    n_out, dur = int(blob["total_output_tokens"]), float(blob["duration"])
-    residual = dur - float(blob["mean_ttft_ms"]) / 1000.0
-    implied = (n_out / bs) * itl
-    if abs(implied - residual) > 0.1 * residual:
-        raise SystemExit(
-            f"ABORT: {os.path.basename(path)} decode time from ITL ({implied:.1f}s) "
-            f"and from duration-TTFT ({residual:.1f}s) disagree by more than 10%; "
-            "one of them is not measuring the decode")
-    return bs / itl
-
-
-def survey():
-    have, missing = {}, []
-    for ctx in CONTEXTS:
+def survey(reps=(None, 2, 3)):
+    have, refused = {}, []
+    for ctx, (_, prefix) in CONTEXTS.items():
         have[ctx] = {}
         for bs in BATCHES:
-            pair = {}
-            for arm in ("baseline", "vestigekv"):
-                p = record(ctx, bs, arm)
-                if os.path.exists(p):
-                    pair[arm] = throughput(p, bs)
-                else:
-                    missing.append(os.path.relpath(p, ROOT))
-            if len(pair) == 2:
-                have[ctx][bs] = pair
-    return have, missing
+            point = {}
+            for arm, tag in ARMS.items():
+                runs = []
+                for rep in reps:
+                    job = f"{prefix}-bs{bs}{'' if not rep else 'r%d' % rep}-{tag}"
+                    p = os.path.join(RESULTS, f"server_{arm}_{job}.log")
+                    if not os.path.exists(p):
+                        continue
+                    val, why = plateau(p, bs)
+                    if val is None:
+                        refused.append(f"{job}: {why}")
+                    else:
+                        runs.append(val)
+                if runs:
+                    point[arm] = runs
+            if len(point) == 2:
+                have[ctx][bs] = point
+    return have, refused
 
 
 def main():
@@ -101,68 +113,50 @@ def main():
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
 
-    have, missing = survey()
-    for ctx in sorted(have):
-        print(f"  {ctx // 1024}k prefill:")
-        for bs in sorted(have[ctx]):
-            d, v = have[ctx][bs]["baseline"], have[ctx][bs]["vestigekv"]
-            print(f"    bs={bs:<3} dense {d:>8.1f}  vk {v:>8.1f}  {v / d:.3f}x")
-
-    if missing:
-        msg = ("the caption says the sweep is radix-off with graphs captured at "
-               "bs=32, and these records do not exist yet:\n  "
-               + "\n  ".join(missing)
-               + "\nRun the registered tput32 jobs (README.md) before submitting.")
-        if a.check or a.emit:
-            raise SystemExit("ABORT: " + msg)
-        print("PENDING: " + msg)
-        return 0
-
-    lines = ["% Generated by mexp/kimi/make_throughput_numbers.py from the tput32",
-             "% sweep: 64k prefill + 4096 decoded tokens, radix cache off on both",
-             "% arms, GRAPH_BS=32=MAX_REQS at every point.",
-             "% Decoded tokens per second with prefill excluded (bs / mean ITL);",
-             "% ratios are vestigekv/dense."]
+    have, refused = survey()
+    lines = ["% Generated by mexp/kimi/make_throughput_numbers.py.",
+             "% Decoded tokens per second from the server's own decode log, over a",
+             "% window where #running-req is constant and equal to the batch; prefill",
+             "% is outside it by construction. Ratios are vestigekv/dense."]
     for ctx in sorted(have):
         word = CONTEXTS[ctx][0]
+        if not have[ctx]:
+            continue
+        print(f"  {ctx // 1024}k prefill:")
         for bs in sorted(have[ctx]):
-            d, v = have[ctx][bs]["baseline"], have[ctx][bs]["vestigekv"]
+            d = statistics.fmean(have[ctx][bs]["baseline"])
+            v = statistics.fmean(have[ctx][bs]["vestigekv"])
+            n = min(len(have[ctx][bs]["baseline"]), len(have[ctx][bs]["vestigekv"]))
+            print(f"    bs={bs:<3} dense {d:>8.1f}  vk {v:>8.1f}  {v / d:.3f}x  (n={n})")
             lines.append(f"\\newcommand{{\\srvBatch{word}{WORD[bs]}}}{{{v / d:.2f}}}"
-                         f"  % {ctx // 1024}k, bs={bs}: {v:.1f}/{d:.1f} tok/s")
-        g = have[ctx][12]["vestigekv"] / have[ctx][12]["baseline"] - 1
-        lines.append(f"\\newcommand{{\\tputGain{word}Twelve}}{{{g * 100:.1f}\\%}}")
-        lines.append(f"\\newcommand{{\\srvBatchList{word}}}{{"
-                     + ", ".join(f"${have[ctx][b]['vestigekv'] / have[ctx][b]['baseline']:.2f}\\times$"
-                                 for b in sorted(have[ctx])) + "}")
-    # the caption's existing name, kept pointing at the context the figure's
-    # right panel has always shown, so a rename is a deliberate edit and not a
-    # side effect of adding a second sweep
-    g64 = have[65536][12]["vestigekv"] / have[65536][12]["baseline"] - 1
-    lines.append(f"\\newcommand{{\\tputGainTwelve}}{{{g64 * 100:.1f}\\%}}")
+                         f"  % {ctx // 1024}k, bs={bs}, n={n}: {v:.1f}/{d:.1f} tok/s")
+        if 12 in have[ctx]:
+            g = (statistics.fmean(have[ctx][12]["vestigekv"])
+                 / statistics.fmean(have[ctx][12]["baseline"]) - 1)
+            lines.append(f"\\newcommand{{\\tputGain{word}Twelve}}{{{g * 100:.1f}\\%}}")
+    for r in refused:
+        print(f"  REFUSED {r}")
 
-    if a.check:
-        cur = open(OUT).read()
-        for line in lines:
-            name = re.match(r"\\newcommand\{\\(\w+)\}", line)
-            if name and line.split("%")[0].strip() not in cur:
-                raise SystemExit(
-                    f"ABORT: the paper's \\{name.group(1)} does not match the "
-                    "sweep on disk. Re-run with --emit.")
-        print("check: the throughput macros match the records")
+    if not any(have.values()):
+        raise SystemExit("ABORT: no point has a usable plateau")
     if a.emit:
         open(OUT, "w").write("\n".join(lines) + "\n")
         print(f"wrote {OUT}")
-        # numbers.tex carries a hand-maintained \tputGainTwelve from the retired
-        # sweep. Two \newcommand of one name is not a stale value, it is a
-        # build failure -- and it would have arrived the moment this script
-        # first succeeded, which is the moment nobody is looking for one.
         nums = os.path.join(PAPER, "numbers.tex")
         text = open(nums).read()
         kept = [l for l in text.splitlines()
                 if not re.match(r"\\newcommand\{\\tputGainTwelve\}", l.strip())]
         if len(kept) != len(text.splitlines()):
             open(nums, "w").write("\n".join(kept) + "\n")
-            print(f"removed the hand-maintained \\tputGainTwelve from numbers.tex")
+            print("removed the hand-maintained \\tputGainTwelve from numbers.tex")
+    if a.check:
+        cur = open(OUT).read()
+        for line in lines:
+            m = re.match(r"\\newcommand\{\\(\w+)\}", line)
+            if m and line.split("%")[0].strip() not in cur:
+                raise SystemExit(f"ABORT: the paper's \\{m.group(1)} does not match "
+                                 "the sweep on disk. Re-run with --emit.")
+        print("check: the throughput macros match the records")
     return 0
 
 
