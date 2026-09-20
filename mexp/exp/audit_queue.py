@@ -43,6 +43,10 @@ one of them corresponds to a mistake this project has actually made:
                     independent records taken at the matched width while its
                     dense arm reproduced them. A line has a convention and a
                     job has to match the line, not just its partner.
+  fits the window   a stream job whose prompt plus generation exceeds the
+                    server's context length. The request is rejected, the
+                    client reports zeros, and the runner marks the job done --
+                    a clean record of nothing, which is worse than a crash.
   radix off         a performance-line job that turns the radix cache on. A
                     reused prefix is an answer attention never produced, and
                     this line's claim is about what attention costs. The knob
@@ -156,7 +160,14 @@ def main():
             bad(j, f"its launch is not registered verbatim in README.md. Declared "
                    f"there: {readme_canon.get(j['id'], '(nothing for this id)')}\n"
                    f"        about to run: {canonical(j)}")
-        conc = int(j.get("args", {}).get("concurrency", 1))
+        a = j.get("args", {})
+        if j.get("client") == "stream" and env.get("CTX"):
+            need = int(a.get("input_len", 4096)) + int(a.get("output_len", 126976))
+            if need > int(env["CTX"]):
+                bad(j, f"asks for {need} tokens of context (input+output) from a "
+                       f"server configured for {env['CTX']}; the request is refused "
+                       "and the record comes back empty")
+        conc = int(a.get("concurrency", 1))
         if conc > int(env.get("MAX_REQS", 1) or 1):
             bad(j, f"asks for concurrency {conc} from a server admitting "
                    f"{env.get('MAX_REQS')}; the batch it reports would not be the "

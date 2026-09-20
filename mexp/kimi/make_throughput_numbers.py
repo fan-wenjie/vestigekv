@@ -72,78 +72,84 @@ DECODE = re.compile(r"#running-req:\s*(\d+).*?#full token:\s*(\d+)"
 STAMP = re.compile(r"^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)")
 
 
-def plateau(path, bs):
-    """Tokens generated per second while exactly `bs` requests were live.
+def plateaus(path):
+    """Every stretch of decode at a constant number of live requests.
 
-    Counted the direct way: how many tokens entered the pool over how much
-    wall clock. `#full token` is the pool's occupancy and during pure decode
-    it grows by one token per live request per step, so its increase over a
-    window IS the tokens that window generated. Nothing here trusts a rate the
-    server computed for itself.
+    Returns [(live, tokens, seconds, reported_rate)] -- one entry per stretch,
+    keyed by the concurrency that ACTUALLY held, not the one the job asked for.
+    That is the whole point: a job requesting 32 ran 31 and then 1, and a
+    128k job requesting 4 ran 2. Labelling a point by its request is how those
+    became numbers on an axis. Labelling it by what the server did makes the
+    same runs usable and makes the class of error impossible.
 
-    That rate is still read, as a cross-check. The two agree to 0.15-2.9% on
-    the runs measured so far, and where they disagree most the window is
-    shortest -- the log stamps whole seconds, so a 18-second window carries
-    5% of quantisation on its own. The tolerance below is that quantisation,
-    not a fudge factor: two seconds of stamp error over the window's length.
+    Serial rounds are what make the stretches long enough to add up: each
+    round re-prefills, so the context returns to the nominal value instead of
+    growing under the measurement, and the stretches at one concurrency
+    accumulate across rounds.
     """
     rows = []
     for line in open(path, errors="ignore"):
         if "Decode batch" not in line:
             continue
         m, t = DECODE.search(line), STAMP.search(line)
-        if m and t:
+        if m and t and float(m.group(3)) > 0:
             rows.append((datetime.datetime.strptime(t.group(1), "%Y-%m-%d %H:%M:%S"),
                          int(m.group(1)), int(m.group(2)), float(m.group(3))))
-    best, cur = [], []
-    for row in rows:
-        if row[1] == bs and row[3] > 0:
+    out, cur = [], []
+    for row in rows + [None]:
+        if cur and (row is None or row[1] != cur[0][1]):
+            seg = cur[1:]          # the first line of a stretch spans the change
+            if len(seg) >= MIN_PLATEAU:
+                span = (seg[-1][0] - seg[0][0]).total_seconds()
+                out.append((seg[0][1], seg[-1][2] - seg[0][2], span,
+                            statistics.fmean(r[3] for r in seg)))
+            cur = []
+        if row is not None:
             cur.append(row)
-        else:
-            best, cur = (cur if len(cur) > len(best) else best), []
-    best = cur if len(cur) > len(best) else best
-    if len(best) < MIN_PLATEAU:
-        seen = sorted({live for _, live, _, _ in rows})
-        return None, f"no run of {MIN_PLATEAU}+ decode lines at {bs} live (saw {seen})"
-    # drop the plateau's first line: its interval starts before the batch
-    # reached this width, so it prices part of another regime
-    seg = best[1:]
-    span = (seg[-1][0] - seg[0][0]).total_seconds()
-    if span < MIN_SPAN_S:
-        return None, (f"plateau lasted {span:.0f}s, under the {MIN_SPAN_S}s floor; "
-                      f"one-second stamps put {200 / max(span, 1):.0f}% of "
-                      "quantisation on a window that short")
-    counted = (seg[-1][2] - seg[0][2]) / span
-    reported = statistics.fmean(r[3] for r in seg)
-    tol = max(0.02, 2.0 / span)
-    if abs(counted - reported) > tol * reported:
-        return None, (f"tokens counted ({counted:.1f}/s) and the server's reported "
-                      f"rate ({reported:.1f}/s) differ by more than {100 * tol:.1f}%")
-    return counted, len(seg)
+    return out
 
 
-def survey(reps=(None, 2, 3)):
-    have, refused = {}, []
+def survey():
+    """Tokens per second at each (context, measured concurrency), both arms."""
+    acc, refused = {}, []
     for ctx, (_, prefix) in CONTEXTS.items():
-        have[ctx] = {}
+        acc[ctx] = {}
         for bs in BATCHES:
-            point = {}
             for arm, tag in ARMS.items():
-                runs = []
-                for rep in reps:
-                    job = f"{prefix}-bs{bs}{'' if not rep else 'r%d' % rep}-{tag}"
-                    p = os.path.join(RESULTS, f"server_{arm}_{job}.log")
-                    if not os.path.exists(p):
-                        continue
-                    val, why = plateau(p, bs)
-                    if val is None:
-                        refused.append(f"{job}: {why}")
-                    else:
-                        runs.append(val)
-                if runs:
-                    point[arm] = runs
-            if len(point) == 2:
-                have[ctx][bs] = point
+                p = os.path.join(RESULTS, f"server_{arm}_{prefix}-bs{bs}-{tag}.log")
+                if not os.path.exists(p):
+                    continue
+                for live, tokens, span, reported in plateaus(p):
+                    cell = acc[ctx].setdefault(live, {}).setdefault(arm, [0, 0.0, []])
+                    cell[0] += tokens
+                    cell[1] += span
+                    cell[2].append(reported)
+    have = {}
+    for ctx, by_live in acc.items():
+        have[ctx] = {}
+        for live, arms in sorted(by_live.items()):
+            if set(arms) != set(ARMS):
+                refused.append(f"{ctx // 1024}k concurrency {live}: only "
+                               f"{sorted(arms)} measured")
+                continue
+            ok = True
+            for arm, (tokens, span, reported) in arms.items():
+                if span < MIN_SPAN_S:
+                    refused.append(f"{ctx // 1024}k concurrency {live} {arm}: "
+                                   f"{span:.0f}s of steady decode, under the "
+                                   f"{MIN_SPAN_S}s floor")
+                    ok = False
+                    continue
+                counted = tokens / span
+                mean_rate = statistics.fmean(reported)
+                tol = max(0.02, 2.0 / span)
+                if abs(counted - mean_rate) > tol * mean_rate:
+                    refused.append(
+                        f"{ctx // 1024}k concurrency {live} {arm}: counted "
+                        f"{counted:.1f} tok/s against a reported {mean_rate:.1f}")
+                    ok = False
+            if ok:
+                have[ctx][live] = {a: arms[a][0] / arms[a][1] for a in ARMS}
     return have, refused
 
 
@@ -164,15 +170,13 @@ def main():
             continue
         print(f"  {ctx // 1024}k prefill:")
         for bs in sorted(have[ctx]):
-            d = statistics.fmean(have[ctx][bs]["baseline"])
-            v = statistics.fmean(have[ctx][bs]["vestigekv"])
-            n = min(len(have[ctx][bs]["baseline"]), len(have[ctx][bs]["vestigekv"]))
-            print(f"    bs={bs:<3} dense {d:>8.1f}  vk {v:>8.1f}  {v / d:.3f}x  (n={n})")
-            lines.append(f"\\newcommand{{\\srvBatch{word}{WORD[bs]}}}{{{v / d:.2f}}}"
-                         f"  % {ctx // 1024}k, bs={bs}, n={n}: {v:.1f}/{d:.1f} tok/s")
+            d, v = have[ctx][bs]["baseline"], have[ctx][bs]["vestigekv"]
+            print(f"    live={bs:<3} dense {d:>8.1f}  vk {v:>8.1f}  {v / d:.3f}x")
+            if bs in WORD:
+                lines.append(f"\\newcommand{{\\srvBatch{word}{WORD[bs]}}}{{{v / d:.2f}}}"
+                             f"  % {ctx // 1024}k, {bs} live: {v:.1f}/{d:.1f} tok/s")
         if 12 in have[ctx]:
-            g = (statistics.fmean(have[ctx][12]["vestigekv"])
-                 / statistics.fmean(have[ctx][12]["baseline"]) - 1)
+            g = have[ctx][12]["vestigekv"] / have[ctx][12]["baseline"] - 1
             lines.append(f"\\newcommand{{\\tputGain{word}Twelve}}{{{g * 100:.1f}\\%}}")
     for r in refused:
         print(f"  REFUSED {r}")

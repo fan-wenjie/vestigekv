@@ -123,6 +123,27 @@ class Server:
         return False
 
 
+def produced_nothing(job, results):
+    """True when a stream job's record says the run generated no tokens.
+
+    The diagnostic that found this asked for 131072 prompt tokens plus 16384
+    generated from a server holding 135168: every request was refused, the
+    client wrote a complete summary of zeros, and the runner recorded rc=0.
+    A clean record of nothing is worse than a crash, because nothing looks
+    wrong until a reducer divides by it.
+    """
+    if job.get("client") != "stream":
+        return False
+    path = naming.stream_out(results, job)
+    if not os.path.exists(path):
+        return True
+    try:
+        blob = json.loads(open(path).read().splitlines()[0])
+    except (ValueError, IndexError):
+        return True
+    return not blob.get("completed") or not blob.get("total_output_tokens")
+
+
 def run_client(job, port):
     client, args = job["client"], job.get("args", {})
     arm = job["arm"]
@@ -264,7 +285,13 @@ def main():
                               "wall_s": round(time.time() - t0), "end": time.strftime("%F %T")})
                 continue
             status = "done" if rc == 0 else "failed"
+            empty = status == "done" and produced_nothing(job, RESULTS)
+            if empty:
+                # rc=0 is the client saying it finished, not that it measured
+                # anything. A refused request produces a full summary of zeros.
+                status = "failed"
             append_state({"id": job["id"], "status": status, "rc": rc, "log": out,
+                          **({"note": "client reported no generated tokens"} if empty else {}),
                           "wall_s": round(time.time() - t0), "end": time.strftime("%F %T"),
                           "tail": tail[-3:]})
             log(f"{job['id']} {status} rc={rc} wall={round(time.time() - t0)}s")
