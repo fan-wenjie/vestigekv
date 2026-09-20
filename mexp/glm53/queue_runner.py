@@ -21,6 +21,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "exp"))
+import naming  # noqa: E402
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 PY = os.environ.get("PYTHON", os.path.expanduser("~/.conda/envs/sglang-dev/bin/python"))
 # --line <name> (default glm53): jobs, arm scripts and results live under mexp/<name>/
@@ -140,29 +143,15 @@ def run_client(job, port):
             cmd += ["--tag", job["id"]]  # a sweep job must not overwrite the arm's full run
         out = os.path.join(RESULTS, f"ruler_{arm}_{job['id']}.log")
     elif client == "stream":
-        # README metric 1: bs=1, 4k prefill, continuous decode; per-token latency curve.
+        # README metric 1: bs=1, 4k prefill, continuous decode; per-token latency
+        # curve. num_prompts > 1 with matching concurrency makes it a throughput
+        # point instead. The record's name comes from mexp/exp/naming.py, the
+        # same module the auditor reads, because two copies of these rules is
+        # how a repeat once landed inside the record it was repeating.
         n_out = int(args.get("output_len", 126976))
-        # a stats-on stream syncs every step: keep its file apart from the timed one
-        tag = "_stats" if str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1" else ""
-        if job.get("server_args"):
-            tag += "_" + job["id"]  # a flag sweep must not overwrite the arm's default run
-        n_in = int(args.get("input_len", 4096))
-        n_req = int(args.get("num_prompts", 1))
-        # Concurrency defaults to 1: every job written before this arg existed is
-        # a latency curve and must keep measuring one request at a time. A
-        # throughput sweep sets it to the batch it means, and the server's
-        # captured graph has to be at least that wide (GRAPH_BS == MAX_REQS) or
-        # the batch it reports is not the batch it ran.
+        out_jsonl = naming.stream_out(RESULTS, job)
+        naming.refuse_existing(out_jsonl, job["id"])
         conc = int(args.get("concurrency", 1))
-        shape = f"{n_in // 1024}k-{n_out}" + (f"-x{n_req}" if n_req > 1 else "")
-        if conc > 1:
-            shape += f"-c{conc}"
-        # A repeat of an identical point, for the only thing repeats are for:
-        # knowing what one measurement's spread is before reading structure
-        # into a difference between two of them.
-        if args.get("rep"):
-            shape += f"-r{int(args['rep'])}"
-        out_jsonl = os.path.join(RESULTS, f"latency_stream_{shape}_{arm}{tag}.jsonl")
         cmd = [PY, "-m", "sglang.benchmark.serving", "--backend", "sglang", "--model", MODEL,
                # num_prompts > 1 makes this a controlled comparison against a
                # short-answer benchmark: same context, same generated length,

@@ -70,6 +70,8 @@ def _runner_clients():
 
 
 CLIENTS = _runner_clients()
+
+from naming import ruler_out, stream_out  # noqa: E402  (same rules as the runner)
 SEEDED = {"ruler", "stream"}  # clients whose runner call takes --seed
 # One seed for every run on every line, and it is the first one: a paper that
 # reports seed 7 has to answer what seeds 0 through 6 did, and the honest answer
@@ -113,32 +115,6 @@ def load(path):
         if line:
             out.append(json.loads(line))
     return out
-
-
-def stream_out(results, job):
-    a, arm = job.get("args", {}), job["arm"]
-    n_out = int(a.get("output_len", 126976))
-    n_in = int(a.get("input_len", 4096))
-    n_req = int(a.get("num_prompts", 1))
-    conc = int(a.get("concurrency", 1))
-    shape = f"{n_in // 1024}k-{n_out}" + (f"-x{n_req}" if n_req > 1 else "")
-    if conc > 1:
-        shape += f"-c{conc}"
-    if a.get("rep"):
-        shape += f"-r{int(a['rep'])}"
-    tag = "_stats" if str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1" else ""
-    if job.get("server_args"):
-        tag += "_" + job["id"]
-    return os.path.join(results, f"latency_stream_{shape}_{arm}{tag}.jsonl")
-
-
-def ruler_out(results, job):
-    a = job.get("args", {})
-    lens = a.get("lengths", "4096,8192,16384,32768,65536").split(",")
-    tag = f"{job['arm']}_n{a.get('n', 10)}_{'-'.join(lens)}"
-    if job.get("server_args") or "tasks" in a or "lengths" in a:
-        tag += f"_{job['id']}"
-    return os.path.join(results, "ruler", f"results_{tag}.json")
 
 
 def main():
