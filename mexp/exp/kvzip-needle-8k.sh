@@ -37,8 +37,11 @@
 #     the same rho*L*T as every other arm: budget-matched.
 #
 # CONTROL:
-#   varies:  the operator (kvzip / the selector / both tiers) and the
-#            compression ratio. Nothing else.
+#   varies:  the operator (kvzip / digk64 / both tiers) and the compression
+#            ratio. Nothing else. NOTE digk64 is the selector at kappa=64,
+#            which is NOT the deployed bandwidth; the paper prints the
+#            kappa=16 arm from kvzip-selector-kappa16.sh instead, and this
+#            row survives only inside this record.
 #   fixed:   seed 0; 24 needles; L=8192; checkpoint
 #            Kimi-Linear-48B-A3B-Instruct; --gpu-expert-layers 18; one
 #            harness process, one sitting, so every arm sees the same needles.

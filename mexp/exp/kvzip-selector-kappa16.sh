@@ -26,8 +26,11 @@
 # reproducible, is what the paper should print.
 #
 # CONTROL:
-#   varies:  the detector bandwidth, kappa=16 against the kappa=64 the two
-#            scripts above ran. One constant, nothing else.
+#   varies:  the detector bandwidth: kappa=16, the deployed value, where the
+#            two scripts above ran kappa=64. One constant, nothing else. This
+#            record supersedes their selector arm in the paper; the kappa=64
+#            numbers are not printed anywhere, because a bandwidth nobody
+#            deploys is a target and not a result.
 #   fixed:   seed 0; 24 needles; L=8192; the same five ratios; checkpoint
 #            Kimi-Linear-48B-A3B-Instruct; --gpu-expert-layers 18.
 set -euo pipefail

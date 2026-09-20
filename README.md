@@ -1174,7 +1174,12 @@ So every script declares, and `audit.sh` refuses without it:
 
 Three rules follow from it. Arms that will be printed in one table run from
 **one script in one sitting**, because that is the only way to be sure they
-differ in what the script says they differ in. An arm measured on a different
+differ in what the script says they differ in. Where they cannot -- Table 2's
+rows come from three harness processes -- the generator **checks the shared
+input rather than trusting the seed**: `make_kvzip_numbers.py` refuses to emit
+unless the dense forward's NLL is bit-identical across records on every trial,
+which it is iff the three processes saw the same needles, documents, codes and
+depths. An arm measured on a different
 engine tree is a different experiment, and the tree is part of `fixed:`. And
 `--seed` is passed explicitly even where the runner defaults it, because a
 default is not a declaration -- the audit greps for it with comments stripped,

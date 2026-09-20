@@ -36,7 +36,9 @@
 #
 # CONTROL:
 #   varies:  the compression ratio (2x, 4x, 8x) against the companion script's
-#            32x and 128x. Same three operators, same everything else.
+#            32x and 128x. Same three operators, same everything else. Its
+#            digk64 arm is the selector at kappa=64, not the deployed
+#            bandwidth, and the paper does not print it.
 #   fixed:   seed 0; 24 needles; L=8192; checkpoint
 #            Kimi-Linear-48B-A3B-Instruct; --gpu-expert-layers 18.
 set -euo pipefail
