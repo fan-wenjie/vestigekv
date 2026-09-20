@@ -22,8 +22,9 @@ width, so an overflow is the certificate reporting that a step cannot be
 served sparsely at the recall target. These macros measure what answering that
 report is worth, which is why the paper prints them next to the overflow rate.
 
-Cells are 10 prompts wide, so a single cell moves by 0.1 at a time and no cell
-is evidence by itself. The paired count across all nine is.
+Cells are 50 prompts wide -- the same depth as the RULER table the result is
+printed beside -- and the paired count across all nine is still what the
+comparison rests on, not any single cell.
 
     python mexp/kimi/make_fallback_numbers.py [--out ~/vestigekv_paper/fallback_numbers.tex]
 """
@@ -36,7 +37,7 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RULER = os.path.join(ROOT, "results", "kimi", "ruler")
-STEM = "results_vestigekv_n10_16384-32768-65536_%s.json"
+STEM = "results_vestigekv_n50_16384-32768-65536_%s.json"
 ARMS = [("fb-on", "On"), ("fb-off-prefix", "Prefix"), ("fb-off-spread", "Spread")]
 LENGTHS = ("16384", "32768", "65536")
 
