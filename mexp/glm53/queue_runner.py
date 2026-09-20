@@ -148,7 +148,15 @@ def run_client(job, port):
             tag += "_" + job["id"]  # a flag sweep must not overwrite the arm's default run
         n_in = int(args.get("input_len", 4096))
         n_req = int(args.get("num_prompts", 1))
+        # Concurrency defaults to 1: every job written before this arg existed is
+        # a latency curve and must keep measuring one request at a time. A
+        # throughput sweep sets it to the batch it means, and the server's
+        # captured graph has to be at least that wide (GRAPH_BS == MAX_REQS) or
+        # the batch it reports is not the batch it ran.
+        conc = int(args.get("concurrency", 1))
         shape = f"{n_in // 1024}k-{n_out}" + (f"-x{n_req}" if n_req > 1 else "")
+        if conc > 1:
+            shape += f"-c{conc}"
         out_jsonl = os.path.join(RESULTS, f"latency_stream_{shape}_{arm}{tag}.jsonl")
         cmd = [PY, "-m", "sglang.benchmark.serving", "--backend", "sglang", "--model", MODEL,
                # num_prompts > 1 makes this a controlled comparison against a
@@ -156,7 +164,7 @@ def run_client(job, port):
                # enough requests to accumulate steps. Default 1 = the latency curve.
                "--port", port, "--num-prompts", str(args.get("num_prompts", 1)), "--dataset-name", "random",
                "--random-input-len", str(args.get("input_len", 4096)), "--random-output-len", str(n_out),
-               "--random-range-ratio", "1", "--max-concurrency", "1", "--warmup-requests", "0",
+               "--random-range-ratio", "1", "--max-concurrency", str(conc), "--warmup-requests", "0",
                "--output-details", "--output-file", out_jsonl]
         out = os.path.join(RESULTS, f"stream_{arm}_{job['id']}.log")
     elif client == "continue":

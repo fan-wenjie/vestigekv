@@ -25,6 +25,28 @@ one of them corresponds to a mistake this project has actually made:
                     A default is not a declaration.
   known client      a client the runner does not implement -- it would skip
                     the job and mark it done.
+  registered        a job whose launch is not written in README.md verbatim.
+                    The rule has always been that an experiment is registered
+                    before it runs; until now the only thing enforcing it on
+                    the queue -- which is what actually launches experiments --
+                    was remembering to. Registering the name is not enough
+                    either: the knobs can be edited after the name is written
+                    down and the name still matches. The canonical launch is
+                    compared, so the row that runs is the row that was
+                    declared.
+  graph width       a job whose captured graph is wider than the batch it
+                    decodes. Checking that the two ARMS agree is not enough --
+                    they did agree, at GRAPH_BS=2 against MAX_REQS=1, and that
+                    pair's vestigekv arm came out 3.7% slower at 256k than two
+                    independent records taken at the matched width while its
+                    dense arm reproduced them. A line has a convention and a
+                    job has to match the line, not just its partner.
+  radix off         a performance-line job that turns the radix cache on. A
+                    reused prefix is an answer attention never produced, and
+                    this line's claim is about what attention costs. The knob
+                    also has to agree across runs, not just within a pair: the
+                    latency pair that was discarded differed from its partner
+                    in this knob among three.
 """
 from __future__ import annotations
 
@@ -37,6 +59,34 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 UNIFIED = os.path.join(ROOT, "engine")
 CLIENTS = {"ruler", "stream", "needle", "gsm8k", "replay", "continue"}
 SEEDED = {"ruler"}  # clients whose runner call takes --seed
+
+
+REGISTRY = "<!-- registered launches: audited verbatim against mexp/*/queue.jsonl -->"
+
+
+def canonical(job):
+    """The launch, with nothing that is not the launch. Key order and the
+    runner's own bookkeeping must not be able to make two identical runs look
+    different, or two different ones look identical."""
+    keep = {k: job[k] for k in ("id", "arm", "client", "env", "args", "server_args", "probe")
+            if k in job}
+    return json.dumps(keep, sort_keys=True, separators=(",", ":"))
+
+
+def registered(readme):
+    """Every canonical launch written down in README.md, by id."""
+    out = {}
+    for line in readme.splitlines():
+        line = line.strip().strip("`")
+        if not line.startswith("{"):
+            continue
+        try:
+            job = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if "id" in job:
+            out[job["id"]] = canonical(job)
+    return out
 
 
 def load(path):
@@ -53,7 +103,10 @@ def stream_out(results, job):
     n_out = int(a.get("output_len", 126976))
     n_in = int(a.get("input_len", 4096))
     n_req = int(a.get("num_prompts", 1))
+    conc = int(a.get("concurrency", 1))
     shape = f"{n_in // 1024}k-{n_out}" + (f"-x{n_req}" if n_req > 1 else "")
+    if conc > 1:
+        shape += f"-c{conc}"
     tag = "_stats" if str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1" else ""
     if job.get("server_args"):
         tag += "_" + job["id"]
@@ -81,6 +134,9 @@ def main():
     done = {r["id"] for r in state if r.get("status") in ("done", "failed")}
     pending = [j for j in jobs if not j.get("skip") and j["id"] not in done]
 
+    readme = open(os.path.join(ROOT, "README.md")).read()
+    readme_canon = registered(readme)
+
     fails = []
 
     def bad(job, msg):
@@ -97,6 +153,27 @@ def main():
         launcher = os.path.join(here, f"{j.get('arm')}.sh")
         if not os.path.exists(launcher):
             bad(j, f"arm {j.get('arm')!r} has no launcher at {launcher}")
+        # Registering the NAME is not registering the experiment: the knobs can
+        # be edited afterwards and the name still matches. What has to appear in
+        # README.md is the launch itself, canonicalised, so the row that runs
+        # and the row that was declared are the same row.
+        if readme_canon.get(j["id"]) != canonical(j):
+            bad(j, f"its launch is not registered verbatim in README.md. Declared "
+                   f"there: {readme_canon.get(j['id'], '(nothing for this id)')}\n"
+                   f"        about to run: {canonical(j)}")
+        conc = int(j.get("args", {}).get("concurrency", 1))
+        if conc > int(env.get("MAX_REQS", 1) or 1):
+            bad(j, f"asks for concurrency {conc} from a server admitting "
+                   f"{env.get('MAX_REQS')}; the batch it reports would not be the "
+                   "batch it ran")
+        if env.get("GRAPH_BS") and env.get("MAX_REQS") and env["GRAPH_BS"] != env["MAX_REQS"]:
+            bad(j, f"captures a graph for bs={env['GRAPH_BS']} but decodes at "
+                   f"bs={env['MAX_REQS']}; every other job on every line sets them "
+                   "equal, and the surplus lane is dispatch VestigeKV's per-step "
+                   "kernels pay and the dense path does not")
+        if j.get("client") == "stream" and str(env.get("RADIX", "")).lower() == "on":
+            bad(j, "performance line with RADIX=on; the line runs radix off (see "
+                   "mexp/exp/latency-pair-512k.sh, RADIX POLICY)")
         if j.get("client") in SEEDED and "seed" not in j.get("args", {}):
             bad(j, "takes --seed but the job does not set one; a default is not a declaration")
         out = None

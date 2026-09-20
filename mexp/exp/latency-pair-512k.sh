@@ -33,8 +33,23 @@
 #            base, which is the paper's dense arm) against vestigekv_mla.
 #   fixed:   tree $HOME/vestigekv/engine (released, v0.5.20 + the backend);
 #            4096-token prefill; 520192 decoded tokens; bs=1; max-concurrency
-#            1; no warmup request; CTX, MAX_REQS, MAMBA_SLOTS, CHUNK, GRAPH_BS;
-#            one script, one sitting, no server reuse between arms.
+#            1; no warmup request; CTX, MAX_REQS, MAMBA_SLOTS, CHUNK;
+#            GRAPH_BS=MAX_REQS, the convention every other job on every line
+#            follows -- a captured graph wider than the decoded batch is a
+#            dispatch floor the per-step VestigeKV kernels pay and the dense
+#            path does not, so it biases the very ratio this run reports;
+#            radix cache OFF on both arms; one script, one sitting, no server
+#            reuse between arms.
+#
+# RADIX POLICY (the performance line, decided 2026-09-20, applies to every
+# later run on this line including the throughput sweep). The cache stays OFF.
+# Production parity would argue for ON, but a served prefix that is reused is
+# an answer attention never had to produce, and this line's whole claim is
+# about what attention costs. Off on both arms measures that; the cost is that
+# the absolute numbers sit below a production deployment's, which is the
+# conservative direction. What is NOT acceptable is one setting here and
+# another in the next run on this line: the pair this script replaced differed
+# from its partner in exactly this knob, among three.
 #
 # HOW TO READ IT. The client JSONL is written too, but it is NOT the metric:
 # see the errata above. The server log is. Whatever ratio this produces is the
@@ -53,7 +68,7 @@ for arm in dense vestigekv; do
 done
 cd "$ROOT"
 
-export CTX=528384 MAX_REQS=1 MAMBA_SLOTS=1 CHUNK=4096 GRAPH_BS=2
+export CTX=528384 MAX_REQS=1 MAMBA_SLOTS=1 CHUNK=4096 GRAPH_BS=1
 export ENGINE="$ROOT/engine"
 [ -d "$ENGINE/python/sglang" ] || die "released engine tree missing: $ENGINE"
 

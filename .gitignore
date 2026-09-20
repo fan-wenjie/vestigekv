@@ -37,8 +37,20 @@ results/kimi/debug/
 results/kimi/bisect/
 results/kimi_queue_runner.log
 
+# Figure 2's left panel IS these server logs: the macros are reduced from
+# them and the paper says they ship. The blanket server-log ignores above
+# are exactly what deleted their predecessors, so the latency pair is
+# excepted by name.
+!results/kimi/server_*paired512k*.log
+
 # Operational logs, not results: the health monitor and the queue runner write
 # these continuously, and results/ is meant to hold the figures and results.zip.
 results/*/health.log
 results/*_queue_runner.log
 results/*/queue_state.jsonl
+
+# The queue and its state ARE the audit trail: which experiment ran, under
+# which knobs, in which order, and what came back. Ignoring them left the
+# record of every run on the floor.
+!mexp/kimi/queue.jsonl
+!results/kimi/queue_state.jsonl
