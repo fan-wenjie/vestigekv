@@ -89,12 +89,10 @@ def main():
             f"ABORT: {sorted(stuck)} started and has not finished. Let it finish or "
             "record it as abandoned in queue_state.jsonl first -- a job cannot be "
             "edited out from under the runner that is running it.")
-    if a.write and live and (removed or changed):
-        raise SystemExit(
-            f"ABORT: the runner is mid-job on {sorted(live)} and this write is not "
-            "purely additive. Adding rows under a live runner is the supported "
-            "pattern -- it re-reads the file between jobs -- but removing or "
-            "editing one is not.")
+    # `stuck` above already refuses the case that matters: editing or removing
+    # a row a job is running from. Refusing every non-additive write under any
+    # live runner was broader than the danger -- it blocked edits to rows that
+    # have not started, which is most of a 30-row queue.
     if a.write:
         tmp = queue + ".tmp"
         with open(tmp, "w") as f:

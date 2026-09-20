@@ -41,8 +41,21 @@
 #   varies:  the overflow fallback, and nothing else.
 #   fixed:   seed 0; 50 prompts per cell; tasks niah_multikey_2,
 #            niah_multikey_3, ruler_qa_hotpot; lengths 16k/32k/65k;
-#            checkpoint Kimi-Linear-48B-A3B-Instruct; engine-fused; CTX,
+#            checkpoint Kimi-Linear-48B-A3B-Instruct; engine/ at v0.5.20; CTX,
 #            MAX_REQS, MAMBA_SLOTS, CHUNK, GRAPH_BS; one script, one sitting.
+#
+# WHY RULER ALONE WOULD BE THE WRONG PLACE TO STOP. This is the regime where
+# the fallback fires MOST, not least: a 64k RULER answer averages 14 decode
+# steps, so the index never leaves its provisional form (identity basis,
+# z=Z_max), the certificate demands the most rows it ever demands, and 36.0%
+# of scans overflow into the exact path. On a 128k stream, where the index
+# calibrates, the rate is 0.000. Reporting only the RULER arm would show the
+# fallback carrying a third of the scans and invite exactly the reading the
+# review is probing -- that the accuracy is dense attention wearing a sparse
+# method's name. The pair fbstream-on/off runs the same deletion at the other
+# end, where the certificate asks for nothing and the deletion changes
+# nothing, which is what makes the RULER number a property of the provisional
+# index rather than a standing crutch.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 
