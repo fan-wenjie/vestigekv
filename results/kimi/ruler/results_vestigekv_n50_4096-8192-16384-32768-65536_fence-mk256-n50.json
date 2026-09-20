@@ -1,0 +1,96 @@
+{
+  "results": {
+    "niah_multikey_2": {
+      "name": "niah_multikey_2",
+      "alias": "niah_multikey_2",
+      "sample_len": 250,
+      "4096,none": 1.0,
+      "4096_stderr,none": "N/A",
+      "8192,none": 0.96,
+      "8192_stderr,none": "N/A",
+      "16384,none": 1.0,
+      "16384_stderr,none": "N/A",
+      "32768,none": 0.94,
+      "32768_stderr,none": "N/A",
+      "65536,none": 0.96,
+      "65536_stderr,none": "N/A"
+    },
+    "niah_multikey_3": {
+      "name": "niah_multikey_3",
+      "alias": "niah_multikey_3",
+      "sample_len": 250,
+      "4096,none": 1.0,
+      "4096_stderr,none": "N/A",
+      "8192,none": 1.0,
+      "8192_stderr,none": "N/A",
+      "16384,none": 0.96,
+      "16384_stderr,none": "N/A",
+      "32768,none": 0.96,
+      "32768_stderr,none": "N/A",
+      "65536,none": 0.94,
+      "65536_stderr,none": "N/A"
+    },
+    "ruler_qa_hotpot": {
+      "name": "ruler_qa_hotpot",
+      "alias": "ruler_qa_hotpot",
+      "sample_len": 250,
+      "4096,none": 0.68,
+      "4096_stderr,none": "N/A",
+      "8192,none": 0.64,
+      "8192_stderr,none": "N/A",
+      "16384,none": 0.64,
+      "16384_stderr,none": "N/A",
+      "32768,none": 0.6,
+      "32768_stderr,none": "N/A",
+      "65536,none": 0.48,
+      "65536_stderr,none": "N/A"
+    },
+    "ruler_qa_squad": {
+      "name": "ruler_qa_squad",
+      "alias": "ruler_qa_squad",
+      "sample_len": 250,
+      "4096,none": 0.775,
+      "4096_stderr,none": "N/A",
+      "8192,none": 0.7616666666666667,
+      "8192_stderr,none": "N/A",
+      "16384,none": 0.675,
+      "16384_stderr,none": "N/A",
+      "32768,none": 0.715,
+      "32768_stderr,none": "N/A",
+      "65536,none": 0.7416666666666667,
+      "65536_stderr,none": "N/A"
+    },
+    "niah_single_3": {
+      "name": "niah_single_3",
+      "alias": "niah_single_3",
+      "sample_len": 250,
+      "4096,none": 1.0,
+      "4096_stderr,none": "N/A",
+      "8192,none": 0.98,
+      "8192_stderr,none": "N/A",
+      "16384,none": 1.0,
+      "16384_stderr,none": "N/A",
+      "32768,none": 0.98,
+      "32768_stderr,none": "N/A",
+      "65536,none": 1.0,
+      "65536_stderr,none": "N/A"
+    }
+  },
+  "wall_s": 3332.265839576721,
+  "n_per_cell": 50,
+  "lengths": [
+    4096,
+    8192,
+    16384,
+    32768,
+    65536
+  ],
+  "tasks": [
+    "niah_multikey_2",
+    "niah_multikey_3",
+    "ruler_qa_hotpot",
+    "ruler_qa_squad",
+    "niah_single_3"
+  ],
+  "seed": 0
+}

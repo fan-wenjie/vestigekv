@@ -1,0 +1,84 @@
+{
+  "results": {
+    "niah_single_1": {
+      "name": "niah_single_1",
+      "alias": "niah_single_1",
+      "sample_len": 30,
+      "4096,none": -1,
+      "4096_stderr,none": "N/A",
+      "16384,none": 1.0,
+      "16384_stderr,none": "N/A",
+      "32768,none": 1.0,
+      "32768_stderr,none": "N/A",
+      "65536,none": 1.0,
+      "65536_stderr,none": "N/A"
+    },
+    "niah_multikey_2": {
+      "name": "niah_multikey_2",
+      "alias": "niah_multikey_2",
+      "sample_len": 30,
+      "4096,none": -1,
+      "4096_stderr,none": "N/A",
+      "16384,none": 0.3,
+      "16384_stderr,none": "N/A",
+      "32768,none": 0.3,
+      "32768_stderr,none": "N/A",
+      "65536,none": 0.0,
+      "65536_stderr,none": "N/A"
+    },
+    "niah_multikey_3": {
+      "name": "niah_multikey_3",
+      "alias": "niah_multikey_3",
+      "sample_len": 30,
+      "4096,none": -1,
+      "4096_stderr,none": "N/A",
+      "16384,none": 0.1,
+      "16384_stderr,none": "N/A",
+      "32768,none": 0.1,
+      "32768_stderr,none": "N/A",
+      "65536,none": 0.0,
+      "65536_stderr,none": "N/A"
+    },
+    "ruler_fwe": {
+      "name": "ruler_fwe",
+      "alias": "ruler_fwe",
+      "sample_len": 30,
+      "4096,none": -1,
+      "4096_stderr,none": "N/A",
+      "16384,none": 0.9,
+      "16384_stderr,none": "N/A",
+      "32768,none": 0.8666666666666666,
+      "32768_stderr,none": "N/A",
+      "65536,none": 0.5666666666666667,
+      "65536_stderr,none": "N/A"
+    },
+    "ruler_qa_hotpot": {
+      "name": "ruler_qa_hotpot",
+      "alias": "ruler_qa_hotpot",
+      "sample_len": 30,
+      "4096,none": -1,
+      "4096_stderr,none": "N/A",
+      "16384,none": 0.7,
+      "16384_stderr,none": "N/A",
+      "32768,none": 0.5,
+      "32768_stderr,none": "N/A",
+      "65536,none": 0.5,
+      "65536_stderr,none": "N/A"
+    }
+  },
+  "wall_s": 642.585423707962,
+  "n_per_cell": 10,
+  "lengths": [
+    16384,
+    32768,
+    65536
+  ],
+  "tasks": [
+    "niah_single_1",
+    "niah_multikey_2",
+    "niah_multikey_3",
+    "ruler_fwe",
+    "ruler_qa_hotpot"
+  ],
+  "seed": 0
+}

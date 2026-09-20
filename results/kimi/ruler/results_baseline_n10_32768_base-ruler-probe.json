@@ -1,0 +1,32 @@
+{
+  "results": {
+    "niah_single_1": {
+      "name": "niah_single_1",
+      "alias": "niah_single_1",
+      "sample_len": 10,
+      "4096,none": -1,
+      "4096_stderr,none": "N/A",
+      "32768,none": 1.0,
+      "32768_stderr,none": "N/A"
+    },
+    "ruler_qa_squad": {
+      "name": "ruler_qa_squad",
+      "alias": "ruler_qa_squad",
+      "sample_len": 10,
+      "4096,none": -1,
+      "4096_stderr,none": "N/A",
+      "32768,none": 0.6166666666666667,
+      "32768_stderr,none": "N/A"
+    }
+  },
+  "wall_s": 63.50963807106018,
+  "n_per_cell": 10,
+  "lengths": [
+    32768
+  ],
+  "tasks": [
+    "niah_single_1",
+    "ruler_qa_squad"
+  ],
+  "seed": 0
+}

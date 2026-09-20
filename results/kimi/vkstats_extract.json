@@ -1,0 +1,17 @@
+{
+  "_provenance": {
+    "what": "Per-job VKSTATS telemetry: the last VKSTATS line the server emitted for each job, parsed into its fields.",
+    "source": "results/kimi/server_vestigekv_<job>.log, the serving-side telemetry logs.",
+    "why_this_file_exists": "Those server logs were never tracked by git and were deleted during the 2026-09-18 archive reduction, before it was noticed that make_ruler_numbers.py reads them. The values below are the ones the generator had already extracted from those logs into vestigekv_paper/ruler_numbers.tex, which was committed before the deletion; they are the authentic measured values, but the raw logs behind them are NOT retained and cannot be re-derived from this archive. Re-running the jobs in EXPERIMENTS.md regenerates the logs.",
+    "fields": "steps = decode steps counted; fetch_p50/p90/p99 = archived rows fetched per scan; fallback = fraction of scans that fell back to dense.",
+    "note": "fetch_p50 = 4096 is the row-buffer capacity, i.e. the count is at the cap."
+  },
+  "margin-0":                     {"fetch_p50": 2137, "fallback": 0.45},
+  "margin-1":                     {"fetch_p50": 4096, "fallback": 0.60},
+  "margin-2":                     {"fetch_p50": 4096, "fallback": 0.75},
+  "margin-3":                     {"fetch_p50": 4096, "fallback": 0.85},
+  "margin-lse-2.3":               {"fetch_p50": 4096, "fallback": 0.69},
+  "margin-lse-4.6":               {"fetch_p50": 4096, "fallback": 0.91},
+  "stats-vestigekv-stream-128k":  {"steps": 126950, "fetch_p50": 0,    "fetch_p90": 0,    "fetch_p99": 42,   "fallback": 0.000},
+  "stats-vestigekv-ruler-64k":    {"steps": 1850,   "fetch_p50": 1023, "fetch_p90": 4096, "fetch_p99": 4096, "fallback": 0.360}
+}

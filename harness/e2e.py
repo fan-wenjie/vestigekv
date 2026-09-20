@@ -399,8 +399,14 @@ def make_op(name, m, frac=0.25):
         return C, keep
     table["kvzip"] = kvzip
     def digk64(C):
-        # sidecar-only selection with detector bandwidth 64 -- the bandwidth
-        # the long-context sweeps found optimal at L>=32768
+        # Sidecar-only selection at detector bandwidth 64. The k64 is the
+        # BANDWIDTH, not a read width, and 64 is NOT the shipped constant:
+        # kappa=16 is, which is dig_r64's default. An old note here claimed
+        # long-context sweeps found 64 optimal at L>=32768; those records are
+        # in no surviving tree, and the one matched pair that does survive
+        # (same needles, seed and checkpoint, 8k) has 64 strictly worse --
+        # 0.75/0.25 against 0.92/0.83 at 32x/128x. Kept for that comparison;
+        # do not reach for it as "the selector".
         return _invbranch(C, m, "drop", r=64, k=64)
     table["digk64"] = digk64
     for md in ("drop", "score", "fill"):
@@ -835,6 +841,13 @@ def main():
     ds = load_dataset("HuggingFaceFW/fineweb-edu", name="sample-10BT",
                       split="train", streaming=True)
     g = torch.Generator().manual_seed(a.seed)
+    # `g` seeds the needle placement and codes only. Ops that draw from the
+    # GLOBAL stream -- imp_random is the one that matters, it IS the draw --
+    # were unseeded, so a random control could not be re-derived from its
+    # record. Seed the global stream from the same --seed.
+    torch.manual_seed(a.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(a.seed)
     buf, docs = [], []
     for rec in ds:
         buf.extend(tok(rec["text"])["input_ids"])
