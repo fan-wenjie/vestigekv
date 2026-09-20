@@ -29,8 +29,13 @@ RESULTS = os.path.join(ROOT, "results", "kimi")
 PAPER = os.path.expanduser("~/vestigekv_paper")
 OUT = os.path.join(PAPER, "serving_numbers.tex")
 
-BATCHES = [1, 4, 12, 24, 32]
-WORD = {1: "One", 4: "Four", 12: "Twelve", 24: "TwentyFour", 32: "ThirtyTwo"}
+# The full grid the previous sweep used. The first draft of this script took a
+# subset -- 1, 4, 12, 24, 32 -- for no recorded reason, and the point it left
+# out was bs=16, which is exactly where the old records claimed the peak 1.14x.
+# A grid that skips the comparison's strongest point is not a re-measurement.
+BATCHES = [1, 2, 4, 8, 12, 16, 24, 32]
+WORD = {1: "One", 2: "Two", 4: "Four", 8: "Eight", 12: "Twelve", 16: "Sixteen",
+        24: "TwentyFour", 32: "ThirtyTwo"}
 
 
 def record(bs, arm):
