@@ -124,6 +124,8 @@ def stream_out(results, job):
     shape = f"{n_in // 1024}k-{n_out}" + (f"-x{n_req}" if n_req > 1 else "")
     if conc > 1:
         shape += f"-c{conc}"
+    if a.get("rep"):
+        shape += f"-r{int(a['rep'])}"
     tag = "_stats" if str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1" else ""
     if job.get("server_args"):
         tag += "_" + job["id"]

@@ -157,6 +157,11 @@ def run_client(job, port):
         shape = f"{n_in // 1024}k-{n_out}" + (f"-x{n_req}" if n_req > 1 else "")
         if conc > 1:
             shape += f"-c{conc}"
+        # A repeat of an identical point, for the only thing repeats are for:
+        # knowing what one measurement's spread is before reading structure
+        # into a difference between two of them.
+        if args.get("rep"):
+            shape += f"-r{int(args['rep'])}"
         out_jsonl = os.path.join(RESULTS, f"latency_stream_{shape}_{arm}{tag}.jsonl")
         cmd = [PY, "-m", "sglang.benchmark.serving", "--backend", "sglang", "--model", MODEL,
                # num_prompts > 1 makes this a controlled comparison against a
