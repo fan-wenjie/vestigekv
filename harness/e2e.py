@@ -393,6 +393,9 @@ def make_op(name, m, frac=0.25):
         assert thr is not None and sc is not None, "ABORT kvzip: no scoring pass"
         keep = sc[:C.shape[0]] > thr
         keep[:4] = True                     # sinks, as in the authors' cat()
+        if STATE.get("kvzip_debug"):
+            STATE.setdefault("kvzip_kept", []).append(
+                (int(keep.sum()), int(C.shape[0])))
         return C, keep
     table["kvzip"] = kvzip
     def digk64(C):
@@ -444,6 +447,36 @@ def make_op(name, m, frac=0.25):
     return table[name]
 
 
+def kvzip_position_scores(qe, keys, scale, n_ctx, q0):
+    """KVzip's per-position importance, extracted so a test can compare it with
+    the authors' attention/score.py::_get_score on the same tensors.
+
+    qe    [H, nq, D]  repeat-pass queries (absorbed, for MLA)
+    keys  [K, D]      every key the softmax normalises over: the context, then
+                      the repeat window -- what the authors' cat() builds
+    n_ctx             how many leading keys are the context being scored
+    q0                position of the first query, so the window masks causally
+
+    Returns [n_ctx]: the maximum weight any query gives each context position.
+    The authors keep one score per KV head; an MLA row is one latent shared by
+    every head, so the head axis is reduced here with the same amax they apply
+    over (group, query).
+    """
+    neg = torch.finfo(torch.float32).min
+    nq = qe.shape[1]
+    best = torch.full((n_ctx,), neg, device=keys.device)
+    for i0 in range(0, nq, 128):
+        j0 = min(i0 + 128, nq)
+        w = torch.einsum("hqc,tc->hqt", qe[:, i0:j0], keys) * scale
+        qpos = torch.arange(q0 + i0, q0 + j0, device=keys.device)
+        kpos = torch.arange(keys.shape[0], device=keys.device)
+        w = w.masked_fill(kpos[None, None, :] > qpos[None, :, None], neg)
+        w = torch.softmax(w, -1)[..., :n_ctx]
+        best = torch.maximum(best, w.amax(dim=(0, 1)))
+        del w
+    return best
+
+
 def patched_forward(self, hidden_states, attention_mask=None, past_key_values=None, **kw):
     b, s = hidden_states.shape[:-1]
     qs = self.q_proj(hidden_states).view(b, s, -1, self.q_head_dim).transpose(1, 2)
@@ -482,20 +515,7 @@ def patched_forward(self, hidden_states, attention_mask=None, past_key_values=No
         C_ = torch.cat([c, k_rot], -1)[0].float()          # (s, 576) all keys
         qe_ = torch.cat([torch.einsum('hsd,hdc->hsc', q_pass[0, :, q0:].float(),
                                       Wb_.float()), q_rot[0, :, q0:].float()], -1)
-        nq = qe_.shape[1]
-        neg = torch.finfo(torch.float32).min
-        best = torch.full((Tc,), neg, device=C_.device)
-        for i0 in range(0, nq, 128):
-            j0 = min(i0 + 128, nq)
-            # keys: the whole context [0,Tc) plus the repeat window itself,
-            # so the softmax normalises over what the authors' cat() builds.
-            w = torch.einsum('hqc,tc->hqt', qe_[:, i0:j0], C_) * sc_
-            qpos = torch.arange(q0 + i0, q0 + j0, device=C_.device)
-            kpos = torch.arange(C_.shape[0], device=C_.device)
-            w = w.masked_fill(kpos[None, None, :] > qpos[None, :, None], neg)
-            w = torch.softmax(w, -1)[..., :Tc]
-            best = torch.maximum(best, w.amax(dim=(0, 1)))
-            del w
+        best = kvzip_position_scores(qe_, C_, sc_, Tc, q0)
         acc = STATE.setdefault("imp_kvzip", {})
         prev = acc.get(self.layer_idx)
         acc[self.layer_idx] = best if prev is None else torch.maximum(prev, best)
@@ -996,6 +1016,7 @@ def main():
             if any(nm.split("@")[0] == "kvzip" for _, _, nm, _, _ in chunk):
                 assert len(chunk) == 1, "ABORT kvzip needs batch 1: one threshold per run"
                 kvzip_threshold(chunk[0][0])
+                STATE["kvzip_debug"] = True; STATE["kvzip_kept"] = []
             nb = len(chunk)
             idsB = ids.expand(nb, -1).contiguous() if nb > 1 else ids
             opsB = [make_op(bo, m, fr) for _, m, _, bo, fr in chunk]
@@ -1003,6 +1024,11 @@ def main():
                        lambda x: (nll_of_answer_batched(model, x, ans_start)
                                   if nb > 1 else
                                   [nll_of_answer(model, x, ans_start)]))
+            if STATE.get("kvzip_kept"):
+                kk = STATE["kvzip_kept"]; tot = sum(a for a, _ in kk); rows = sum(b for _, b in kk)
+                print(f"[kvzip] rho={chunk[0][0]:.4f} kept {tot}/{rows} = {tot/rows:.4f} "
+                      f"over {len(kk)} layers", flush=True)
+                STATE["kvzip_kept"] = []
             for (rho, m, nm, _, _), v in zip(chunk, vals):
                 res.append(dict(kind="needle", trial=ti, rho=rho, m=m, op=nm,
                                 base=base, val=v, d=v - base,
