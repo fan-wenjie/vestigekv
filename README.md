@@ -1221,18 +1221,18 @@ differ, so a knob cannot be edited after the experiment is registered. To
 change an experiment, change it here first.
 
 ```json
-{"args":{"input_len":4096,"num_prompts":1,"output_len":520192},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"528384","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"paired512k-bs1-dense","probe":false}
-{"args":{"input_len":4096,"num_prompts":1,"output_len":520192},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"528384","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"paired512k-bs1-vestigekv","probe":false}
-{"args":{"concurrency":1,"input_len":65536,"num_prompts":1,"output_len":4096},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs1-dense","probe":false}
-{"args":{"concurrency":1,"input_len":65536,"num_prompts":1,"output_len":4096},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs1-vestigekv","probe":false}
-{"args":{"concurrency":4,"input_len":65536,"num_prompts":4,"output_len":4096},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs4-dense","probe":false}
-{"args":{"concurrency":4,"input_len":65536,"num_prompts":4,"output_len":4096},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs4-vestigekv","probe":false}
-{"args":{"concurrency":12,"input_len":65536,"num_prompts":12,"output_len":4096},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs12-dense","probe":false}
-{"args":{"concurrency":12,"input_len":65536,"num_prompts":12,"output_len":4096},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs12-vestigekv","probe":false}
-{"args":{"concurrency":24,"input_len":65536,"num_prompts":24,"output_len":4096},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs24-dense","probe":false}
-{"args":{"concurrency":24,"input_len":65536,"num_prompts":24,"output_len":4096},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs24-vestigekv","probe":false}
-{"args":{"concurrency":32,"input_len":65536,"num_prompts":32,"output_len":4096},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs32-dense","probe":false}
-{"args":{"concurrency":32,"input_len":65536,"num_prompts":32,"output_len":4096},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs32-vestigekv","probe":false}
+{"args":{"input_len":4096,"num_prompts":1,"output_len":520192,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"528384","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"paired512k-bs1-dense","probe":false}
+{"args":{"input_len":4096,"num_prompts":1,"output_len":520192,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"528384","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"paired512k-bs1-vestigekv","probe":false}
+{"args":{"concurrency":1,"input_len":65536,"num_prompts":1,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs1-dense","probe":false}
+{"args":{"concurrency":1,"input_len":65536,"num_prompts":1,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs1-vestigekv","probe":false}
+{"args":{"concurrency":4,"input_len":65536,"num_prompts":4,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs4-dense","probe":false}
+{"args":{"concurrency":4,"input_len":65536,"num_prompts":4,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs4-vestigekv","probe":false}
+{"args":{"concurrency":12,"input_len":65536,"num_prompts":12,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs12-dense","probe":false}
+{"args":{"concurrency":12,"input_len":65536,"num_prompts":12,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs12-vestigekv","probe":false}
+{"args":{"concurrency":24,"input_len":65536,"num_prompts":24,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs24-dense","probe":false}
+{"args":{"concurrency":24,"input_len":65536,"num_prompts":24,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs24-vestigekv","probe":false}
+{"args":{"concurrency":32,"input_len":65536,"num_prompts":32,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs32-dense","probe":false}
+{"args":{"concurrency":32,"input_len":65536,"num_prompts":32,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs32-vestigekv","probe":false}
 ```
 
 ```bash

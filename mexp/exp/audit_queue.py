@@ -21,8 +21,10 @@ one of them corresponds to a mistake this project has actually made:
                     variable, and the env IS the control.
   real arm script   an `arm` with no launcher; the runner would fail after
                     loading the model.
-  declared seed     a client that takes --seed and a job that does not set it.
-                    A default is not a declaration.
+  declared seed     a client that takes --seed and a job that does not set it,
+                    or one that sets a value other than the line's. A default
+                    is not a declaration: it is upstream's choice, silently,
+                    for as long as upstream keeps it.
   known client      a client the runner does not implement -- it would skip
                     the job and mark it done.
   registered        a job whose launch is not written in README.md verbatim.
@@ -58,7 +60,12 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UNIFIED = os.path.join(ROOT, "engine")
 CLIENTS = {"ruler", "stream", "needle", "gsm8k", "replay", "continue"}
-SEEDED = {"ruler"}  # clients whose runner call takes --seed
+SEEDED = {"ruler", "stream"}  # clients whose runner call takes --seed
+# One seed for every run on every line, and it is the first one: a paper that
+# reports seed 7 has to answer what seeds 0 through 6 did, and the honest answer
+# -- nothing, we never ran them -- is not available to a reader. Seed 0 costs
+# nothing and removes the question.
+SEED = 0
 
 
 REGISTRY = "<!-- registered launches: audited verbatim against mexp/*/queue.jsonl -->"
@@ -175,7 +182,12 @@ def main():
             bad(j, "performance line with RADIX=on; the line runs radix off (see "
                    "mexp/exp/latency-pair-512k.sh, RADIX POLICY)")
         if j.get("client") in SEEDED and "seed" not in j.get("args", {}):
-            bad(j, "takes --seed but the job does not set one; a default is not a declaration")
+            bad(j, "takes --seed but the job does not set one; a default is not a "
+                   "declaration, and upstream's is 42 only for as long as upstream "
+                   "keeps it")
+        if j.get("args", {}).get("seed", SEED) != SEED:
+            bad(j, f"declares seed {j['args']['seed']}; this line runs seed {SEED} so "
+                   "any two of its records are comparable")
         out = None
         if j.get("client") == "stream":
             out = stream_out(results, j)

@@ -166,6 +166,11 @@ def run_client(job, port):
                "--random-input-len", str(args.get("input_len", 4096)), "--random-output-len", str(n_out),
                "--random-range-ratio", "1", "--max-concurrency", str(conc), "--warmup-requests", "0",
                "--output-details", "--output-file", out_jsonl]
+        # The client seeds random and np.random from --seed, default 42. The
+        # default makes a run reproducible only for as long as upstream keeps
+        # it, and a record that does not name its seed cannot say which it got.
+        if "seed" in args:
+            cmd += ["--seed", str(args["seed"])]
         out = os.path.join(RESULTS, f"stream_{arm}_{job['id']}.log")
     elif client == "continue":
         # Continue a real novel: the natural-text column of the 2x2 against the
