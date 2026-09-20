@@ -44,7 +44,18 @@ def load(line, arm, n, lengths):
     if os.path.exists(base + ".json"):
         return json.load(open(base + ".json"))
     tagged = sorted(glob.glob(base + "_*.json"))
-    return json.load(open(tagged[0])) if tagged else None
+    if not tagged:
+        return None
+    if len(tagged) > 1:
+        # Picking one alphabetically is how a partial sweep replaces the arm's
+        # full run without anything saying so: several of these tags are
+        # single-task or resumed runs, and they answer the same macro names.
+        raise SystemExit(
+            f"ABORT: {len(tagged)} tagged candidates for {arm} n={n}, and no "
+            "untagged run to prefer:\n  " + "\n  ".join(os.path.basename(t) for t in tagged)
+            + "\nName the one that is the arm's run by removing its tag.")
+    print(f"   note: {arm} n={n} read from {os.path.basename(tagged[0])} (tagged)")
+    return json.load(open(tagged[0]))
 
 
 def paired(line, n, lengths):

@@ -16,11 +16,12 @@ So: edit README.md, run this, run the audit, start the runner. A queue row
 that nobody wrote in the registry cannot survive an --write, and a registry
 entry nobody queued cannot be forgotten.
 
-WHAT IT REFUSES. Rewriting the queue under a live runner. The runner re-reads
-queue.jsonl between jobs and appends to queue_state.jsonl continuously; a
-rewrite while it holds those is how this project lost its queue state once
-already, and how a job that is mid-flight becomes a job the queue no longer
-admits to having started.
+WHAT IT REFUSES. Editing the queue out from under a live runner. Adding rows
+while one runs is supported and normal -- it re-reads the file between jobs,
+and the write here is atomic, so it sees either the old file or the new one.
+Removing or editing a row is not: that is how a job in flight becomes a job
+the queue no longer admits to having started, and how this project lost its
+queue state once already.
 """
 from __future__ import annotations
 
@@ -88,11 +89,13 @@ def main():
             f"ABORT: {sorted(stuck)} started and has not finished. Let it finish or "
             "record it as abandoned in queue_state.jsonl first -- a job cannot be "
             "edited out from under the runner that is running it.")
+    if a.write and live and (removed or changed):
+        raise SystemExit(
+            f"ABORT: the runner is mid-job on {sorted(live)} and this write is not "
+            "purely additive. Adding rows under a live runner is the supported "
+            "pattern -- it re-reads the file between jobs -- but removing or "
+            "editing one is not.")
     if a.write:
-        if live:
-            raise SystemExit(
-                f"ABORT: the runner is mid-job on {sorted(live)}. It re-reads this "
-                "file between jobs; rewrite it when the GPU is idle.")
         tmp = queue + ".tmp"
         with open(tmp, "w") as f:
             for r in rows:

@@ -55,11 +55,21 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UNIFIED = os.path.join(ROOT, "engine")
-CLIENTS = {"ruler", "stream", "needle", "gsm8k", "replay", "continue"}
+def _runner_clients():
+    """The clients the runner implements, read from the runner.
+
+    A hand-kept list drifts: this one was missing longbench2 and profile, so
+    two jobs the runner runs fine would have been refused as unimplemented."""
+    src = open(os.path.join(ROOT, "mexp", "glm53", "queue_runner.py")).read()
+    return set(re.findall(r'client == "(\w+)"', src))
+
+
+CLIENTS = _runner_clients()
 SEEDED = {"ruler", "stream"}  # clients whose runner call takes --seed
 # One seed for every run on every line, and it is the first one: a paper that
 # reports seed 7 has to answer what seeds 0 through 6 did, and the honest answer
@@ -178,9 +188,10 @@ def main():
                    f"bs={env['MAX_REQS']}; every other job on every line sets them "
                    "equal, and the surplus lane is dispatch VestigeKV's per-step "
                    "kernels pay and the dense path does not")
-        if j.get("client") == "stream" and str(env.get("RADIX", "")).lower() == "on":
-            bad(j, "performance line with RADIX=on; the line runs radix off (see "
-                   "mexp/exp/latency-pair-512k.sh, RADIX POLICY)")
+        if str(env.get("RADIX", "")).lower() == "on":
+            bad(j, "RADIX=on; every line runs radix off (see the RADIX POLICY block "
+                   "in mexp/exp/latency-pair-512k.sh). The paper states it as a "
+                   "property of all of them, so one job with it on makes that false")
         if j.get("client") in SEEDED and "seed" not in j.get("args", {}):
             bad(j, "takes --seed but the job does not set one; a default is not a "
                    "declaration, and upstream's is 42 only for as long as upstream "

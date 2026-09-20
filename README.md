@@ -1244,6 +1244,24 @@ change an experiment, change it here first.
 {"args":{"concurrency":24,"input_len":65536,"num_prompts":24,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs24-vestigekv","probe":false}
 {"args":{"concurrency":32,"input_len":65536,"num_prompts":32,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs32-dense","probe":false}
 {"args":{"concurrency":32,"input_len":65536,"num_prompts":32,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tput32-bs32-vestigekv","probe":false}
+{"args":{"n":50,"seed":0},"arm":"baseline","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4"},"id":"rulern50-baseline","probe":false}
+{"args":{"n":50,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4"},"id":"rulern50-vestigekv","probe":false}
+{"args":{"n":50,"seed":0,"tasks":"niah_multikey_2,niah_multikey_3,ruler_qa_hotpot,ruler_qa_squad,niah_single_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4"},"id":"fbablate-on","probe":false}
+{"args":{"n":50,"seed":0,"tasks":"niah_multikey_2,niah_multikey_3,ruler_qa_hotpot,ruler_qa_squad,niah_single_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","SGLANG_DEBUG_VESTIGEKV_NO_OVERFLOW_FALLBACK":"1"},"id":"fbablate-off","probe":false}
+{"args":{"lengths":"131072,262144","n":5,"seed":0},"arm":"baseline","client":"ruler","env":{"CHUNK":"4096","CTX":"1064960","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2"},"id":"rulerlong-baseline","probe":false}
+{"args":{"lengths":"131072,262144","n":5,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"1064960","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2"},"id":"rulerlong-vestigekv","probe":false}
+{"args":{"n":1209,"shots":64},"arm":"baseline","client":"gsm8k","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"gsm8k-baseline","probe":false}
+{"args":{"n":1209,"shots":64},"arm":"vestigekv","client":"gsm8k","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"gsm8k-vestigekv","probe":false}
+{"args":{"reps":330},"arm":"baseline","client":"needle","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4"},"id":"needle-baseline","probe":false}
+{"args":{"reps":330},"arm":"vestigekv","client":"needle","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4"},"id":"needle-vestigekv","probe":false}
+{"args":{"max_tokens":1024},"arm":"baseline","client":"longbench2","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"lb2-baseline","probe":false}
+{"args":{"max_tokens":1024},"arm":"vestigekv","client":"longbench2","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"lb2-vestigekv","probe":false}
+{"args":{"input_len":65536,"num_prompts":8,"output_len":4096},"arm":"baseline","client":"continue","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"litspeed64k-baseline","probe":false}
+{"args":{"input_len":65536,"num_prompts":8,"output_len":4096},"arm":"vestigekv","client":"continue","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"litspeed64k-vestigekv","probe":false}
+{"args":{"input_len":131072,"num_prompts":6,"output_len":4096},"arm":"baseline","client":"continue","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"litspeed128k-baseline","probe":false}
+{"args":{"input_len":131072,"num_prompts":6,"output_len":4096},"arm":"vestigekv","client":"continue","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"litspeed128k-vestigekv","probe":false}
+{"args":{"input_len":262144,"num_prompts":4,"output_len":4096},"arm":"baseline","client":"continue","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"litspeed256k-baseline","probe":false}
+{"args":{"input_len":262144,"num_prompts":4,"output_len":4096},"arm":"vestigekv","client":"continue","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"litspeed256k-vestigekv","probe":false}
 ```
 
 ```bash
