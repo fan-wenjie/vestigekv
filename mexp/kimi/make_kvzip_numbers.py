@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import math
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -39,6 +40,14 @@ RATIO = {2: "Two", 4: "Four", 8: "Eight", 32: "ThirtyTwo", 128: "OTE"}
 # about a bandwidth nobody deploys, which is a target and not a result. Its
 # rows stay on disk and are ignored here by omission.
 OPS = {"kvzip": "Kvzip", "twotier": "Vk", "dig_r64": "Sel"}
+
+
+def wilson(k, n, z=1.96):
+    """Wilson score interval, which is what the paper's other rates print."""
+    p = k / n
+    c = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    return max(0.0, c - half), min(1.0, c + half)
 
 
 def main():
@@ -96,6 +105,23 @@ def main():
                  f"{{{sum(x < 1 for x in v) / len(v):.2f}}}")
     if len(n_trials) == 1:
         L.append(f"\\newcommand{{\\kvzTrials}}{{{n_trials.pop()}}}")
+    # The abstract's headline -- "the two tiers together recover every needle
+    # trial at 32x and 128x" -- was a hand-maintained value pointing at
+    # twotier_8192.json, a record in no surviving tree. The same quantity is
+    # in this run: same op, same length, same 24 trials. Emitting it here
+    # makes the paper's most-read number one a reader can re-derive, which is
+    # the whole point of the exercise.
+    for ratio, suffix in ((32, "ThirtyTwo"), (128, "OTE")):
+        v = agg.get((ratio, "twotier"))
+        if v:
+            L.append(f"\\newcommand{{\\ttx{suffix}}}"
+                     f"{{{sum(x < 1 for x in v) / len(v):.2f}}}")
+    v = agg.get((32, "twotier"))
+    if v:
+        k, n = sum(x < 1 for x in v), len(v)
+        lo, hi = wilson(k, n)
+        L.append(f"\\newcommand{{\\wciTT}}{{{k}/{n}\\,[{lo:.2f},{hi:.2f}]}}")
+
     open(args.out, "w").write("\n".join(L) + "\n")
     print(f"wrote {args.out}: {len(L) - 1} macros over {len(agg)} cells")
     return 0
