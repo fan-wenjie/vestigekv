@@ -16,8 +16,18 @@ This script reads the paired run instead: one script, one sitting, both arms
 identical apart from the backend, both logs shipped. The ratio it produces is
 lower than the hand-maintained one and it is the number the paper prints.
 
-THE METRIC. The server's own `gen throughput (token/s)` lines, median over a
-+/-2k-token window around each context. The client-side ITL is not the metric
+THE METRIC. The time to decode a 4096-token bucket, divided by 4096. Each
+`gen throughput (token/s)` line covers the 40 tokens since the previous one,
+so 40/throughput is that interval's duration and the bucket's total is their
+sum: every millisecond the server spent is inside it.
+
+It used to be the median of those lines instead, and the median is not a cost
+-- it is a cost with the expensive steps removed. That matters here in one
+direction only. Dense decode has no periodic work and its tail is flat (p50
+7.115, max 7.130 ms at 509k); VestigeKV closes a block and rebuilds an index
+every 4096 tokens, and its tail is not (p50 4.119, max 4.548 at 64k). A
+summary that drops the tail drops our own periodic cost and nobody else's,
+which is the one accusation a speed claim cannot answer. The client-side ITL is not the metric
 here and the reason is in stream_itl_is_trustworthy(): past ~64k tokens the
 per-token SSE cost can put the client behind the server, and the contamination
 penalises whichever arm decodes faster.
@@ -38,7 +48,6 @@ from __future__ import annotations
 import argparse
 import os
 import re
-import statistics
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RESULTS = os.path.join(ROOT, "results", "kimi")
@@ -58,7 +67,7 @@ def read(path):
     for line in open(path, errors="ignore"):
         m = LINE.search(line)
         if m and float(m.group(2)) > 0:
-            rows.append((int(m.group(1)), 1000.0 / float(m.group(2))))
+            rows.append((int(m.group(1)), float(m.group(2))))
     if not rows:
         raise SystemExit(f"ABORT: no gen-throughput lines in {path}")
     return rows
@@ -83,14 +92,29 @@ def control_check(paths):
     return a
 
 
-def window(rows, ctx):
-    w = [ms for n, ms in rows if abs(n - ctx) <= HALFWIDTH]
-    return statistics.median(w) if w else None
+def log_step(rows):
+    """Tokens between the server's decode log lines, read off the log.
+
+    Hardcoding it would be a silent scale error the day the interval changes:
+    it is how many tokens each reported throughput covers, so a wrong value
+    rescales every duration and the curve still looks entirely reasonable.
+    """
+    gaps = {b - a for (a, _), (b, _) in zip(rows, rows[1:]) if b > a}
+    if len(gaps) != 1:
+        raise SystemExit(f"ABORT: decode log lines are not evenly spaced: {sorted(gaps)[:5]}")
+    return gaps.pop()
 
 
-def slope(rows, lo, hi):
+def window(rows, ctx, step):
+    """Milliseconds per token over the 4096-token bucket centred on ctx: the
+    bucket's total decode time divided by the tokens it decoded."""
+    secs = [step / tput for n, tput in rows if ctx - HALFWIDTH < n <= ctx + HALFWIDTH]
+    return 1000.0 * sum(secs) / (step * len(secs)) if secs else None
+
+
+def slope(rows, lo, hi, step):
     """ns per decoded step per cached token, over the span the figure plots."""
-    a, b = window(rows, lo), window(rows, hi)
+    a, b = window(rows, lo, step), window(rows, hi, step)
     return (b - a) * 1e6 / (hi - lo)
 
 
@@ -105,6 +129,10 @@ def main():
             raise SystemExit(f"ABORT: missing server log {p}")
     knobs = control_check(paths)
     arms = {arm: read(p) for arm, p in paths.items()}
+    steps = {arm: log_step(rows) for arm, rows in arms.items()}
+    if len(set(steps.values())) != 1:
+        raise SystemExit(f"ABORT: the arms logged at different intervals: {steps}")
+    step = next(iter(steps.values()))
 
     # The rightmost point is not a constant: it is the last context the +/-2k
     # median rule fully covers. The previous one, 507904, was inherited from a
@@ -117,7 +145,7 @@ def main():
     grid = [8192, 16384, 20480, 24576, 28672, 32768, 65536, 131072, 262144, top]
     table = []
     for ctx in grid:
-        d, v = window(arms["dense"], ctx), window(arms["vestigekv"], ctx)
+        d, v = window(arms["dense"], ctx, step), window(arms["vestigekv"], ctx, step)
         if d and v:
             table.append((ctx, d, v, d / v))
 
@@ -127,8 +155,8 @@ def main():
     cross = next((c for c, _, _, r in table if r >= 1.0), None)
     at256 = next(r for c, _, _, r in table if c == 262144)
     at508 = next(r for c, _, _, r in table if c == top)
-    sl_v = slope(arms["vestigekv"], 8192, top)
-    sl_d = slope(arms["dense"], 8192, top)
+    sl_v = slope(arms["vestigekv"], 8192, top, step)
+    sl_d = slope(arms["dense"], 8192, top, step)
 
     # The memory-time product divides cache growth by this same speedup, so it
     # is not a separate measurement and must not be a separately kept number:
@@ -139,6 +167,7 @@ def main():
     memtime = growth / at508
 
     print(f"launch knobs shared by both arms: {knobs}")
+    print(f"decode log interval: {step} tokens")
     print(f"{'ctx':>6} {'dense ms':>9} {'vk ms':>8} {'ratio':>7}")
     for c, d, v, r in table:
         print(f"{c // 1024:>5}k {d:>9.3f} {v:>8.3f} {r:>7.3f}")
