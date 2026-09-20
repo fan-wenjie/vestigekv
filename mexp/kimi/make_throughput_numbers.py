@@ -50,7 +50,10 @@ OUT = os.path.join(PAPER, "serving_numbers.tex")
 BATCHES = [1, 2, 4, 8, 12, 16, 24, 32]
 WORD = {1: "One", 2: "Two", 4: "Four", 8: "Eight", 12: "Twelve", 16: "Sixteen",
         24: "TwentyFour", 32: "ThirtyTwo"}
-CONTEXTS = {65536: ("SixtyFour", "tput32"), 131072: ("OneTwentyEight", "tput128k")}
+# The job-id prefixes of the timed, serial-round sweep. The superseded
+# tput32/tput128k runs are quarantined, not read: their windows were 18-45s
+# and their batches were not the batches they claimed.
+CONTEXTS = {65536: ("SixtyFour", "tputA"), 131072: ("OneTwentyEight", "tputB")}
 ARMS = {"baseline": "dense", "vestigekv": "vestigekv"}
 # 40 decode-log lines is 1600 forward steps: long enough that a rate is a rate
 # and not a moment, short enough that a genuine plateau is not thrown away.
@@ -97,7 +100,13 @@ def plateaus(path):
                          int(m.group(1)), int(m.group(2)), float(m.group(3))))
     out, cur = [], []
     for row in rows + [None]:
-        if cur and (row is None or row[1] != cur[0][1]):
+        # A stretch ends when the concurrency changes OR when the pool shrinks.
+        # The second is what serial rounds look like from here: the round's
+        # requests are freed and the next round re-prefills, so #full token
+        # drops back. Without this the two rounds join into one stretch whose
+        # token count subtracts across the reset and whose span swallows the
+        # prefill between them -- 38 tok/s against a true 227.
+        if cur and (row is None or row[1] != cur[0][1] or row[2] < cur[-1][2]):
             seg = cur[1:]          # the first line of a stretch spans the change
             if len(seg) >= MIN_PLATEAU:
                 span = (seg[-1][0] - seg[0][0]).total_seconds()
