@@ -135,6 +135,17 @@ def main():
     if a.emit:
         open(OUT, "w").write("\n".join(lines) + "\n")
         print(f"wrote {OUT}")
+        # numbers.tex carries a hand-maintained \tputGainTwelve from the retired
+        # sweep. Two \newcommand of one name is not a stale value, it is a
+        # build failure -- and it would have arrived the moment this script
+        # first succeeded, which is the moment nobody is looking for one.
+        nums = os.path.join(PAPER, "numbers.tex")
+        text = open(nums).read()
+        kept = [l for l in text.splitlines()
+                if not re.match(r"\\newcommand\{\\tputGainTwelve\}", l.strip())]
+        if len(kept) != len(text.splitlines()):
+            open(nums, "w").write("\n".join(kept) + "\n")
+            print(f"removed the hand-maintained \\tputGainTwelve from numbers.tex")
     return 0
 
 
