@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import datetime
 import os
 import re
 
@@ -61,6 +62,7 @@ LOGS = {
 }
 HALFWIDTH = 2048
 LINE = re.compile(r"#full token:\s*(\d+).*?gen throughput \(token/s\):\s*([\d.]+)")
+STAMP = re.compile(r"^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)")
 
 
 def read(path):
@@ -107,6 +109,38 @@ def control_check(paths):
             "ABORT: the two arms were not launched alike, so the ratio would "
             f"measure the launch and not the backend: {differing}")
     return a
+
+
+def check_clock(path, rows, step):
+    """The server's reported rates must add up to the run's wall clock.
+
+    Each bucket here spans 4096 tokens, about 17 seconds at bs=1, and the log
+    stamps whole seconds -- so differencing stamps per bucket would carry 12%
+    of quantisation and the per-line reported rate is the only usable timer at
+    that granularity. That rate is the server's own, though, and the
+    throughput reducer stopped trusting an unchecked one for good reason.
+
+    It is checkable over the whole run instead, where the same stamps are
+    worth 0.08%: the interval durations the rates imply must sum to the
+    elapsed time between the first and last decode line.
+    """
+    stamps = []
+    for line in open(path, errors="ignore"):
+        m, t = LINE.search(line), STAMP.search(line)
+        if m and t and float(m.group(2)) > 0:
+            stamps.append(datetime.datetime.strptime(t.group(1), "%Y-%m-%d %H:%M:%S"))
+    if len(stamps) < 2:
+        return
+    elapsed = (stamps[-1] - stamps[0]).total_seconds()
+    implied = sum(step / tput for _, tput in rows)
+    if abs(implied - elapsed) > 0.01 * elapsed:
+        raise SystemExit(
+            f"ABORT: {os.path.basename(path)} reports rates that imply "
+            f"{implied:.0f}s of decoding over an elapsed {elapsed:.0f}s; one of "
+            "them is not measuring what it says")
+    print(f"   clock check {os.path.basename(path)[:44]:46s} "
+          f"implied {implied:.0f}s vs elapsed {elapsed:.0f}s "
+          f"({100 * abs(implied - elapsed) / elapsed:.2f}%)")
 
 
 def check_even(rows):
@@ -161,7 +195,9 @@ def main():
     steps = {arm: check_even(rows) for arm, rows in arms.items()}
     if len(set(steps.values())) != 1:
         raise SystemExit(f"ABORT: the arms logged at different intervals: {steps}")
-    step = next(iter(steps.values()))  # reported, not used: it cancels
+    step = next(iter(steps.values()))  # reported, not used in the mean: it cancels
+    for arm, rows in arms.items():
+        check_clock(paths[arm], rows, step)
 
     # The rightmost point is the end of the stream, derived rather than
     # chosen: the last logged context rounded up to the kilo-token it is

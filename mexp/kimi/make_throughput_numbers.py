@@ -37,6 +37,7 @@ and means nothing.
 from __future__ import annotations
 
 import argparse
+import datetime
 import os
 import re
 import statistics
@@ -53,33 +54,72 @@ CONTEXTS = {65536: ("SixtyFour", "tput32"), 131072: ("OneTwentyEight", "tput128k
 ARMS = {"baseline": "dense", "vestigekv": "vestigekv"}
 # 40 decode-log lines is 1600 forward steps: long enough that a rate is a rate
 # and not a moment, short enough that a genuine plateau is not thrown away.
+# The window's DURATION is what bounds the error, though, not its line count:
+# see plateau() on the one-second stamps, and the sweep's output lengths, which
+# are chosen so every point measures a comparable stretch of wall clock.
 MIN_PLATEAU = 40
+# And a floor on the window's DURATION, which is what actually bounds the
+# error. The log stamps whole seconds, so a window of W seconds carries about
+# 2/W of quantisation no matter how many lines it holds: at bs=1 the first
+# sweep's plateau lasted 18 seconds and the counted and reported rates
+# disagreed by 6%, which is the quantisation and not the machine. 120 seconds
+# puts that under 2%, and the sweep's output lengths are chosen per point to
+# reach it -- that is what makes two points comparable.
+MIN_SPAN_S = 120
 
-DECODE = re.compile(r"#running-req:\s*(\d+).*?gen throughput \(token/s\):\s*([\d.]+)")
+DECODE = re.compile(r"#running-req:\s*(\d+).*?#full token:\s*(\d+)"
+                    r".*?gen throughput \(token/s\):\s*([\d.]+)")
+STAMP = re.compile(r"^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)")
 
 
 def plateau(path, bs):
-    """(tokens/s, lines) over the longest run with exactly `bs` requests live."""
+    """Tokens generated per second while exactly `bs` requests were live.
+
+    Counted the direct way: how many tokens entered the pool over how much
+    wall clock. `#full token` is the pool's occupancy and during pure decode
+    it grows by one token per live request per step, so its increase over a
+    window IS the tokens that window generated. Nothing here trusts a rate the
+    server computed for itself.
+
+    That rate is still read, as a cross-check. The two agree to 0.15-2.9% on
+    the runs measured so far, and where they disagree most the window is
+    shortest -- the log stamps whole seconds, so a 18-second window carries
+    5% of quantisation on its own. The tolerance below is that quantisation,
+    not a fudge factor: two seconds of stamp error over the window's length.
+    """
     rows = []
     for line in open(path, errors="ignore"):
         if "Decode batch" not in line:
             continue
-        m = DECODE.search(line)
-        if m:
-            rows.append((int(m.group(1)), float(m.group(2))))
+        m, t = DECODE.search(line), STAMP.search(line)
+        if m and t:
+            rows.append((datetime.datetime.strptime(t.group(1), "%Y-%m-%d %H:%M:%S"),
+                         int(m.group(1)), int(m.group(2)), float(m.group(3))))
     best, cur = [], []
-    for live, tput in rows:
-        if live == bs and tput > 0:
-            cur.append(tput)
+    for row in rows:
+        if row[1] == bs and row[3] > 0:
+            cur.append(row)
         else:
             best, cur = (cur if len(cur) > len(best) else best), []
     best = cur if len(cur) > len(best) else best
     if len(best) < MIN_PLATEAU:
-        seen = sorted({live for live, _ in rows})
+        seen = sorted({live for _, live, _, _ in rows})
         return None, f"no run of {MIN_PLATEAU}+ decode lines at {bs} live (saw {seen})"
     # drop the plateau's first line: its interval starts before the batch
     # reached this width, so it prices part of another regime
-    return statistics.fmean(best[1:]), len(best) - 1
+    seg = best[1:]
+    span = (seg[-1][0] - seg[0][0]).total_seconds()
+    if span < MIN_SPAN_S:
+        return None, (f"plateau lasted {span:.0f}s, under the {MIN_SPAN_S}s floor; "
+                      f"one-second stamps put {200 / max(span, 1):.0f}% of "
+                      "quantisation on a window that short")
+    counted = (seg[-1][2] - seg[0][2]) / span
+    reported = statistics.fmean(r[3] for r in seg)
+    tol = max(0.02, 2.0 / span)
+    if abs(counted - reported) > tol * reported:
+        return None, (f"tokens counted ({counted:.1f}/s) and the server's reported "
+                      f"rate ({reported:.1f}/s) differ by more than {100 * tol:.1f}%")
+    return counted, len(seg)
 
 
 def survey(reps=(None, 2, 3)):
