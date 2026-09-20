@@ -12,16 +12,13 @@ set -euo pipefail
 ROOT="$HOME/vestigekv"
 PY="/home/user/.conda/envs/sglang-dev/bin/python"
 
-# WHICH ENGINE TREE. The paper's numbers were taken on the frozen tree in
-# engine/ (branch vestigekv, upstream base 17ba2c2e7c). New experiments run on
-# ENGINE=$HOME/vestigekv-wt/engine-v0520 (branch vestigekv-v0520, rebased onto
-# upstream tag v0.5.20), which is the stable tag to build on from here.
-#
-# The trees are NOT interchangeable and a number from one must never be
-# compared against a number from the other without saying so -- the PAT review
-# already raised the frozen-vs-patched split as a concern, and this makes a
-# third tree. Every script states which tree it used; the default stays the
-# frozen one so nothing silently moves.
+# WHICH ENGINE TREE. There is one. engine/ is the submodule on branch
+# vestigekv-v0520-unified: upstream release tag v0.5.20 plus this project's
+# commits, which is what the paper cites and what a reader is assumed to hold
+# (the tag, plus one patch). The frozen tree and the research worktrees that
+# earlier measurements used are NOT interchangeable with it and are not used
+# here any more -- a number measured on one and printed beside a number
+# measured on another is the defect this project has already shipped once.
 ENGINE="${ENGINE:-$ROOT/engine}"
 [ -d "$ENGINE/python/sglang" ] || die_early "ENGINE has no python/sglang: $ENGINE"
 export PYTHONPATH="${PYTHONPATH:-}:$ENGINE/python"

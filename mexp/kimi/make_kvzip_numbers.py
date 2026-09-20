@@ -25,7 +25,8 @@ import os
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RUNS = ["results/harness_kvzip_inrange_8192.json",   # 2x, 4x, 8x
         "results/harness_kvzip_needle_8192.json",    # 32x, 128x
-        "results/harness_selector_k16_8192.json"]    # the tier-2-deleted arm
+        "results/harness_selector_k16_8192.json",    # the tier-2-deleted arm
+        "results/harness_random_floor_8192.json"]    # the floor the rest are read against
 # ratio -> macro suffix; ops -> macro infix.
 #
 # The tier-2-deleted arm reads `dig_r64`, NOT the `digk64` the first two runs
@@ -39,7 +40,7 @@ RATIO = {2: "Two", 4: "Four", 8: "Eight", 32: "ThirtyTwo", 128: "OTE"}
 # correct one; printing a kappa=64 arm beside it invites a reviewer to argue
 # about a bandwidth nobody deploys, which is a target and not a result. Its
 # rows stay on disk and are ignored here by omission.
-OPS = {"kvzip": "Kvzip", "twotier": "Vk", "dig_r64": "Sel"}
+OPS = {"kvzip": "Kvzip", "twotier": "Vk", "dig_r64": "Sel", "imp_random": "Rnd"}
 
 
 def wilson(k, n, z=1.96):
