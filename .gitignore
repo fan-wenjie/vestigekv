@@ -29,7 +29,8 @@ results/glm53/ruler_*.log
 results/glm53/gsm8k_*.log
 results/glm53/queue_runner.log
 results/kimi/server_*.log
-results/kimi/ruler/samples_*.json
+# any line: raw generations run to hundreds of MB
+results/*/ruler/samples_*.json
 results/kimi/*_*.log
 results/kimi/queue_runner.log
 results/kimi/debug/
