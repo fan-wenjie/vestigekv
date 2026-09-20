@@ -1215,9 +1215,20 @@ its own header.
 
 <!-- registered launches: audited verbatim against mexp/*/queue.jsonl -->
 
-Every pending job's launch, canonicalised. `mexp/exp/audit_queue.py` compares
-each line here against the row it is about to run and refuses the run if they
-differ, so a knob cannot be edited after the experiment is registered. To
+This block is the experiment set: the launches this paper needs run, written
+exactly as they run. `mexp/<line>/queue.jsonl` is derived from it, not
+maintained beside it --- two hand-kept copies is how they diverge:
+
+```
+python mexp/exp/init_queue.py --line kimi            # show the difference
+python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl
+python mexp/exp/audit_queue.py                       # nine refusals
+python mexp/glm53/queue_runner.py --line kimi        # run it
+```
+
+`init_queue.py` refuses to rewrite the queue under a live runner, and
+`audit_queue.py` compares each queued row against its line here character for
+character, so a knob edited after registration is refused rather than run. To
 change an experiment, change it here first.
 
 ```json
