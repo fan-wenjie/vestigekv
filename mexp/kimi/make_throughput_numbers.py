@@ -34,13 +34,19 @@ OUT = os.path.join(PAPER, "serving_numbers.tex")
 # out was bs=16, which is exactly where the old records claimed the peak 1.14x.
 # A grid that skips the comparison's strongest point is not a re-measurement.
 BATCHES = [1, 2, 4, 8, 12, 16, 24, 32]
+# Two contexts, not one. 64k is the weakest context this method has -- the bs=1
+# latency curve reads 1.052 there and 1.136 at 128k -- so a throughput panel
+# that stops at 64k understates it at the context the paper argues for. The
+# pair is also the only thing that shows the advantage growing with context at
+# FIXED batch, which a single-context sweep cannot say at all.
+CONTEXTS = {65536: ("SixtyFour", "tput32"), 131072: ("OneTwentyEight", "tput128k")}
 WORD = {1: "One", 2: "Two", 4: "Four", 8: "Eight", 12: "Twelve", 16: "Sixteen",
         24: "TwentyFour", 32: "ThirtyTwo"}
 
 
-def record(bs, arm):
-    """The client JSONL the runner writes for tput32-bs<N>-<arm>."""
-    shape = f"64k-4096" + (f"-x{bs}" if bs > 1 else "") + (f"-c{bs}" if bs > 1 else "")
+def record(ctx, bs, arm):
+    """The client JSONL the runner writes for this sweep point."""
+    shape = f"{ctx // 1024}k-4096" + (f"-x{bs}-c{bs}" if bs > 1 else "")
     return os.path.join(RESULTS, f"latency_stream_{shape}_{arm}.jsonl")
 
 
@@ -74,16 +80,18 @@ def throughput(path, bs):
 
 def survey():
     have, missing = {}, []
-    for bs in BATCHES:
-        pair = {}
-        for arm in ("baseline", "vestigekv"):
-            p = record(bs, arm)
-            if os.path.exists(p):
-                pair[arm] = throughput(p, bs)
-            else:
-                missing.append(os.path.relpath(p, ROOT))
-        if len(pair) == 2:
-            have[bs] = pair
+    for ctx in CONTEXTS:
+        have[ctx] = {}
+        for bs in BATCHES:
+            pair = {}
+            for arm in ("baseline", "vestigekv"):
+                p = record(ctx, bs, arm)
+                if os.path.exists(p):
+                    pair[arm] = throughput(p, bs)
+                else:
+                    missing.append(os.path.relpath(p, ROOT))
+            if len(pair) == 2:
+                have[ctx][bs] = pair
     return have, missing
 
 
@@ -94,9 +102,11 @@ def main():
     a = ap.parse_args()
 
     have, missing = survey()
-    for bs in sorted(have):
-        d, v = have[bs]["baseline"], have[bs]["vestigekv"]
-        print(f"  bs={bs:<3} dense {d:>8.1f}  vk {v:>8.1f}  {v / d:.3f}x")
+    for ctx in sorted(have):
+        print(f"  {ctx // 1024}k prefill:")
+        for bs in sorted(have[ctx]):
+            d, v = have[ctx][bs]["baseline"], have[ctx][bs]["vestigekv"]
+            print(f"    bs={bs:<3} dense {d:>8.1f}  vk {v:>8.1f}  {v / d:.3f}x")
 
     if missing:
         msg = ("the caption says the sweep is radix-off with graphs captured at "
@@ -113,15 +123,22 @@ def main():
              "% arms, GRAPH_BS=32=MAX_REQS at every point.",
              "% Decoded tokens per second with prefill excluded (bs / mean ITL);",
              "% ratios are vestigekv/dense."]
-    for bs in sorted(have):
-        d, v = have[bs]["baseline"], have[bs]["vestigekv"]
-        lines.append(f"\\newcommand{{\\srvBatch{WORD[bs]}}}{{{v / d:.2f}}}"
-                     f"  % bs={bs}: {v:.1f}/{d:.1f} tok/s")
-    gain = have[12]["vestigekv"] / have[12]["baseline"] - 1
-    lines.append(f"\\newcommand{{\\tputGainTwelve}}{{{gain * 100:.1f}\\%}}")
-    lines.append("\\newcommand{\\srvBatchList}{"
-                 + ", ".join(f"${have[b]['vestigekv'] / have[b]['baseline']:.2f}\\times$"
-                             for b in sorted(have)) + "}")
+    for ctx in sorted(have):
+        word = CONTEXTS[ctx][0]
+        for bs in sorted(have[ctx]):
+            d, v = have[ctx][bs]["baseline"], have[ctx][bs]["vestigekv"]
+            lines.append(f"\\newcommand{{\\srvBatch{word}{WORD[bs]}}}{{{v / d:.2f}}}"
+                         f"  % {ctx // 1024}k, bs={bs}: {v:.1f}/{d:.1f} tok/s")
+        g = have[ctx][12]["vestigekv"] / have[ctx][12]["baseline"] - 1
+        lines.append(f"\\newcommand{{\\tputGain{word}Twelve}}{{{g * 100:.1f}\\%}}")
+        lines.append(f"\\newcommand{{\\srvBatchList{word}}}{{"
+                     + ", ".join(f"${have[ctx][b]['vestigekv'] / have[ctx][b]['baseline']:.2f}\\times$"
+                                 for b in sorted(have[ctx])) + "}")
+    # the caption's existing name, kept pointing at the context the figure's
+    # right panel has always shown, so a rename is a deliberate edit and not a
+    # side effect of adding a second sweep
+    g64 = have[65536][12]["vestigekv"] / have[65536][12]["baseline"] - 1
+    lines.append(f"\\newcommand{{\\tputGainTwelve}}{{{g64 * 100:.1f}\\%}}")
 
     if a.check:
         cur = open(OUT).read()
