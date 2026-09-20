@@ -1143,7 +1143,23 @@ with the isolated target dir on PYTHONPATH (checkpoints as plain dirs, see
 `pip install --target=$HOME/.cache/vestigekv/tf457 transformers==4.57.1 "huggingface-hub<1.0" "kernels<=0.9,>=0.6.1"`
 `export PYTHONPATH=$HOME/.cache/vestigekv/tf457`
 
-### Experiments are scripts, not typed commands
+### Experiments are queue entries, not typed commands
+
+Serving experiments go in `mexp/<line>/queue.jsonl` and are run by
+`mexp/glm53/queue_runner.py --line <line>`, never launched by hand. Before the
+runner starts, `python mexp/exp/audit_queue.py` resolves each pending job to
+the command and output path it will actually produce and refuses on: a job
+pinned to any tree but `engine/` (the unified v0.5.20 one), an output file that
+already exists, paired arms whose env or args differ, an `arm` with no
+launcher, a client the runner does not implement, and a seeded client with no
+seed. Every one of those refusals was driven with known-bad input before the
+check was trusted.
+
+The queue is the record: `results/<line>/queue_state.jsonl` carries each job's
+status, wall time and log path, and a retired job keeps its entry with a
+`skip_reason` rather than being deleted.
+
+### Harness experiments are scripts, not typed commands
 
 `mexp/exp/` holds one shell script per registered experiment, and
 `bash mexp/exp/audit.sh` is run before any of them. The rule exists because
