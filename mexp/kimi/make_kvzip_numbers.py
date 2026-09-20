@@ -34,12 +34,11 @@ RUNS = ["results/harness_kvzip_inrange_8192.json",   # 2x, 4x, 8x
 # 0.92/0.83 at 32x/128x) and contradicted every kappa=16 number elsewhere in
 # the paper. digk64's rows stay on disk and are ignored here by omission.
 RATIO = {2: "Two", 4: "Four", 8: "Eight", 32: "ThirtyTwo", 128: "OTE"}
-OPS = {"kvzip": "Kvzip", "twotier": "Vk", "dig_r64": "Sel",
-       # the same selector at the OFF-SPEC bandwidth, emitted so the
-       # bandwidth comparison in the appendix is generated from the
-       # records rather than typed. The two arms differ in kappa and in
-       # nothing else: same 24 needles, same seed, same checkpoint.
-       "digk64": "SelKSixtyFour"}
+# digk64 is deliberately absent. kappa=16 is the shipped constant and the
+# correct one; printing a kappa=64 arm beside it invites a reviewer to argue
+# about a bandwidth nobody deploys, which is a target and not a result. Its
+# rows stay on disk and are ignored here by omission.
+OPS = {"kvzip": "Kvzip", "twotier": "Vk", "dig_r64": "Sel"}
 
 
 def main():

@@ -5,14 +5,16 @@ The review asks how much of the RULER accuracy is sustained by the dense
 fallback rather than by the sparse trigger. Three arms answer it, matched on
 seed, prompt count, lengths and tasks, differing in one flag and one env var:
 
-    fallback-on-control    the deployed algorithm (no flag)
-    trunc-prefix-nofb      --disable-vestigekv-recall-overflow-fallback
-    trunc-spread-nofb      the same, plus SGLANG_DEBUG_VESTIGEKV_SPREAD_TRUNCATE
+    fb-on           the deployed algorithm; nothing set
+    fb-off-prefix   SGLANG_DEBUG_VESTIGEKV_NO_OVERFLOW_FALLBACK=1
+    fb-off-spread   the same, plus SGLANG_DEBUG_VESTIGEKV_SPREAD_TRUNCATE=1
 
-The control is re-run rather than taken from the untagged file on disk: no
-surviving queue entry names that file's tree or flags, and pairing a matched
-pair with an unprovenanced third arm is the defect that cost this paper its
-RoPE table.
+All three are re-run by mexp/exp/ruler-fallback-ablation.sh rather than
+assembled from what was on disk. The earlier no-fallback pair went through a
+server flag that the release branch no longer has, and their only candidate
+control was untagged, with no surviving queue entry naming its tree or flags;
+pairing a matched pair with an unprovenanced third arm is the defect that
+cost this paper its RoPE table.
 
 What the numbers are for. Deleting the fallback is an ablation, not a cheaper
 configuration -- the admission rule is uncapped and the buffer is a graph
@@ -35,9 +37,7 @@ import os
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RULER = os.path.join(ROOT, "results", "kimi", "ruler")
 STEM = "results_vestigekv_n10_16384-32768-65536_%s.json"
-ARMS = [("fallback-on-control", "On"),
-        ("trunc-prefix-nofb", "Prefix"),
-        ("trunc-spread-nofb", "Spread")]
+ARMS = [("fb-on", "On"), ("fb-off-prefix", "Prefix"), ("fb-off-spread", "Spread")]
 LENGTHS = ("16384", "32768", "65536")
 
 
@@ -47,9 +47,10 @@ def cells(tag):
     if not os.path.exists(path):
         raise SystemExit(
             f"missing arm: {path}\n"
-            "The control is produced by mexp/exp/ruler-fallback-on-control.sh. "
-            "Do NOT substitute results_vestigekv_n10_16384-32768-65536.json: it "
-            "is untagged and no surviving queue entry names its tree or flags.")
+            "All three arms come from mexp/exp/ruler-fallback-ablation.sh. Do "
+            "NOT substitute the older trunc-*-nofb records or the untagged "
+            "file: those went through a server flag the release branch no "
+            "longer has, and the untagged one names no tree at all.")
     d = json.load(open(path))
     out = {}
     for task, row in d["results"].items():
