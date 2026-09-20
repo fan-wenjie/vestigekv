@@ -27,6 +27,14 @@
 # random control could not be re-derived from its own record. e2e.py now seeds
 # the global stream from --seed as well. That makes this run reproducible and
 # leaves every deterministic op unaffected.
+#
+# CONTROL:
+#   varies:  the selection rule only -- a uniform random draw where the other
+#            arms score. _imp adds no sinks and no recent window, so the
+#            budget is identical to theirs.
+#   fixed:   seed 0 (now including the global torch stream this op draws
+#            from); 24 needles; L=8192; the same five ratios; checkpoint
+#            Kimi-Linear-48B-A3B-Instruct; --gpu-expert-layers 18.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 

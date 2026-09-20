@@ -1155,6 +1155,32 @@ not mention. `_lib.sh` carries the guards: refuse to start while a server, the
 queue runner or another harness run holds the GPU; refuse to overwrite a record;
 refuse a model directory that is not a plain dir.
 
+**Control the variables, and say which.** Every defect this project has shipped
+in a comparison was a loose variable, never a wrong number: two arms of one
+table row running different operators (a drop policy against a half-budget
+merge); an arm measured at a detector bandwidth nobody deploys; a control whose
+engine tree no surviving record names; rows of one table at different trial
+counts. None of those is visible in the numbers afterwards, and all of them
+were decided before the run.
+
+So every script declares, and `audit.sh` refuses without it:
+
+```
+# CONTROL:
+#   varies:  the one thing this experiment changes between arms
+#   fixed:   seed, trial count, lengths, tasks, checkpoint, engine tree, and
+#            every launch knob -- named, not implied
+```
+
+Three rules follow from it. Arms that will be printed in one table run from
+**one script in one sitting**, because that is the only way to be sure they
+differ in what the script says they differ in. An arm measured on a different
+engine tree is a different experiment, and the tree is part of `fixed:`. And
+`--seed` is passed explicitly even where the runner defaults it, because a
+default is not a declaration -- the audit greps for it with comments stripped,
+having once been satisfied by a script whose only `--seed` was a sentence in
+its own header.
+
 | script | what it registers |
 |---|---|
 | `mexp/exp/kvzip-needle-8k.sh` | head-to-head against KVzip, the query-independent baseline the PAT review asked for three times, at 32x and 128x -- where THIS paper operates. Our transcription of the authors' scoring rule in our harness, at a matched budget |

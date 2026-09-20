@@ -33,6 +33,12 @@
 # also scans the archive index (260 B/row over (1-rho)T rows). VestigeKV reads
 # MORE per step at equal rho. That is the trade being made, and it should be
 # stated plainly rather than buried under a wall-clock number.
+#
+# CONTROL:
+#   varies:  the compression ratio (2x, 4x, 8x) against the companion script's
+#            32x and 128x. Same three operators, same everything else.
+#   fixed:   seed 0; 24 needles; L=8192; checkpoint
+#            Kimi-Linear-48B-A3B-Instruct; --gpu-expert-layers 18.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 

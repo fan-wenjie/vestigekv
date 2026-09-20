@@ -24,6 +24,12 @@
 # finding: the pooled numbers come from records no surviving tree can rebuild
 # (see mexp/kimi/make_selector_numbers.py), and this run, which is
 # reproducible, is what the paper should print.
+#
+# CONTROL:
+#   varies:  the detector bandwidth, kappa=16 against the kappa=64 the two
+#            scripts above ran. One constant, nothing else.
+#   fixed:   seed 0; 24 needles; L=8192; the same five ratios; checkpoint
+#            Kimi-Linear-48B-A3B-Instruct; --gpu-expert-layers 18.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 

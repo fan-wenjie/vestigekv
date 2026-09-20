@@ -33,17 +33,27 @@
 # measured the same thing, but through the server flag that no longer exists.
 # Re-run through the key so the records say what the paper says.
 #
-# HOW TO READ IT. Three tasks, three lengths, 10 prompts per cell, seed 0.
-# A cell moves by 0.1 at a time, so no single cell is evidence; the paired
-# count across all nine is what the comparison supports. This is not the n=50
-# grid the RULER table reports.
+# HOW TO READ IT. Three tasks, three lengths, 50 prompts per cell, seed 0 --
+# the same per-cell depth as the RULER table in the paper, so a cell here and
+# a cell there are the same kind of number. An earlier version of this ran at
+# n=10, where a cell moves by 0.1 at a time; that is not a comparison anyone
+# should have to caveat, so it is not what runs.
+#
+# CONTROL:
+#   varies:  the overflow fallback, and nothing else. Arm 3 additionally
+#            varies the truncation policy, which only exists once the
+#            fallback is already deleted.
+#   fixed:   seed 0; 50 prompts per cell; tasks niah_multikey_2,
+#            niah_multikey_3, ruler_qa_hotpot; lengths 16k/32k/65k;
+#            checkpoint Kimi-Linear-48B-A3B-Instruct; engine-fused; CTX,
+#            MAX_REQS, MAMBA_SLOTS, CHUNK, GRAPH_BS; one script, one sitting.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 
 MODEL="moonshotai/Kimi-Linear-48B-A3B-Instruct"
 TASKS="niah_multikey_2,niah_multikey_3,ruler_qa_hotpot"
 LENGTHS="16384,32768,65536"
-STEM="results/kimi/ruler/results_vestigekv_n10_16384-32768-65536"
+STEM="results/kimi/ruler/results_vestigekv_n50_16384-32768-65536"
 
 require_free_gpu
 for tag in fb-on fb-off-prefix fb-off-spread; do
@@ -81,8 +91,8 @@ run_arm() {  # tag, then any extra env assignments
   env OPENAI_API_KEY=dummy PYTHONPATH="$ROOT/engine/python" CUDA_VISIBLE_DEVICES="" \
     "$PY" mexp/glm53/run_ruler.py \
       --arm vestigekv --port 30000 --model "$MODEL" \
-      --n 10 --out "$ROOT/results/kimi/ruler" \
-      --lengths "$LENGTHS" --tasks "$TASKS" --tag "$tag" 2>&1 | tee "$cli"
+      --n 50 --out "$ROOT/results/kimi/ruler" \
+      --lengths "$LENGTHS" --tasks "$TASKS" --seed 0 --tag "$tag" 2>&1 | tee "$cli"
   kill -TERM $pid 2>/dev/null || true
   pkill -f "[s]glang.launch_server" || true
   sleep 20

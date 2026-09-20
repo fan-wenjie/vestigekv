@@ -35,6 +35,13 @@
 #  2. Their global cross-layer threshold (_threshold) is preserved exactly, so a
 #     layer's budget is whatever its scores earn. Total kept over all layers is
 #     the same rho*L*T as every other arm: budget-matched.
+#
+# CONTROL:
+#   varies:  the operator (kvzip / the selector / both tiers) and the
+#            compression ratio. Nothing else.
+#   fixed:   seed 0; 24 needles; L=8192; checkpoint
+#            Kimi-Linear-48B-A3B-Instruct; --gpu-expert-layers 18; one
+#            harness process, one sitting, so every arm sees the same needles.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 

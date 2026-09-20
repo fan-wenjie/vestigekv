@@ -29,6 +29,29 @@ for f in "${targets[@]}"; do
   grep -q '^# PREREG:' "$f" || note "no '# PREREG:' line saying what it tests and how to read it"
   bash -n "$f" || note "syntax error"
 
+  # An experiment compares arms, and a comparison is only worth its weakest
+  # controlled variable. Every defect this paper has shipped in a comparison
+  # was a loose one, not a wrong number: two arms of one row running different
+  # operators, an arm at a bandwidth nobody deploys, a control whose engine
+  # tree nobody recorded, rows of one table at different trial counts. So a
+  # script states what it varies and what it holds, and the statement is
+  # required rather than encouraged -- writing it is where the loose variable
+  # gets noticed, which is before the GPU hours, not after.
+  grep -q '^# CONTROL:' "$f" || note "no '# CONTROL:' block"
+  grep -q '^#   varies:' "$f" || note "CONTROL names nothing under 'varies:'"
+  grep -q '^#   fixed:' "$f" || note "CONTROL names nothing under 'fixed:'"
+
+  # A fixed seed is the one controlled variable that is invisible in a result
+  # file if it was never passed: e2e.py requires --seed, run_ruler.py defaults
+  # it, and a default is not a declaration.
+  # Comments are stripped first: this check passed on a script whose only
+  # --seed was a sentence in its own header, which is the failure mode the
+  # check exists to catch.
+  if grep -v '^[[:space:]]*#' "$f" | grep -qE 'harness/e2e\.py|run_ruler\.py'; then
+    grep -v '^[[:space:]]*#' "$f" | grep -q -- '--seed' \
+      || note "invokes a runner without an explicit --seed"
+  fi
+
   # --rhos is a COMPRESSION RATIO (8, 32, 128), parsed as 1/x. A fraction here
   # silently runs a protocol nobody meant; this cost a wasted smoke run.
   for v in $(grep -o -- '--rhos [0-9.,]*' "$f" | awk '{print $2}' | tr ',' ' '); do
