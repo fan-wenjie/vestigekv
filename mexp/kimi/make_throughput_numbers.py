@@ -227,6 +227,45 @@ def main():
             lines.append(f"\\newcommand{{\\srvOomLive}}{{{live[-1]}}}")
             lines.append(f"\\newcommand{{\\srvOomUsage}}{{{use[-1]}}}")
 
+    # What a smaller static fraction buys at the same width. The appendix used
+    # to scope the OOM to "the static fraction these runs use" and say whether
+    # a smaller one suffices was not measured; these two runs measure it, so
+    # the sentence has to stop saying that. Reported as the LARGEST fraction
+    # that completed -- the interesting number is where the limit is, not how
+    # far under it one can go, and a run that completes at 0.85 says nothing
+    # about 0.87 that 0.87 does not say itself.
+    fixes = {}
+    for frac, job in (("0.87", "tputB-bs32mf087-vestigekv"),
+                      ("0.85", "tputB-bs32mf085-vestigekv")):
+        srv = os.path.join(RESULTS, f"server_vestigekv_{job}.log")
+        cli = os.path.join(RESULTS, f"stream_vestigekv_{job}.log")
+        if not (os.path.exists(srv) and os.path.exists(cli)):
+            continue
+        stext, ctext = (open(p, errors="replace").read() for p in (srv, cli))
+        done = re.search(r"Successful requests:\s+(\d+)", ctext)
+        asked = re.search(r"Total input tokens:\s+(\d+)", ctext)
+        peak = max((int(v) for v in
+                    re.findall(r"Decode batch.*?#running-req: (\d+)", stext)),
+                   default=0)
+        # rc=0 is not evidence: a refused-every-request run also exits 0 and
+        # writes zeros (diag-long128k-bs4-dense did exactly that). A completed
+        # run is one that answered every request AND reached the width the
+        # default fraction failed at.
+        if not (done and asked and int(asked.group(1)) > 0):
+            raise SystemExit(f"ABORT: {job} produced no client totals; rc alone "
+                             "does not distinguish a run from a refusal")
+        if "OutOfMemoryError" in stext:
+            continue
+        fixes[frac] = (int(done.group(1)), peak)
+    if fixes:
+        frac = max(fixes)  # largest static fraction that completed
+        served, peak = fixes[frac]
+        lines.append(f"\\newcommand{{\\srvOomFixFrac}}{{{frac}}}")
+        lines.append(f"\\newcommand{{\\srvOomFixLive}}{{{peak}}}")
+        lines.append(f"\\newcommand{{\\srvOomFixServed}}{{{served}}}")
+        print(f"  mem-fraction reruns: {sorted(fixes)} completed; "
+              f"quoting {frac} at {peak} live, {served} requests served")
+
     if not any(have.values()):
         raise SystemExit("ABORT: no point has a usable plateau")
     if a.emit:
