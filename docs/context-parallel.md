@@ -132,6 +132,72 @@ Both are small — `[heads]` floats and j scores with their ids — but they are
 paid on every decode step of every MLA layer, unlike tier 1's per-block 12 KB.
 If DCP is measured and comes out badly, this is the first place to look.
 
+## Which operators change
+
+Six modules under `engine/python/sglang/srt/layers/attention/vestigekv/` carry
+the pipeline's kernels (`batched_step.py` is the batched form of the scan;
+`eviction.py` is pure-Python selection and holds none).
+
+| operator | file | what DCP needs | size |
+|---|---|---|---|
+| σ + histogram | `sigma_fused.py` | split into two kernels around an all-reduce | large |
+| prologue (kept-row statistics) | `fused_prologue.py` | split into two kernels around an all-reduce | large |
+| CSR pack | `pack_csr.py` | ownership predicate on the append; strided page-table walk | medium |
+| tier-2 scan | `scan_kernel.py`, `batched_step.py` | kernel unchanged; the cap and top-j around it go cross-rank | small |
+| tier-2 operand build | `operand_fused.py` | kernel unchanged; **the sketch basis must be broadcast** | small |
+| decode stage 1 | `decode_fork.py` | kernel unchanged; feed the partials to `merge_state` | small |
+
+The two that need real surgery are exactly the two that **fuse a reduction over
+rows with the consumer of that reduction**, which is not a coincidence — it is
+the only shape that a partition of the rows can break.
+
+**`sigma_fused`** runs both passes in one kernel: pass 1 accumulates `Y = CᵀR`
+over the block's rows, pass 2 consumes `Y` to form each row's residual. Sharded,
+pass 1 yields only a partial, so it becomes kernel A (partial `Y`) → all-reduce
+→ kernel B (residual + histogram). One further detail: `t` today indexes both
+`slots_ptr` and the basis at `c_ptr + t*KB`, which coincide only because a
+rank's rows are the block's rows. Sharded they do not, so the kernel takes a
+`pos_ptr` and loads the basis at `c_ptr + pos[:, None]*KB` — one line in each
+pass.
+
+**`fused_prologue`** has the same shape with a sharper edge: its `max1g` output
+is **already the finished threshold**, with the margin subtracted, `ent_gain ×
+flatness` added, a closed gate encoded as `+inf` and an empty kept set as
+`-inf`. The entropy is a function of the *whole* kept set, so per-rank `max1g`
+values **cannot be merged with a max** — the merge would be wrong in a way that
+still produces a plausible number. The kernel has to emit the raw online-softmax
+accumulators `(m, s, t)` and the raw max instead; those merge by the same
+rescale the LSE merge uses, and the threshold is computed once afterwards.
+`qres`, `qsk_t` and `qside_t` are query-side, hence replicated, and do not move.
+`THR_LSE` mode merges by `logaddexp` and needs nothing further.
+
+**`pack_csr`** changes in two places. The step's append (`kept_buf[slot, n] =
+loc; kept_len += 1`) may run only on the rank that owns the new token's
+position, so it takes a predicate. And a fenced lane packs `req_to_token[slot,
+:seq]` — the *global* page table — where it must now pack only its own rows: a
+strided walk from the rank's offset. Cheap, but real logic.
+
+**`scan_kernel`** reads each archived row's sidecar and sketch once and emits a
+byte; given a threshold that is row-local, so the kernel is untouched. What
+moves is outside it: the fetch cap is global, so the overflow predicate needs
+the fired counts summed and the top-j needs the cross-rank selection described
+above. The docstring's guarantee that *which* rows survive a cap overflow is
+deterministic has to be re-established across ranks by fixing a rank order in
+the merge. `batched_step`'s `a_len` is already masked, so per-rank archives of
+different lengths cost nothing.
+
+**`operand_fused`** is row-local and the kernel does not change — but the
+sketch basis `V_r` does. It is fitted per calibrated build, today independently
+in each process. Two ranks fitting it separately can disagree on eigenvector
+sign and ordering; their `csk` operands then live in different bases, and tier 2
+compares those scores against a **global** kept max. The result is wrong firing
+with no error anywhere. The basis must be fitted once and broadcast. This is the
+easiest of the six to miss and the hardest to notice afterwards.
+
+**`decode_fork`** already emits the LSE (it inherits upstream's split schedule)
+and stage 2 is upstream's unmodified, so the kernel is untouched; the per-rank
+`(out, lse)` go to `merge_state` as above.
+
 ## Choosing the granularity
 
 Any partition is correct, so the choice is made on balance and locality, not on
@@ -153,6 +219,51 @@ Any partition is correct, so the choice is made on balance and locality, not on
   measured 7509 B/token is 30 MB against a 37.70 GB pool — so the most recent
   tokens need no merge at all. That choice is orthogonal to how closed blocks
   are sharded and can be made separately.
+
+## Run constraints on the GLM-5.3-Flash-NVFP4 line
+
+Everything above was derived against the Kimi tree. The line that will actually
+need this first is GLM-5.3-Flash-NVFP4, where the weights are 88 GB per GPU at
+NVFP4 and about 4.5 GB is left over. Three constraints follow from that number,
+and each changes something here.
+
+**Speculative decoding off.** `speculative_algorithm` defaults to `None`
+(`arg_groups/fields/spec.py:40`) and no GLM launch passes it, so this holds by
+omission. It is worth stating anyway, because it removes the hardest part of
+DCP: under speculation the decode kernel would have to mask on the **global**
+position `g(j) = j·W + r`, which it cannot do — that is why
+`aiter_backend._forward_verify_dcp` attends the committed prefix and the verify
+window separately and merges them. With speculation off there is no verify
+window and the six-operator list above stands unmodified.
+
+**Vision tower off.** `--language-model-only`, already in
+`mexp/glm53/common.sh:14` and shared by every GLM arm. Nothing here depends on
+it; it is recorded so that a later reader does not reintroduce the tower and
+then attribute the memory failure to context parallelism.
+
+**DCP on, mandatory.** Halving the per-rank KV pool is what makes the context
+fit at all, so this is not an optimization to evaluate but a precondition. Two
+consequences for sequencing:
+
+- The **baseline** arm on GLM is DSA, which is upstream's path, so it can run at
+  `dcp_size 2` today. The **VestigeKV** arm is blocked on the six operators —
+  DCP cannot be bolted on after a first run, it gates the arm.
+- The missing startup refusal stops being hygiene and becomes urgent. A line
+  that *requires* `--dcp-size 2` and a backend that accepts it while selecting
+  rows from a sequence each rank only partly holds produce a run that looks
+  entirely clean. The guard has to land before the first GLM VestigeKV run.
+
+One quantity does not transfer: the merge payload scales with batch × heads ×
+head_dim per full-attention layer, and GLM's layer count, head count and
+full-attention cadence all differ from Kimi's. It lives in activation memory,
+against that 4.5 GB. Recompute it for GLM rather than carrying the ~1 MB/layer
+figure over.
+
+The tier-1 half also needs re-deriving rather than porting. GLM's geometry has
+`side_dim = 0` — there is no un-roped sidecar branch and salience is the DSA
+indexer key — so the σ operator this note decomposes is not the operator that
+line runs. The decomposition argument (pass 1 is a sum; the basis indexes
+position) is what transfers; the shapes are not.
 
 ## What this note deliberately does not conclude
 
