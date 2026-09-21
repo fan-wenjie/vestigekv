@@ -1295,6 +1295,7 @@ change an experiment, change it here first.
 {"args":{"reps":330},"arm":"vestigekv","client":"needle","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4"},"id":"needle-vestigekv","probe":false}
 {"args":{"input_len":262144,"num_prompts":4,"output_len":4096},"arm":"baseline","client":"continue","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"litspeed256k-baseline","probe":false}
 {"args":{"input_len":262144,"num_prompts":4,"output_len":4096},"arm":"vestigekv","client":"continue","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"litspeed256k-vestigekv","probe":false}
+{"args":{"input_len":65536,"num_prompts":1,"output_len":4096},"arm":"vestigekv","client":"continue","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_DUMP_DIR":"/home/user/vestigekv/results/kimi/sidecardump_prose"},"id":"sidecardumpprose-vestigekv","probe":false}
 {"args":{"n":1209,"shots":64},"arm":"vestigekv","client":"gsm8k","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"gsm8k-vestigekv","probe":false}
 {"args":{"concurrency":32,"input_len":131072,"num_prompts":32,"output_len":8192,"rep":2,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tputB-bs32r2-dense","probe":false}
 {"args":{"concurrency":32,"input_len":131072,"num_prompts":32,"output_len":8192,"rep":2,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32"},"id":"tputB-bs32r2-vestigekv","probe":false}
@@ -1302,7 +1303,6 @@ change an experiment, change it here first.
 {"args":{"max_tokens":1024},"arm":"vestigekv","client":"longbench2","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"lb2-vestigekv","probe":false}
 {"args":{"n":50,"seed":0},"arm":"baseline","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MODEL":"moonshotai/Kimi-Linear-48B-A3B-Base"},"id":"rulern50base-dense","probe":false}
 {"args":{"n":50,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MODEL":"moonshotai/Kimi-Linear-48B-A3B-Base"},"id":"rulern50base-vestigekv","probe":false}
-{"args":{"input_len":65536,"num_prompts":1,"output_len":4096},"arm":"vestigekv","client":"continue","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_DUMP_DIR":"/home/user/vestigekv/results/kimi/sidecardump_prose"},"id":"sidecardumpprose-vestigekv","probe":false}
 ```
 
 ```bash
