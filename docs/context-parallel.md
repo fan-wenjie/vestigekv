@@ -259,6 +259,35 @@ full-attention cadence all differ from Kimi's. It lives in activation memory,
 against that 4.5 GB. Recompute it for GLM rather than carrying the ~1 MB/layer
 figure over.
 
+Three things upstream already decides for a GLM run, checked at v0.5.20:
+
+- **`page_size` is 64, not 1.** The DeepSeek-family override sets it for every
+  DSA architecture on CUDA (`model_overrides/deepseek_v2.py:143-145`), and
+  `Glm5NextForConditionalGeneration` is in that family. So the token-level
+  round-robin that the kept-set-balance argument above prefers is not available
+  on this line — a page would be split across ranks. Page-level round-robin is
+  the rule there, and the σ derivation covers it unchanged, since it never
+  cared which partition it was given. What is lost is only the tie-breaker:
+  a temporal cluster of anomalous rows now lands on one rank in runs of up to
+  64 rows rather than being spread token by token.
+- **Upstream's own DCP already shards by page.** Under `dcp_size > 1` the radix
+  tree pages at `page_size * dcp_size` (`overrides.py:302-305`). That is an
+  independent route to the same granularity this note derived from σ, which is
+  worth knowing before proposing anything finer.
+- **Nothing refuses `dcp_size > 1` for GLM.** The `dcp_size` rejections at
+  v0.5.20 are keyed on HYV4 (`model_overrides/deepseek_v2.py:55-62`), Kimi K3
+  (`model_overrides/kimi_k3.py:57`) and DeepSeek V4 (`deepseek_v4_hook.py:152`);
+  none covers a GLM architecture. So upstream will not catch the combination
+  either, which is the second half of why the startup refusal has to be ours.
+
+Two smaller facts to carry into the first run rather than discover in it:
+`dcp_size > 1` disables the breakable and piecewise CUDA graphs
+(`cuda_graph_hook.py:249-250`, `:303-304`) — both prefill-side, so the decode
+graph these arms rely on should be unaffected, but "should be" is the part to
+verify rather than assume. And `--dcp-replicate-q-proj`
+(`fields/parallel.py:136-148`) is the knob over the query replication that the
+merge depends on; it defaults to `None`, meaning resolved, not off.
+
 The tier-1 half also needs re-deriving rather than porting. GLM's geometry has
 `side_dim = 0` — there is no un-roped sidecar branch and salience is the DSA
 indexer key — so the σ operator this note decomposes is not the operator that
