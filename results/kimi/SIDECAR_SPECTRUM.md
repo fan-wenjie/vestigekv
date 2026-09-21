@@ -61,10 +61,31 @@ operation on prose moves a quarter.
 So this is a third way RULER is adverse, after planted content and short
 answers, rather than a property of the method.
 
+## All seven layers, at no cost
+
+The dumps already held them -- seven MLA layers times two TP ranks -- and only
+layer 19 had been read. Every layer tells the same story:
+
+    layer   RULER: bin  peakiness  top3%      prose: bin  peakiness  top3%
+        3          71      175.7   40.2%              17       28.2  79.5%
+        7          71      444.3   37.7%              16       44.0  77.9%
+       11          71      467.9   59.8%              16       57.3  88.5%
+       15          71     1048.0   51.6%              16       88.1  83.6%
+       19          71      889.4   30.3%              16       90.2  75.4%
+       23          71      410.7   35.2%              17       55.5  79.5%
+       26          71       73.9   79.5%              17        8.1  85.2%
+
+RULER's spike is at bin 71 in seven layers of seven; prose's largest
+above-cutoff component sits on the cutoff, 16 or 17, in seven of seven. That
+consistency is what one layer could not establish.
+
 ## Still not measured
 
-Whether the notched ranking is better on either workload. One request per
-condition, one layer read closely. Before this goes in the paper it wants the
-other layers and more than one request, because "a quarter of the kept set
-still moves on prose" is not nothing and one request cannot tell a property
-from a sample.
+Whether the notched ranking is better on either workload -- changing the kept
+set is not improving it, and neither dump can say which.
+
+And one request per condition. `sidecardump5` and `sidecardumpprose5` raise
+both to five: about four minutes each, because the cost is one server start
+plus five prefills, and roughly ten gigabytes of tensors. A quarter of the
+kept set still moves on prose, and one request cannot tell a property from a
+sample.

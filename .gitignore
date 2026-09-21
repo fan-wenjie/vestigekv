@@ -59,3 +59,5 @@ results/*/queue_state.jsonl
 # analysis that reads them ships; the tensors do not.
 results/kimi/sidecardump/
 results/kimi/sidecardump_prose/
+results/kimi/sidecardump5/
+results/kimi/sidecardump_prose5/
