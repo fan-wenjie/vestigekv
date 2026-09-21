@@ -1341,12 +1341,12 @@ change an experiment, change it here first.
 {"args":{"n":1209,"shots":64},"arm":"vestigekv","client":"gsm8k","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"gsm8kcount-vestigekv","probe":false}
 {"args":{"n":1209,"shots":64},"arm":"baseline","client":"gsm8k","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MODEL":"moonshotai/Kimi-Linear-48B-A3B-Base"},"id":"gsm8kcountbase-baseline","probe":false}
 {"args":{"n":1209,"shots":64},"arm":"vestigekv","client":"gsm8k","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MODEL":"moonshotai/Kimi-Linear-48B-A3B-Base"},"id":"gsm8kcountbase-vestigekv","probe":false}
+{"args":{"concurrency":32,"input_len":131072,"num_prompts":32,"output_len":8192,"rep":87,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB-bs32mf087-vestigekv","probe":false}
+{"args":{"concurrency":32,"input_len":131072,"num_prompts":32,"output_len":8192,"rep":85,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.85"},"id":"tputB-bs32mf085-vestigekv","probe":false}
 {"args":{"max_tokens":1024},"arm":"baseline","client":"longbench2","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"lb2-baseline","probe":false}
 {"args":{"max_tokens":1024},"arm":"vestigekv","client":"longbench2","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"lb2-vestigekv","probe":false}
 {"args":{"n":50,"seed":0},"arm":"baseline","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MODEL":"moonshotai/Kimi-Linear-48B-A3B-Base"},"id":"rulern50base-dense","probe":false}
 {"args":{"n":50,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MODEL":"moonshotai/Kimi-Linear-48B-A3B-Base"},"id":"rulern50base-vestigekv","probe":false}
-{"args":{"concurrency":32,"input_len":131072,"num_prompts":32,"output_len":8192,"rep":87,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB-bs32mf087-vestigekv","probe":false}
-{"args":{"concurrency":32,"input_len":131072,"num_prompts":32,"output_len":8192,"rep":85,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.85"},"id":"tputB-bs32mf085-vestigekv","probe":false}
 ```
 
 ```bash
