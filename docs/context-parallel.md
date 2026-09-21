@@ -261,15 +261,16 @@ figure over.
 
 Three things upstream already decides for a GLM run, checked at v0.5.20:
 
-- **`page_size` is 64, not 1.** The DeepSeek-family override sets it for every
-  DSA architecture on CUDA (`model_overrides/deepseek_v2.py:143-145`), and
-  `Glm5NextForConditionalGeneration` is in that family. So the token-level
-  round-robin that the kept-set-balance argument above prefers is not available
-  on this line — a page would be split across ranks. Page-level round-robin is
-  the rule there, and the σ derivation covers it unchanged, since it never
-  cared which partition it was given. What is lost is only the tie-breaker:
-  a temporal cluster of anomalous rows now lands on one rank in runs of up to
-  64 rows rather than being spread token by token.
+- **`page_size` is 64 on the baseline arm and 1 on the VestigeKV arm.** The
+  DeepSeek-family override sets 64 for every DSA architecture on CUDA
+  (`model_overrides/deepseek_v2.py:143-145`) and
+  `Glm5NextForConditionalGeneration` is in that family, so the arm this line
+  compares against pages at 64. The VestigeKV arm does not: `mexp/glm53/vestigekv.sh`
+  passes `--page-size 1` and calls it a precondition. So the token-level
+  round-robin the kept-set-balance argument prefers is available on the arm
+  that would use it, and the two arms do not shard at the same granularity —
+  which is a fact to state in any comparison rather than a detail to leave
+  implicit.
 - **Upstream's own DCP already shards by page.** Under `dcp_size > 1` the radix
   tree pages at `page_size * dcp_size` (`overrides.py:302-305`). That is an
   independent route to the same granularity this note derived from σ, which is

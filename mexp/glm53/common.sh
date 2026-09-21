@@ -5,7 +5,7 @@
 # decode step is the same either way, only the launch mechanism differs).
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 export CUDA_HOME=/usr/local/cuda PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True NCCL_P2P_DISABLE=1 HF_HUB_OFFLINE=1
-export PYTHONPATH=$ROOT/engine/python
+export PYTHONPATH=${ENGINE:-$ROOT/engine}/python  # ENGINE=<checkout dir> serves another engine tree
 PY=${PYTHON:-$HOME/.conda/envs/sglang-dev/bin/python}
 MODEL=nvidia/GLM-5.3-Flash-NVFP4
 COMMON=(--model-path $MODEL --quantization modelopt_fp4 --tp-size 2
