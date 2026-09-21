@@ -71,3 +71,21 @@ def refuse_existing(path, job_id):
             f"ABORT: {job_id} would write {os.path.basename(path)}, which exists. "
             "The client appends, so this would put two measurements in one "
             "record. If this process predates a naming change, restart it.")
+
+
+def tree_epoch(root):
+    """When the engine tree the jobs run on was built.
+
+    A job is skipped because `queue_state.jsonl` says done, and that row does
+    not know which tree produced it. Two LongBench v2 runs from three days
+    before the v0.5.20 rebase were skipped for exactly that reason: their ids
+    were registered, so the queue believed them covered, and their records
+    could not be reproduced by anything shipped.
+
+    So `done` means done on this tree. A terminal row older than the engine's
+    HEAD commit is not a result, it is a result from somewhere else.
+    """
+    import subprocess
+    out = subprocess.run(["git", "-C", os.path.join(root, "engine"), "log", "-1",
+                          "--format=%cI"], capture_output=True, text=True)
+    return out.stdout.strip()[:19].replace("T", " ") if out.returncode == 0 else ""

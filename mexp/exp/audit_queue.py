@@ -76,7 +76,8 @@ def _runner_clients():
 
 CLIENTS = _runner_clients()
 
-from naming import ruler_out, stream_out  # noqa: E402  (same rules as the runner)
+import naming  # noqa: E402  (same rules as the runner)
+from naming import ruler_out, stream_out  # noqa: E402
 SEEDED = {"ruler", "stream"}  # clients whose runner call takes --seed
 # One seed for every run on every line, and it is the first one: a paper that
 # reports seed 7 has to answer what seeds 0 through 6 did, and the honest answer
@@ -131,7 +132,9 @@ def main():
     results = os.path.join(ROOT, "results", args.line)
     jobs = load(os.path.join(here, "queue.jsonl"))
     state = load(os.path.join(results, "queue_state.jsonl"))
-    done = {r["id"] for r in state if r.get("status") in ("done", "failed")}
+    epoch = naming.tree_epoch(ROOT)
+    done = {r["id"] for r in state if r.get("status") in ("done", "failed")
+            and r.get("end", "") >= epoch}
     pending = [j for j in jobs if not j.get("skip") and j["id"] not in done]
 
     readme = open(os.path.join(ROOT, "README.md")).read()

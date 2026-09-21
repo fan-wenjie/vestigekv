@@ -261,7 +261,12 @@ def main():
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     try:
         while True:
-            done = {r["id"] for r in read_jsonl(STATE) if r.get("status") in ("done", "failed")}
+            # done means done on THIS tree: a terminal row older than the
+            # engine's HEAD commit was produced somewhere that no longer
+            # exists. See naming.tree_epoch.
+            epoch = naming.tree_epoch(ROOT)
+            done = {r["id"] for r in read_jsonl(STATE)
+                    if r.get("status") in ("done", "failed") and r.get("end", "") >= epoch}
             jobs = [j for j in read_jsonl(QUEUE) if not j.get("skip") and j["id"] not in done]
             if not jobs:
                 log("queue empty; exiting")
