@@ -48,6 +48,10 @@ one of them corresponds to a mistake this project has actually made:
                     server's context length. The request is rejected, the
                     client reports zeros, and the runner marks the job done --
                     a clean record of nothing, which is worse than a crash.
+  model window      a job whose CTX exceeds what the checkpoint derives. The
+                    server refuses to start, the runner records "server did
+                    not start", and the queue moves on -- so the job is lost
+                    quietly unless someone reads the log.
   radix off         a performance-line job that turns the radix cache on. A
                     reused prefix is an answer attention never produced, and
                     this line's claim is about what attention costs. The knob
@@ -84,6 +88,10 @@ SEEDED = {"ruler", "stream"}  # clients whose runner call takes --seed
 # -- nothing, we never ran them -- is not available to a reader. Seed 0 costs
 # nothing and removes the question.
 SEED = 0
+# Kimi-Linear-48B-A3B derives a 1048576-token window; asking for more is a
+# startup failure, not a truncation. Two RULER jobs inherited 1064960 from an
+# archived entry that also ran the 512k cell and died on it.
+MAX_MODEL_CTX = 1048576
 
 
 REGISTRY = "<!-- registered launches: audited verbatim against mexp/*/queue.jsonl -->"
@@ -172,6 +180,9 @@ def main():
                 bad(j, f"asks for {need} tokens of context (input+output) from a "
                        f"server configured for {env['CTX']}; the request is refused "
                        "and the record comes back empty")
+        if env.get("CTX") and int(env["CTX"]) > MAX_MODEL_CTX:
+            bad(j, f"CTX {env['CTX']} exceeds the checkpoint's derived window "
+                   f"({MAX_MODEL_CTX}); the server refuses to start")
         conc = int(a.get("concurrency", 1))
         if conc > int(env.get("MAX_REQS", 1) or 1):
             bad(j, f"asks for concurrency {conc} from a server admitting "
