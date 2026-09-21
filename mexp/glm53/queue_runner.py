@@ -171,6 +171,9 @@ def run_client(job, port):
         # how a repeat once landed inside the record it was repeating.
         n_out = int(args.get("output_len", 126976))
         out_jsonl = naming.stream_out(RESULTS, job)
+        # SystemExit here would take the queue down with the job -- it did,
+        # once, after four hours of work had already landed. The refusal is
+        # still a refusal; it just stops one job.
         naming.refuse_existing(out_jsonl, job["id"])
         conc = int(args.get("concurrency", 1))
         cmd = [PY, "-m", "sglang.benchmark.serving", "--backend", "sglang", "--model", MODEL,
@@ -275,10 +278,12 @@ def main():
                     rc, out, tail = run_client({**job, "client": "needle", "id": job["id"] + "-probe"}, server.port)
                     log(f"probe: {tail[-1:] if tail else rc}")
                 rc, out, tail = run_client(job, server.port)
-            except Exception as e:
+            except (Exception, SystemExit) as e:
                 # A malformed job is that job's failure, not the queue's: a
                 # missing `args` key used to raise out of the loop and take
-                # every remaining job down with the runner.
+                # every remaining job down with the runner. SystemExit is
+                # named explicitly because it is not an Exception, which is
+                # how a refusal inside run_client killed the queue once.
                 log(f"{job['id']} failed to launch: {type(e).__name__}: {e}")
                 append_state({"id": job["id"], "status": "failed",
                               "note": f"client not launched: {type(e).__name__}: {e}",

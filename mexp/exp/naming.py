@@ -34,10 +34,15 @@ def stream_shape(args):
 
 
 def stream_out(results, job):
-    args, arm = job.get("args", {}), job["arm"]
-    tag = "_stats" if str(job.get("env", {}).get(
-        "SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1" else ""
-    if job.get("server_args"):
+    args, arm, env = job.get("args", {}), job["arm"], job.get("env", {})
+    tag = "_stats" if str(env.get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1" else ""
+    # Anything that changes what the backend does has to change the record's
+    # name. Flags did; debug env keys did not, so fbstream-on and fbstream-off
+    # -- identical but for SGLANG_DEBUG_VESTIGEKV_NO_OVERFLOW_FALLBACK -- both
+    # claimed latency_stream_4k-126976_vestigekv_stats.jsonl.
+    ablating = [k for k in env if k.startswith("SGLANG_DEBUG_VESTIGEKV_")
+                and k != "SGLANG_DEBUG_VESTIGEKV_STATS"]
+    if job.get("server_args") or ablating:
         tag += "_" + job["id"]
     return os.path.join(results, f"latency_stream_{stream_shape(args)}_{arm}{tag}.jsonl")
 
@@ -59,7 +64,10 @@ def refuse_existing(path, job_id):
     so it holds even when that process is older than the rules it is following.
     """
     if os.path.exists(path):
-        raise SystemExit(
+        # RuntimeError, not SystemExit: the runner catches Exception, and
+        # SystemExit is not one. Raising it here took the whole queue down
+        # while correctly refusing a single job.
+        raise RuntimeError(
             f"ABORT: {job_id} would write {os.path.basename(path)}, which exists. "
             "The client appends, so this would put two measurements in one "
             "record. If this process predates a naming change, restart it.")

@@ -14,7 +14,8 @@ one of them corresponds to a mistake this project has actually made:
                     the frozen tree and printed beside numbers from the
                     unified v0.5.20 tree is the arm mismatch that cost this
                     paper its RoPE table.
-  no overwrite      a job whose output file already exists. An experiment that
+  one record each   two pending jobs that would write the same file, or a job
+                    whose output already exists. An experiment that
                     silently overwrites its own record makes the archive lie.
   paired arms       a dense job with no vestigekv partner, or partners whose
                     env differs. A comparison is worth its weakest controlled
@@ -141,6 +142,7 @@ def main():
     def bad(job, msg):
         fails.append(f"{job['id']}: {msg}")
 
+    claimed = {}
     by_env = {}
     for j in pending:
         env = j.get("env", {})
@@ -195,8 +197,17 @@ def main():
             out = ruler_out(results, j)
         if out and os.path.exists(out):
             bad(j, f"output already exists: {os.path.relpath(out, ROOT)}")
+        if out:
+            claimed.setdefault(out, []).append(j["id"])
         key = json.dumps(env, sort_keys=True) + "|" + json.dumps(j.get("args", {}), sort_keys=True)
         by_env.setdefault(key.replace(f'"{j["arm"]}"', ""), []).append(j)
+
+    # Two jobs that have not run yet cannot each find the other's file already
+    # there, so "output already exists" never sees them. The client appends, so
+    # the second one lands inside the first one's record.
+    for path, ids in claimed.items():
+        if len(ids) > 1:
+            fails.append(f"{', '.join(ids)}: all write {os.path.basename(path)}")
 
     # a comparison needs both arms, and needs them identical apart from the arm
     arms_seen = {}
