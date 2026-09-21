@@ -84,8 +84,27 @@ consistency is what one layer could not establish.
 Whether the notched ranking is better on either workload -- changing the kept
 set is not improving it, and neither dump can say which.
 
-And one request per condition. `sidecardump5` and `sidecardumpprose5` raise
-both to five: about four minutes each, because the cost is one server start
-plus five prefills, and roughly ten gigabytes of tensors. A quarter of the
-kept set still moves on prose, and one request cannot tell a property from a
-sample.
+## Four requests on RULER: it is a property, not a sample
+
+`sidecardump5`, layer 19, one row per request:
+
+    seq        peak bin   peakiness   top-3% kept
+    64623            72       623.4        35.2%
+    64729            71       635.1        39.3%
+    64735            72       581.2        30.3%
+    64809            71       890.9        30.3%
+
+Same bin, same order of peakiness, same effect on the kept set. With seven
+layers already agreeing, the RULER half is settled.
+
+## The prose half is still n=1, and the reason is the dump's filename
+
+`sidecardumpprose5` asked for five requests and produced one. The snapshot is
+written to `cal_tp{rank}_slot{s}_lid{l}_seq{n}.pt`, and the `continue` client
+sends five prompts of identical length through one slot -- same rank, same
+slot, same layer, same seq, so each request overwrote the last. RULER escaped
+it only because its prompts differ in length by a few dozen tokens.
+
+Rather than change instrumentation that ships, three more prose dumps run at
+62k, 60k and 58k: different lengths give different names, and length
+independence is worth knowing anyway.
