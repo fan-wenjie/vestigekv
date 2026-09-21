@@ -38,6 +38,7 @@ import argparse
 import json
 import math
 import os
+import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RULER = os.path.join(ROOT, "results", "kimi", "ruler")
@@ -137,6 +138,41 @@ def main():
         L.append(f"\\newcommand{{\\fbStreamPrefix}}{{{itl['Prefix']:.3f}}}")
         L.append(f"\\newcommand{{\\fbStreamDelta}}"
                  f"{{{abs(itl['Prefix'] - itl['On']) / itl['On'] * 100:.1f}\\%}}")
+
+    # The buffer's capacity, read from the backend's own defaults rather than
+    # typed into a sentence. The appendix argues that a fetch distribution
+    # whose upper decile stands AT capacity is what an overflow is, and that
+    # argument is only checkable if the two numbers come from one place.
+    # It is a server argument, not a module constant, so read it from the run
+    # that produced these records -- the backend logs its resolved config.
+    import re as _re
+    for f in ("server_vestigekv_statsruler64-vestigekv.log",
+              "server_vestigekv_fbablate-on.log"):
+        path = os.path.join(ROOT, "results", "kimi", f)
+        if not os.path.exists(path):
+            continue
+        m = _re.search(r"recall_capacity=(\d+)", open(path, errors="replace").read(200000))
+        if m:
+            L.append(f"\\newcommand{{\\fbCapacity}}{{{m.group(1)}}}")
+            break
+    else:
+        raise SystemExit("ABORT: no run log names recall_capacity")
+
+    # "fourteen-step answers" carries the whole mechanism and appeared three
+    # times as a written-out word. It is steps/requests from the stats run.
+    import glob as _glob
+    g = _glob.glob(os.path.join(ROOT, "results", "kimi", "ruler",
+                                "results_vestigekv_n10_65536_statsruler64*.json"))
+    st = _glob.glob(os.path.join(ROOT, "results", "kimi",
+                                 "server_vestigekv_statsruler64-vestigekv.log"))
+    if g and st:
+        d = json.load(open(g[0]))
+        reqs = len(d["results"]) * d.get("n_per_cell", 10)
+        # the LAST line: the counter is cumulative, and the first one reads 0
+        hits = _re.findall(r"VKSTATS steps=(\d+)",
+                           open(st[0], errors="replace").read())
+        if hits and int(hits[-1]):
+            L.append(f"\\newcommand{{\\fbAnswerSteps}}{{{round(int(hits[-1]) / reqs)}}}")
 
     open(args.out, "w").write("\n".join(L) + "\n")
     print(f"wrote {args.out}: {len(L) - 1} macros over {len(keys)} shared cells "
