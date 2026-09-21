@@ -1347,6 +1347,8 @@ change an experiment, change it here first.
 {"args":{"max_tokens":1024},"arm":"vestigekv","client":"longbench2","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"lb2-vestigekv","probe":false}
 {"args":{"n":50,"seed":0},"arm":"baseline","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MODEL":"moonshotai/Kimi-Linear-48B-A3B-Base"},"id":"rulern50base-dense","probe":false}
 {"args":{"n":50,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MODEL":"moonshotai/Kimi-Linear-48B-A3B-Base"},"id":"rulern50base-vestigekv","probe":false}
+{"args":{"n":1209,"shots":64},"arm":"baseline","client":"gsm8k","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"gsm8krep3-baseline","probe":false}
+{"args":{"n":1209,"shots":64},"arm":"vestigekv","client":"gsm8k","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"gsm8krep3-vestigekv","probe":false}
 ```
 
 ```bash

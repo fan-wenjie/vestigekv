@@ -82,6 +82,31 @@ def main():
         lines.append(f"\\newcommand{{\\gsmTwoSigma}}{{{2 * sd:.1f}}}")
         print(f"  gap {gap} questions against a 2-sigma band of {2 * sd:.1f}")
 
+    # Repeat runs. The VestigeKV arm is not bit-reproducible at fixed seed and
+    # the dense arm is (docs/nondeterminism.md), so the appendix states both --
+    # and states them from measurement, because "dense repeats exactly" is a
+    # claim about the harness that a reader should be able to see the evidence
+    # for. PENDING until the repeat lands: an unmeasured spread must not print
+    # as zero, which is the one value that would read as a stronger claim than
+    # the data supports.
+    rep = {mac: read(arm, job)
+           for (arm, mac), job in (((("baseline"), "Base"), "gsm8krep3-baseline"),
+                                   ((("vestigekv"), "Vk"), "gsm8krep3-vestigekv"))}
+    have_rep = {m: r for m, r in rep.items() if r}
+    if {"Base", "Vk"} <= set(have_rep):
+        for mac, first in (("Base", "BaseI"), ("Vk", "VkI")):
+            if first not in got:
+                continue
+            spread = abs(have_rep[mac][0] - got[first][0])
+            lines.append(f"\\newcommand{{\\gsmRepeat{mac}}}{{{spread}}}")
+            print(f"  repeat {mac:5} {have_rep[mac][0]} vs {got[first][0]}"
+                  f"   spread {spread} questions")
+    else:
+        for mac in ("Base", "Vk"):
+            lines.append(f"\\newcommand{{\\gsmRepeat{mac}}}{{\\PENDING}}")
+        print("  PENDING: gsm8krep3-{baseline,vestigekv} not run yet; the "
+              "reproducibility spread is unmeasured")
+
     if a.emit:
         open(OUT, "w").write("\n".join(lines) + "\n")
         print(f"wrote {OUT}")
