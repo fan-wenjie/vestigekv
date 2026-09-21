@@ -52,13 +52,18 @@ per-step merge is paid seven times, not twenty-seven.
 
 ## What the backend is aware of today
 
-One place, and it is not a rejection:
-`vestigekv_mla_backend.py:468` bails out of the `_out_graph_metadata_lite`
-perf path when `dcp_size > 1` and falls back to the full base hook. Nothing
-refuses the combination at startup. **This is a defect independent of whether
-DCP is ever implemented**: today `--dcp-size 2` would start, run, and produce
-rows selected from a sequence each rank has only part of, with no message. A
-startup refusal should land regardless of the rest of this note.
+Two places now. `vestigekv_mla_backend.py` bails out of the
+`_out_graph_metadata_lite` perf path when `dcp_size > 1` and falls back to the
+full base hook — a perf path, not a rejection. The rejection is the second:
+`_refuse_sharded_sequence()`, called first in the backend's constructor,
+refuses `--dcp-size` or `--attn-cp-size` above 1 by name and says what would go
+wrong. It landed because until it did, `--dcp-size 2` started, ran, and
+produced rows selected from a sequence each rank held only part of, with no
+message; the output of that is fluent, so the first thing that would have
+noticed is a needle probe nobody was running. Verified in a real launch on the
+GLM line, not only in a unit test: the constructor reads
+`get_parallel().dcp_size` after publish, which is the part a mocked test cannot
+establish.
 
 ## The sharding rule: any partition of the rows works
 
