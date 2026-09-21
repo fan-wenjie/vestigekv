@@ -39,8 +39,14 @@ def load(line, arm, n, lengths):
     results_<arm>_n<N>_<lengths>_<tag>.json, so the untagged path misses it and
     the macros silently come out PENDING -- which is how a finished run can look
     like an unfinished one."""
+    # A checkpoint other than the line's default is marked in the name rather
+    # than given its own directory: the runner serves it by setting MODEL in
+    # the job env, so one line covers both halves of Table 1's Base/Instruct
+    # row without a parallel tree of arm scripts and queues.
+    line, _, ckpt = line.partition("_")
     base = os.path.join(ROOT, "results", line, "ruler",
-                        f"results_{arm}_n{n}_{'-'.join(map(str, lengths))}")
+                        f"results_{arm}{'_' + ckpt if ckpt else ''}"
+                        f"_n{n}_{'-'.join(map(str, lengths))}")
     if os.path.exists(base + ".json"):
         return json.load(open(base + ".json"))
     tagged = sorted(glob.glob(base + "_*.json"))

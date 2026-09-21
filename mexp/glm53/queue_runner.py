@@ -147,6 +147,11 @@ def produced_nothing(job, results):
 def run_client(job, port):
     client, args = job["client"], job.get("args", {})
     arm = job["arm"]
+    # The arm script already honours MODEL (common.sh: ${MODEL:-...Instruct}),
+    # so a job can serve a different checkpoint. The client has to be told the
+    # same one or it asks a Base server for Instruct and the record is
+    # labelled with a checkpoint it did not run.
+    MODEL = job.get("env", {}).get("MODEL", MODELS[LINE])
     env = dict(os.environ, OPENAI_API_KEY="dummy", PYTHONPATH=os.path.join(ROOT, "engine", "python"))
     env.pop("HF_HUB_OFFLINE", None)  # RULER pulls its corpora from the Hub
     env["CUDA_VISIBLE_DEVICES"] = ""  # clients are HTTP only; no CUDA context next to the server

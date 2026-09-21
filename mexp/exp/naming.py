@@ -44,13 +44,25 @@ def stream_out(results, job):
                 and k != "SGLANG_DEBUG_VESTIGEKV_STATS"]
     if job.get("server_args") or ablating:
         tag += "_" + job["id"]
-    return os.path.join(results, f"latency_stream_{stream_shape(args)}_{arm}{tag}.jsonl")
+    return os.path.join(results,
+                        f"latency_stream_{stream_shape(args)}_{arm}{_checkpoint(job)}{tag}.jsonl")
+
+
+def _checkpoint(job):
+    """A marker for a non-default checkpoint, or "" for the line's own.
+
+    Without it a Base run and an Instruct run at the same n and lengths write
+    one file, and the second silently becomes the first. The paper compares
+    the two checkpoints in a table, so both exist by design.
+    """
+    model = job.get("env", {}).get("MODEL", "")
+    return "_" + model.rsplit("-", 1)[-1].lower() if model else ""
 
 
 def ruler_out(results, job):
     args = job.get("args", {})
     lens = args.get("lengths", "4096,8192,16384,32768,65536").split(",")
-    tag = f"{job['arm']}_n{args.get('n', 10)}_{'-'.join(lens)}"
+    tag = f"{job['arm']}{_checkpoint(job)}_n{args.get('n', 10)}_{'-'.join(lens)}"
     if job.get("server_args") or "tasks" in args or "lengths" in args:
         tag += f"_{job['id']}"
     return os.path.join(results, "ruler", f"results_{tag}.json")
