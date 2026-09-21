@@ -120,6 +120,24 @@ def main():
     L.append(f"\\newcommand{{\\fbWorstOn}}{{{on[worst]:.2f}}}")
     L.append(f"\\newcommand{{\\fbWorstPrefix}}{{{arms['Prefix'][0][worst]:.2f}}}")
 
+    # The other end of the range: the same deletion on a 128k stream, where
+    # the paper quotes a per-token cost. Hand-typing it into the prose is how
+    # 5.444 and 5.426 came to sit in a sentence beside macros.
+    import json as _json
+    R = os.path.join(ROOT, "results", "kimi")
+    pair = {"On": "latency_stream_4k-126976_vestigekv_stats.jsonl",
+            "Prefix": "latency_stream_4k-126976_vestigekv_stats_fbstream-off.jsonl"}
+    itl = {}
+    for name, f in pair.items():
+        path = os.path.join(R, f)
+        if os.path.exists(path):
+            itl[name] = float(_json.loads(open(path).read().splitlines()[0])["mean_itl_ms"])
+    if len(itl) == 2:
+        L.append(f"\\newcommand{{\\fbStreamOn}}{{{itl['On']:.3f}}}")
+        L.append(f"\\newcommand{{\\fbStreamPrefix}}{{{itl['Prefix']:.3f}}}")
+        L.append(f"\\newcommand{{\\fbStreamDelta}}"
+                 f"{{{abs(itl['Prefix'] - itl['On']) / itl['On'] * 100:.1f}\\%}}")
+
     open(args.out, "w").write("\n".join(L) + "\n")
     print(f"wrote {args.out}: {len(L) - 1} macros over {len(keys)} shared cells "
           f"(n={n_per_cell} per cell, seed {seed})")
