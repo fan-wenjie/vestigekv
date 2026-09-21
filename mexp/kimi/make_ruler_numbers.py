@@ -276,14 +276,23 @@ def main():
             L.append(f"\\newcommand{{\\sweep{mac}FetchFifty}}{{{v['fetch_p50']}}}")
             L.append(f"\\newcommand{{\\sweep{mac}Fallback}}{{{v['fallback']:.2f}}}")
     # calibrated-regime stats (stream 128k, stats on) and the 64k short-answer regime
-    for job, mac in (("stats-vestigekv-stream-128k", "StreamOneTwoEight"), ("stats-vestigekv-ruler-64k", "RulerSixtyFour")):
+    # Both of these used to name jobs from the retired worktrees, so the two
+    # fallback rates the body cites were measured on a tree nothing ships.
+    # fbstream-on is the 128k stream with stats on the unified tree; its
+    # predecessor reported 0.000 where this one reports 0.012, which is small
+    # but is not nothing and the paper said "nothing".
+    for job, mac in (("fbstream-on", "StreamOneTwoEight"),
+                     ("statsruler64-vestigekv", "RulerSixtyFour")):
         v = vkstats(job)
-        if v:
-            L.append(f"\\newcommand{{\\stats{mac}Steps}}{{{v['steps']}}}")
-            L.append(f"\\newcommand{{\\stats{mac}FetchFifty}}{{{v['fetch_p50']}}}")
-            L.append(f"\\newcommand{{\\stats{mac}FetchNinety}}{{{v['fetch_p90']}}}")
-            L.append(f"\\newcommand{{\\stats{mac}FetchNinetyNine}}{{{v['fetch_p99']}}}")
-            L.append(f"\\newcommand{{\\stats{mac}Fallback}}{{{v['fallback']:.3f}}}")
+        # Emit PENDING rather than nothing. A macro that vanishes takes the
+        # build with it, and the reflex is then to restore the old value --
+        # which here means a number from a retired tree. PENDING compiles and
+        # is impossible to mistake for a measurement.
+        L.append(f"\\newcommand{{\\stats{mac}Steps}}{{{v['steps'] if v else chr(92) + 'PENDING'}}}")
+        L.append(f"\\newcommand{{\\stats{mac}FetchFifty}}{{{v['fetch_p50'] if v else chr(92) + 'PENDING'}}}")
+        L.append(f"\\newcommand{{\\stats{mac}FetchNinety}}{{{v['fetch_p90'] if v else chr(92) + 'PENDING'}}}")
+        L.append(f"\\newcommand{{\\stats{mac}FetchNinetyNine}}{{{v['fetch_p99'] if v else chr(92) + 'PENDING'}}}")
+        L.append(f"\\newcommand{{\\stats{mac}Fallback}}{{{format(v['fallback'], '.3f') if v else chr(92) + 'PENDING'}}}")
     open(args.out, "w").write("\n".join(L) + "\n")
     print(f"wrote {args.out}: {len(L)} macros")
 
