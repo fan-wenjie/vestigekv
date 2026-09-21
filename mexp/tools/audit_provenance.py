@@ -127,6 +127,25 @@ def survey(rerun=None):
     return regen, hand, missing, broken
 
 
+def grouped_integers():
+    """Integers written with thousands separators, which do not travel.
+
+    A comma is a decimal separator across most of Europe, so 1,209 reads as
+    1.209 to a large share of the audience. The rule is no separator at all --
+    not a thin space either, since the paper loads no siunitx. Lists of numbers
+    are not this: `4096,8192` is two values, so only a 1-3 digit group followed
+    by 3-digit groups counts, and only outside a brace or a quote.
+    """
+    bad = {}
+    for name in sorted(os.listdir(PAPER)):
+        if not name.endswith(".tex"):
+            continue
+        for n, line in enumerate(open(os.path.join(PAPER, name)), 1):
+            for m in re.finditer(r"(?<![\d,])(\d{1,3}(?:,\d{3})+)(?![\d,])", line):
+                bad.setdefault(name, []).append((n, m.group(1)))
+    return bad
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--emit", action="store_true")
@@ -150,6 +169,13 @@ def main():
 
     nums = os.path.join(PAPER, "numbers.tex")
     cur = re.search(r"\\newcommand\{\\pctRegen\}\{(\d+)\}", open(nums).read())
+    bad = grouped_integers()
+    for name, hits in bad.items():
+        for n, v in hits:
+            print(f"  THOUSANDS SEPARATOR: {name}:{n}  {v}")
+    if a.check and bad:
+        raise SystemExit("ABORT: integers written with thousands separators; a "
+                         "comma is a decimal point to most European readers.")
     if a.check:
         if not cur or int(cur.group(1)) != pct:
             raise SystemExit(
