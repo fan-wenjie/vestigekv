@@ -78,7 +78,7 @@ it mid-queue does not cost a deletion, it costs the runs.
 
 The order:
 
-1. the queue drains and `results.zip` is built;
+1. the queue drains and `results.tar.xz` is built;
 2. a PR-prep branch, off the tree the results were produced on;
 3. deletions one commit each, so a bisect can name which one broke something;
 4. the gate is the GPU kernel suite plus `test/manual/test_vestigekv_equiv.py`,

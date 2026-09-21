@@ -9,6 +9,11 @@ argued with:
 **Excluded, and why.**
   `caldump/`          7.1 GB of activation dumps; the paper says they are
                       excluded and names the script that regenerates them.
+  `sidecardump*/`     10.42 GB of pool-row snapshots, 98.6% of the archive.
+                      Same rule, and like the RULER samples below the archive
+                      carries the projection instead: `sidecar_spectra.json`
+                      holds the peak bin, peakiness and notched kept-share per
+                      request, which is what the spectral appendix claims.
   `*/ruler/samples_*.json`
                       raw RULER generations, 188 MB per arm. NOT dropped as
                       worthless -- the paired test needs their per-item scores,
@@ -45,19 +50,35 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import lzma
 import os
 import subprocess
 import sys
+import tarfile
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RESULTS = os.path.join(ROOT, "results")
-ARCHIVE = os.path.join(RESULTS, "results.zip")
+ARCHIVE = os.path.join(RESULTS, "results.tar.xz")
+# The format this archive used to be. Read on a rebuild so the may-only-grow
+# check still sees what the last zip carried -- a format change is exactly when
+# that check must not silently start from an empty set.
+LEGACY = os.path.join(RESULTS, "results.zip")
+XZ_PRESET = 9 | lzma.PRESET_EXTREME  # measured: 13.2 MB against 14.6 at -6
 
-EXCLUDE_DIRS = {"caldump", ".git"}
+EXCLUDE_DIRS = {"caldump", ".git",
+                # The sidecar snapshots, on the same rule as caldump above and
+                # the RULER samples below: 10.42 GB of whole pool rows, 98.6%
+                # of an archive whose every other file together is 150 MB, for
+                # a claim six numbers long. results/kimi/sidecar_spectra.json
+                # (1 KB, written by mexp/tools/project_sidecar_spectra.py)
+                # carries those six per request and IS archived; the dumps
+                # themselves come back from the registered sidecardump jobs.
+                "sidecardump", "sidecardump5",
+                "sidecardump_prose", "sidecardump_prose5"}
 # Matched against the basename.
 EXCLUDE_GLOBS = ("health.log", "*_queue_runner.log", "*.png", "README.md",
-                 "*.zip")
+                 "*.zip", "*.tar.xz")
 # Matched against the path relative to results/, so the rule can name a
 # directory. Scoping matters here -- see the module docstring.
 EXCLUDE_PATHS = ("*/ruler/samples_*.json",)
@@ -75,6 +96,35 @@ def included():
                 continue
             out.append(rel)
     return sorted(out)
+
+
+def members(path):
+    """Paths inside an archive, whichever of the two formats it is.
+
+    A rebuild compares against this, so it must keep working across the change
+    from zip to tar.xz: the one rebuild where `have` comes back empty is the
+    one where every file in the old archive reads as never having been there,
+    and the may-only-grow check waves through a total loss.
+    """
+    if not os.path.exists(path):
+        return []
+    if path.endswith(".zip"):
+        return zipfile.ZipFile(path).namelist()
+    with tarfile.open(path, "r:xz") as t:
+        return [m.name for m in t.getmembers() if m.isfile()]
+
+
+def _reproducible(info):
+    """Drop the parts of a tar header that differ between two identical trees.
+
+    Owner, group and mtime say who built the archive and when, not what is in
+    it, and leaving them in means two rebuilds of one tree do not compare equal
+    -- which is the check anyone verifying this archive will reach for first.
+    """
+    info.uid = info.gid = 0
+    info.uname = info.gname = ""
+    info.mtime = 0
+    return info
 
 
 def main():
@@ -97,9 +147,7 @@ def main():
                         "--write"], check=True)
 
     want = included()
-    have = []
-    if os.path.exists(ARCHIVE):
-        have = sorted(zipfile.ZipFile(ARCHIVE).namelist())
+    have = sorted(members(ARCHIVE) or members(LEGACY))
 
     added = [p for p in want if p not in have]
     dropped = [p for p in have if p not in want and p not in args.allow_drop]
@@ -127,13 +175,14 @@ def main():
         return 1
 
     tmp = ARCHIVE + ".new"
-    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+    with tarfile.open(tmp, "w:xz", preset=XZ_PRESET) as t:
         for p in want:
-            z.write(os.path.join(RESULTS, p), p)
+            t.add(os.path.join(RESULTS, p), p, filter=_reproducible)
         # The archive carries its own reader: packed arrays are lzma, which is
         # stdlib, so this is one file and no install.
-        z.write(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                             "unpack_streams.py"), "unpack_streams.py")
+        t.add(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "unpack_streams.py"), "unpack_streams.py",
+              filter=_reproducible)
     os.replace(tmp, ARCHIVE)
     print(f"\nwrote {ARCHIVE}: {len(want)} files, "
           f"{os.path.getsize(ARCHIVE) / 1e6:.2f} MB")

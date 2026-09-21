@@ -73,10 +73,19 @@ def from_artifacts(results_dir, ids):
     for d, _, fs in os.walk(results_dir):
         for f in fs:
             names.append(f)
-    zp = os.path.join(results_dir, "results.zip")
-    if os.path.exists(zp):
-        with zipfile.ZipFile(zp) as z:
-            names += [os.path.basename(n) for n in z.namelist()]
+    # Both formats: the archive is tar.xz now and older checkouts still have
+    # the zip, and a name missing from this list reads as a job that never ran.
+    import tarfile
+    for ap in (os.path.join(results_dir, "results.tar.xz"),
+               os.path.join(results_dir, "results.zip")):
+        if not os.path.exists(ap):
+            continue
+        if ap.endswith(".zip"):
+            with zipfile.ZipFile(ap) as z:
+                names += [os.path.basename(n) for n in z.namelist()]
+        else:
+            with tarfile.open(ap, "r:xz") as t:
+                names += [os.path.basename(m.name) for m in t.getmembers()]
     blob = "\n".join(names)
     found = set()
     for i in ids:

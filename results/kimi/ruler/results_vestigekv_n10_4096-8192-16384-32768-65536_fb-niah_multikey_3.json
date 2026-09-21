@@ -1,0 +1,32 @@
+{
+  "results": {
+    "niah_multikey_3": {
+      "name": "niah_multikey_3",
+      "alias": "niah_multikey_3",
+      "sample_len": 50,
+      "4096,none": 1.0,
+      "4096_stderr,none": "N/A",
+      "8192,none": 1.0,
+      "8192_stderr,none": "N/A",
+      "16384,none": 0.7,
+      "16384_stderr,none": "N/A",
+      "32768,none": 1.0,
+      "32768_stderr,none": "N/A",
+      "65536,none": 0.6,
+      "65536_stderr,none": "N/A"
+    }
+  },
+  "wall_s": 144.61180996894836,
+  "n_per_cell": 10,
+  "lengths": [
+    4096,
+    8192,
+    16384,
+    32768,
+    65536
+  ],
+  "tasks": [
+    "niah_multikey_3"
+  ],
+  "seed": 0
+}

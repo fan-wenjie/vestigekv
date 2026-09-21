@@ -41,7 +41,7 @@ import zipfile
 PAPER = os.path.expanduser("~/vestigekv_paper")
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ARCHIVE = os.path.join(os.path.dirname(os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__)))), "results", "results.zip")
+    os.path.dirname(os.path.abspath(__file__)))), "results", "results.tar.xz")
 SOURCES = ("main.tex", "sec_eng_serving.tex", "stationarity.tex")
 
 
@@ -57,7 +57,12 @@ def cited_names():
 def shipped():
     have = set()
     if os.path.exists(ARCHIVE):
-        have |= {os.path.basename(n) for n in zipfile.ZipFile(ARCHIVE).namelist()}
+        import tarfile
+        if ARCHIVE.endswith(".zip"):
+            have |= {os.path.basename(n) for n in zipfile.ZipFile(ARCHIVE).namelist()}
+        else:
+            with tarfile.open(ARCHIVE, "r:xz") as t:
+                have |= {os.path.basename(m.name) for m in t.getmembers()}
     for root, _, fs in os.walk(os.path.dirname(ARCHIVE)):
         have |= set(fs)
     return have

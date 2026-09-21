@@ -1,0 +1,57 @@
+{
+  "arm": "baseline",
+  "task": "longbench2_kimi_120k",
+  "n": 300,
+  "acc": 0.3333333333333333,
+  "choices_absent_from_topk": 0,
+  "topk": 20,
+  "by": {
+    "domain": {
+      "Code Repository Understanding": {
+        "n": 15,
+        "acc": 0.26666666666666666
+      },
+      "Long In-context Learning": {
+        "n": 35,
+        "acc": 0.2571428571428571
+      },
+      "Long Structured Data Understanding": {
+        "n": 4,
+        "acc": 0.25
+      },
+      "Long-dialogue History Understanding": {
+        "n": 39,
+        "acc": 0.3333333333333333
+      },
+      "Multi-Document QA": {
+        "n": 86,
+        "acc": 0.3372093023255814
+      },
+      "Single-Document QA": {
+        "n": 121,
+        "acc": 0.36363636363636365
+      }
+    },
+    "length": {
+      "medium": {
+        "n": 122,
+        "acc": 0.26229508196721313
+      },
+      "short": {
+        "n": 178,
+        "acc": 0.38202247191011235
+      }
+    },
+    "difficulty": {
+      "easy": {
+        "n": 108,
+        "acc": 0.35185185185185186
+      },
+      "hard": {
+        "n": 192,
+        "acc": 0.3229166666666667
+      }
+    }
+  },
+  "wall_s": 2477.9116473197937
+}
