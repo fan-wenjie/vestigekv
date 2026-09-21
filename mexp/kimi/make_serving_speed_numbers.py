@@ -257,6 +257,13 @@ def main():
         f"\\newcommand{{\\serveSpeedMaxBare}}{{{at508:.2f}}}",
         f"\\newcommand{{\\serveSlopeVk}}{{{sl_v:.1f}}}",
         f"\\newcommand{{\\serveSlopeDense}}{{{sl_d:.1f}}}",
+        # The slope is the marginal cost of one more cached token, and the only
+        # term that grows with the cache is MLA attention -- everything the
+        # method does not touch (the 20 KDA layers, MoE, the projections,
+        # sampling) sits in the intercept. So this ratio is an attention-
+        # isolated speedup taken from the serving path, not a synthetic one,
+        # and it is the number the end-to-end figures are a diluted view of.
+        f"\\newcommand{{\\serveSlopeRatio}}{{{sl_d / sl_v:.1f}$\\times$}}",
         f"\\newcommand{{\\memTimeCross}}{{{memtime:.2f}}}",
         "",
         "% the reduced curve, for anyone checking the figure against the logs:",
