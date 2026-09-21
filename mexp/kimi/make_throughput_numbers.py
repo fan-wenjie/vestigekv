@@ -190,6 +190,27 @@ def main():
     for r in refused:
         print(f"  REFUSED {r}")
 
+    # The pool size the appendix quotes when it says the pool is not what runs
+    # out. It must come from the runs that claim is about -- the 128k top
+    # point, both arms -- and not from whichever server log sorts first: the
+    # 64k configuration reports 5095798 and the sentence would cite a pool no
+    # arm in it ever had. Both arms are read so "the same" is checked.
+    pools = {}
+    for arm, job in (("baseline", "tputB-bs32r2-dense"),
+                     ("vestigekv", "tputB-bs32r2-vestigekv")):
+        path = os.path.join(RESULTS, f"server_{arm}_{job}.log")
+        if not os.path.exists(path):
+            continue
+        m = re.search(r"max_total_num_tokens=(\d+)",
+                      open(path, errors="replace").read(400000))
+        if m:
+            pools[arm] = m.group(1)
+    if len(pools) == 2 and len(set(pools.values())) == 1:
+        lines.append(f"\\newcommand{{\\poolTokens}}{{{pools['vestigekv']}}}")
+    elif pools:
+        raise SystemExit(f"ABORT: the 128k arms report different pools: {pools}; the "
+                         "appendix says they are the same")
+
     if not any(have.values()):
         raise SystemExit("ABORT: no point has a usable plateau")
     if a.emit:
