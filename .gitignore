@@ -58,3 +58,4 @@ results/*/queue_state.jsonl
 # Study inputs, not records: whole 576-dim pool rows at 0.5 GB a run. The
 # analysis that reads them ships; the tensors do not.
 results/kimi/sidecardump/
+results/kimi/sidecardump_prose/
