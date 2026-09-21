@@ -184,6 +184,10 @@ def main():
             if bs in WORD:
                 lines.append(f"\\newcommand{{\\srvBatch{word}{WORD[bs]}}}{{{v / d:.2f}}}"
                              f"  % {ctx // 1024}k, {bs} live: {v:.1f}/{d:.1f} tok/s")
+        # Where each series ends, so the caption states it from the data. The
+        # 128k one stops below the dense arm's reach and the paper says so;
+        # typing the number there would leave it behind the next sweep.
+        lines.append(f"\\newcommand{{\\srvTop{word}}}{{{max(have[ctx])}}}")
         if 12 in have[ctx]:
             g = have[ctx][12]["vestigekv"] / have[ctx][12]["baseline"] - 1
             lines.append(f"\\newcommand{{\\tputGain{word}Twelve}}{{{g * 100:.1f}\\%}}")
@@ -210,6 +214,18 @@ def main():
     elif pools:
         raise SystemExit(f"ABORT: the 128k arms report different pools: {pools}; the "
                          "appendix says they are the same")
+
+    # The width at which the VestigeKV arm ran out, read from the run that did.
+    # The appendix quotes it beside the pool occupancy, and both belong to that
+    # log rather than to a sentence.
+    oom = os.path.join(RESULTS, "server_vestigekv_tputB-bs32r2-vestigekv.log")
+    if os.path.exists(oom):
+        text = open(oom, errors="replace").read()
+        live = re.findall(r"Decode batch.*?#running-req: (\d+)", text)
+        use = re.findall(r"Decode batch.*?full token usage: ([\d.]+)", text)
+        if live and "OutOfMemoryError" in text:
+            lines.append(f"\\newcommand{{\\srvOomLive}}{{{live[-1]}}}")
+            lines.append(f"\\newcommand{{\\srvOomUsage}}{{{use[-1]}}}")
 
     if not any(have.values()):
         raise SystemExit("ABORT: no point has a usable plateau")
