@@ -54,3 +54,7 @@ results/*/queue_state.jsonl
 # record of every run on the floor.
 !mexp/kimi/queue.jsonl
 !results/kimi/queue_state.jsonl
+
+# Study inputs, not records: whole 576-dim pool rows at 0.5 GB a run. The
+# analysis that reads them ships; the tensors do not.
+results/kimi/sidecardump/
