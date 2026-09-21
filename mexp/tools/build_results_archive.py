@@ -85,6 +85,17 @@ def main():
                     help="paths that may disappear from the archive")
     args = ap.parse_args()
 
+    # Pack before listing, so a record that still carries raw per-token arrays
+    # is packed rather than shipped at twenty times its size -- or, worse,
+    # reduced by hand later and lost. Safe here and nowhere else: this runs
+    # only with the queue stopped, checked below.
+    if args.write:
+        subprocess.run([sys.executable,
+                        os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     "pack_streams.py"),
+                        "--glob", os.path.join(RESULTS, "*", "latency_stream_*.jsonl"),
+                        "--write"], check=True)
+
     want = included()
     have = []
     if os.path.exists(ARCHIVE):
@@ -119,6 +130,10 @@ def main():
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for p in want:
             z.write(os.path.join(RESULTS, p), p)
+        # The archive carries its own reader: packed arrays are lzma, which is
+        # stdlib, so this is one file and no install.
+        z.write(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "unpack_streams.py"), "unpack_streams.py")
     os.replace(tmp, ARCHIVE)
     print(f"\nwrote {ARCHIVE}: {len(want)} files, "
           f"{os.path.getsize(ARCHIVE) / 1e6:.2f} MB")

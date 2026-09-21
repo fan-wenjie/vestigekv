@@ -231,12 +231,24 @@ def main():
     ap.add_argument("--spacing", choices=["cosine", "linear"], default="cosine")
     ap.add_argument("--sigdig", type=int, default=6, help="decimals kept in the trace (ms)")
     ap.add_argument("--out-dir", default="", help="write reduced copies here (default: alongside, .reduced.jsonl)")
+    ap.add_argument("--allow-lossy-in-place", action="store_true",
+                    help="override the refusal above; the arrays are not recoverable")
     ap.add_argument("--in-place", action="store_true",
                     help="replace the originals after verification; the original "
                          "is copied to ~/vestigekv-retired/full-stream-traces first")
     ap.add_argument("--verify", action="store_true", help="prove the reduction preserves every reported statistic")
     ap.add_argument("--min-bytes", type=int, default=1 << 20, help="skip files smaller than this")
     args = ap.parse_args()
+    if args.in_place and not args.allow_lossy_in_place:
+        raise SystemExit(
+            "REFUSED: --in-place discards the per-token arrays, and\n"
+            "mexp/tools/pack_streams.py keeps them at a comparable size:\n"
+            "  161 MB of traces -> ~18 MB packed, lossless to the microsecond,\n"
+            "  against 8 MB reduced and gone.\n"
+            "Use:  python mexp/tools/pack_streams.py --glob '<...>' --write\n"
+            "This flag destroyed 47 runs' traces once; the tracked copies were\n"
+            "133-byte stubs from an earlier cleanup, so nothing came back.\n"
+            "Pass --allow-lossy-in-place only for a record packing cannot take.")
 
     paths = sorted(p for p in globmod.glob(args.glob, recursive=True) if os.path.isfile(p))
     if not paths:
