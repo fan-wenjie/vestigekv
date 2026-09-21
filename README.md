@@ -992,35 +992,40 @@ bash mexp/health_check.sh kimi 1800 &
 # two-arm table: python mexp/glm53/compare_ruler.py --out results/kimi/ruler
 
 # --- GLM-5.3-Flash-NVFP4 on 2x RTX PRO 6000 Blackwell (SM120; branch vestigekv-pro6000x2) ---
-# FIRST, BEFORE ANY GLM RUN: rebase the box branch onto v0.5.20 and re-test three of its
-# five patches. The branch predates v0.5.20 (git merge-base --is-ancestor v0.5.20
-# vestigekv-pro6000x2 is false), and upstream has since changed exactly the area those
-# three sit in, so they may now be unnecessary -- three fork changes we would otherwise
-# carry for nothing. Do not decide this by reading: the whole question is whether a kernel
-# upstream now points at actually exists on SM120.
-#   The three under test, all from 5b4e38c: (a) SM120 allowed to use the Triton DSA backend
-#   (arg_groups/overrides.py, _check_dsa_backend_constraints); (b) "triton" added to the
-#   KPool tail-token allow-list (layers/attention/dsa/dsa_backend_kpool.py); (c) rope-less
-#   MLA compiles, D_TAIL == 0 (kernels/ops/attention/dsa/triton_sparse_mla{,_decode}.py).
-#   Why they may be dead: at v0.5.20 a DSA-family arch with kv_cache_dtype=auto and compute
-#   capability >= 10 gets kv_cache_dtype fp8_e4m3 automatically (overrides.py:603-609) and
-#   then dsa_prefill_backend = dsa_decode_backend = "trtllm" (overrides.py:771-777) -- and
-#   "trtllm" is already in the KPool allow-list. If trtllm has SM120 kernels now, none of
-#   (a), (b), (c) is reached. Our commit message claims it does not, but that was written
-#   against the older upstream.
-#   Test: revert (a), (b), (c) on the rebased branch and serve with NO --dsa-*-backend
-#   argument, letting the resolution pick:
-#     bash mexp/glm53/baseline.sh    # then one needle: python mexp/glm53/needle.py
-#   Serves -> drop all three. Fails with a missing-kernel error -> keep all three and
-#   record the error text here, so the next rebase does not re-litigate it.
-#   NOT under test, keep regardless: --language-model-only needs BOTH halves of its patch.
-#   handle_language_model_only (arg_groups/model_hook.py:900-929) only validates -- it
-#   rejects any arch outside ServerArgs.LANGUAGE_MODEL_ONLY_ARCHITECTURES and declares no
-#   field value -- while models/glm5_next.py at v0.5.20 never reads language_model_only at
-#   all. The allow-list entry gets the flag past validation; the model-side read is what
-#   actually skips the tower. Test the modelopt_quant placeholder patch in the same pass:
-#   upstream now auto-selects the flashinfer_cutlass MoE runner for modelopt_fp4 on SM120
-#   (overrides.py:1559-1568), which may have moved the construction-time peak it was for.
+# REBASED ONTO v0.5.20 AND RE-TESTED, 2026-09-21. Serving branch is now
+# `glm53-v0520-box` = v0.5.20 + the VestigeKV line + three box commits, each
+# committed and verified separately. Outcome: ALL FIVE PATCHES ARE STILL
+# REQUIRED. The test existed because reading could not answer it; it answered
+# the opposite way to the hypothesis, which is why it was run.
+#   The hypothesis was that upstream had made three of them unreachable: at
+#   v0.5.20 a DSA-family architecture with kv_cache_dtype bfloat16 and compute
+#   capability >= 10 is routed by resolution alone, and one of those defaults
+#   (trtllm) is already in the KPool allow-list. Served with NO --dsa-*-backend
+#   and let it pick. It picked prefill=flashmla_sparse, decode=trtllm, loaded
+#   every weight, allocated the KV pool (100736 tokens, 4.23 GB left) and died
+#   on the first decode warm-up:
+#     tvm.error.InternalError: Error in function 'TllmGenFmhaRunner' at
+#     flashinfer/data/include/flashinfer/trtllm/fmha/fmhaRunner.cuh:37:
+#     Unsupported architecture
+#   trtllm has no FMHA kernel for SM120. Triton remains the only workable DSA
+#   backend, so the SM120 exception, the KPool allow-list entry and the
+#   D_TAIL == 0 compile all stay (engine commit fb9952b0). Note the KPool
+#   NotImplementedError never fired -- the run died before any prefill with
+#   tail tokens, so that path is untested by this experiment, not cleared.
+#   modelopt_quant placeholders: also still required, and now measured rather
+#   than argued (engine 2f2bf1f2). Without it the server dies loading weights
+#   at 94.87 of 94.97 GiB on GPU 0, failing a 144 MiB allocation. Upstream does
+#   now auto-select the flashinfer_cutlass MoE runner for modelopt_fp4 on SM120,
+#   but the guard that patch replaces skips the allocation only for trtllm and
+#   megamoe -- cutlass is neither, so the better auto-selection routes straight
+#   into the branch that allocates.
+#   --language-model-only: both halves still required (engine 09ffd672).
+#   handle_language_model_only only validates against an architecture allow-list
+#   Glm5Next is absent from, and glm5_next.py at v0.5.20 never reads the field.
+#   Verified working end to end 2026-09-21 23:08 UTC: server up with
+#   --dsa-{prefill,decode}-backend triton, KV pool 100736 tokens / 2.73 GB free,
+#   `python mexp/glm53/needle.py` -> NEEDLE_OK.
+#   Logs: results/glm53/verify_v0520{,_nopatch,_triton}.log.
 # Arms: baseline = the model as shipped (DSA: indexer top-k 2048 + KPool 4:1, Triton DSA
 # kernels); vestigekv = DSA off + vestigekv_mla over the dense-MLA substrate, fp8 side pool
 # (the DSA index-cache format), every --vestigekv-* flag at its default (capacity 4096,
