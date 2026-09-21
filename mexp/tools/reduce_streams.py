@@ -59,6 +59,7 @@ import glob as globmod
 import json
 import math
 import os
+import shutil
 import statistics
 import sys
 
@@ -230,7 +231,9 @@ def main():
     ap.add_argument("--spacing", choices=["cosine", "linear"], default="cosine")
     ap.add_argument("--sigdig", type=int, default=6, help="decimals kept in the trace (ms)")
     ap.add_argument("--out-dir", default="", help="write reduced copies here (default: alongside, .reduced.jsonl)")
-    ap.add_argument("--in-place", action="store_true", help="replace the originals after verification")
+    ap.add_argument("--in-place", action="store_true",
+                    help="replace the originals after verification; the original "
+                         "is copied to ~/vestigekv-retired/full-stream-traces first")
     ap.add_argument("--verify", action="store_true", help="prove the reduction preserves every reported statistic")
     ap.add_argument("--min-bytes", type=int, default=1 << 20, help="skip files smaller than this")
     args = ap.parse_args()
@@ -273,6 +276,17 @@ def main():
 
         blob = "\n".join(out_lines) + "\n"
         if args.in_place:
+            # Archive before overwriting. This replaced 47 runs' per-token
+            # traces with their reductions and kept no copy; the repository's
+            # tracked versions were 133-byte stubs from an earlier cleanup, so
+            # there was nothing to recover from. The reduction is verified, so
+            # no reported number was lost -- but "verified" covers the
+            # statistics we thought to check, and the original covered the
+            # ones we did not.
+            keep = os.path.join(os.path.expanduser("~/vestigekv-retired"),
+                                "full-stream-traces")
+            os.makedirs(keep, exist_ok=True)
+            shutil.copy2(p, os.path.join(keep, os.path.basename(p)))
             dest = p
         elif args.out_dir:
             dest = os.path.join(args.out_dir, os.path.relpath(p))
