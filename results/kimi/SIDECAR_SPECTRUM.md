@@ -42,10 +42,29 @@ Whether the notched ranking is BETTER. Changing 30-70% of the kept set says
 the statistic is sensitive to this component, not that removing it helps. The
 accuracy question needs a run with the notch applied, against the same cells.
 
-Whether real prose shows it at all. This is a synthetic haystack.
-`sidecardumpprose-vestigekv` dumps the same snapshots during a novel
-continuation; if the peak is absent there, the finding is about the benchmark
-and belongs beside the other RULER-is-adverse arguments. If it is present,
-it is about the method.
+## Answered: it is mostly the benchmark
 
-Nothing from this file goes in the paper until those two are answered.
+`sidecardumpprose-vestigekv`, the same snapshots during a novel continuation,
+layer 19, one request each:
+
+                  peak bin   period   peakiness   top-3% kept   top-10% kept
+    RULER               71   57.7 t       889.4        30.3%         50.4%
+    real prose          16    256 t        90.2        75.4%         83.6%
+
+The location is the finding, not the height. Bin 16 is the first bin ABOVE
+the kappa=16 cutoff, so prose's largest above-cutoff component is the shoulder
+of the content the low-pass keeps -- what any smooth signal does at a
+boundary. RULER's sits at bin 71, an isolated spike far from the cutoff, and
+notching it moves seventy percent of what tier 1 keeps where the same
+operation on prose moves a quarter.
+
+So this is a third way RULER is adverse, after planted content and short
+answers, rather than a property of the method.
+
+## Still not measured
+
+Whether the notched ranking is better on either workload. One request per
+condition, one layer read closely. Before this goes in the paper it wants the
+other layers and more than one request, because "a quarter of the kept set
+still moves on prose" is not nothing and one request cannot tell a property
+from a sample.
