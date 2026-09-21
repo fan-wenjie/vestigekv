@@ -86,7 +86,7 @@ def refuse_existing(path, job_id):
 
 
 def tree_epoch(root):
-    """When the engine tree the jobs run on was built.
+    """When the engine tree's current lineage began -- its rebase point.
 
     A job is skipped because `queue_state.jsonl` says done, and that row does
     not know which tree produced it. Two LongBench v2 runs from three days
@@ -94,10 +94,20 @@ def tree_epoch(root):
     were registered, so the queue believed them covered, and their records
     could not be reproduced by anything shipped.
 
-    So `done` means done on this tree. A terminal row older than the engine's
-    HEAD commit is not a result, it is a result from somewhere else.
+    So `done` means done on this tree. The question is which TREE produced a
+    result, not which commit, and those are different: the first version of
+    this read the HEAD commit's date, so committing a CPU-only test to the
+    engine moved the epoch to now and reclassified every result of that day as
+    stale. Sixty-three finished jobs were queued for a re-run by a one-line
+    test file.
+
+    The rebase point does not move when a commit is added on top, which is the
+    property wanted: results are invalidated by the history being rewritten
+    under them, not by the tree growing.
     """
     import subprocess
-    out = subprocess.run(["git", "-C", os.path.join(root, "engine"), "log", "-1",
-                          "--format=%cI"], capture_output=True, text=True)
-    return out.stdout.strip()[:19].replace("T", " ") if out.returncode == 0 else ""
+    out = subprocess.run(
+        ["git", "-C", os.path.join(root, "engine"), "log", "v0.5.20..HEAD",
+         "--format=%cI"], capture_output=True, text=True)
+    dates = [l for l in out.stdout.splitlines() if l.strip()]
+    return dates[-1][:19].replace("T", " ") if out.returncode == 0 and dates else ""
