@@ -258,7 +258,7 @@ def main():
         return _vk_extract.get(job)
 
     # recall-margin sweep (per-job client logs; the targeted tasks at 16k/32k/64k)
-    for job, mac in (("margin-0", "Zero"), ("margin-1", "One"), ("margin-2", "Two"), ("margin-3", "Three"),
+    for job, mac in (("margin0-vestigekv", "Zero"), ("margin-1", "One"), ("margin2-vestigekv", "Two"), ("margin-3", "Three"),
                      ("margin-lse-2.3", "LseA"), ("margin-lse-4.6", "LseB")):
         p = os.path.join(ROOT, "results", "kimi", f"ruler_vestigekv_{job}.log")
         if not os.path.exists(p):

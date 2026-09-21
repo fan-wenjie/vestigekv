@@ -108,10 +108,14 @@ def main():
          "Do not edit by hand."]
     ok = 0
     for ctx, tag, suf in CELLS:
-        d_ms = decode_ms("baseline", f"litspeed-{tag}-dense")
-        v_ms = decode_ms("vestigekv", f"litspeed-{tag}-vk")
-        d_w = wall_s("baseline", f"litspeed-{tag}-dense")
-        v_w = wall_s("vestigekv", f"litspeed-{tag}-vk")
+        # The queue ids are the names on disk. These used to be the pre-rebase
+        # job names (litspeed-64k-dense), which still exist beside the new ones
+        # -- so the generator kept reading the retired tree's logs while the
+        # re-run it was waiting for sat unused in the same directory.
+        d_ms = decode_ms("baseline", f"litspeed{tag}-baseline")
+        v_ms = decode_ms("vestigekv", f"litspeed{tag}-vestigekv")
+        d_w = wall_s("baseline", f"litspeed{tag}-baseline")
+        v_w = wall_s("vestigekv", f"litspeed{tag}-vestigekv")
         if not all((d_ms, v_ms, d_w, v_w)):
             L += [f"\\newcommand{{\\lit{suf}{k}}}{{\\PENDING}}"
                   for k in ("Decode", "Wall", "Dense", "Vk", "N")]

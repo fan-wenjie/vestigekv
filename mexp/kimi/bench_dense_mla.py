@@ -1,6 +1,6 @@
 """Correctness and speed of the page-table dense MLA decode against the path it replaces.
 
-    ENGINE=~/vestigekv-wt/engine-fused python mexp/kimi/bench_dense_mla.py [--seq 262144]
+    python mexp/kimi/bench_dense_mla.py [--seq 262144]
 
 A fenced lane attends its whole row set. The deployed path copies that row set
 into the CSR (seq int64, written by the pack and read back by attention) and the
