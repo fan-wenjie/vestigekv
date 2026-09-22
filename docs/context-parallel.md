@@ -171,7 +171,7 @@ the pipeline's kernels (`batched_step.py` is the batched form of the scan;
 | prologue (kept-row statistics) | `fused_prologue.py` | split into two kernels around an all-reduce | large |
 | CSR pack | `pack_csr.py` | ownership predicate on the append; strided page-table walk | medium |
 | tier-2 scan | `scan_kernel.py`, `batched_step.py` | kernel unchanged; the overflow predicate sums across ranks | small |
-| tier-2 operand build | `operand_fused.py` | kernel unchanged; **the sketch basis must be broadcast** | small |
+| tier-2 operand build | `operand_fused.py` | kernel unchanged; the per-query best archived score is max-reduced before zp is fit | small |
 | decode stage 1 | `decode_fork.py` | kernel unchanged; feed the partials to `merge_state` | small |
 
 The two that need real surgery are exactly the two that **fuse a reduction over
@@ -214,13 +214,43 @@ buffer the fence makes unread — see the overflow item above for why that
 matters only to one ablation. `batched_step`'s `a_len` is already masked, so
 per-rank archives of different lengths cost nothing.
 
-**`operand_fused`** is row-local and the kernel does not change — but the
-sketch basis `V_r` does. It is fitted per calibrated build, today independently
-in each process. Two ranks fitting it separately can disagree on eigenvector
-sign and ordering; their `csk` operands then live in different bases, and tier 2
-compares those scores against a **global** kept max. The result is wrong firing
-with no error anywhere. The basis must be fitted once and broadcast. This is the
-easiest of the six to miss and the hardest to notice afterwards.
+**`operand_fused`** is row-local and the kernel does not change. This note
+used to say the sketch basis had to be broadcast, on the reasoning that two
+ranks fitting it separately would disagree on eigenvector sign and leave their
+`csk` operands in different bases. That is wrong twice. The basis is fitted on
+the request's calibration queries, which every rank holds — DCP all-gathers the
+query — so the Gram matrix is the same and `eigh` on it is deterministic. And
+a sign disagreement would not matter even if it happened: the basis appears
+twice in the sketch score, once in `qsk` and once in `csk`, so a flip cancels
+(checked: the score moves by 0.0).
+
+What does have to cross ranks in this tier is one line further on. `zp`, the
+certificate's inflation, is calibrated on **the best archived row per
+calibration query**, and that best is a max over the archive. Sharded, each
+rank takes the max over its own shard, which is systematically below the
+union's, so `zp` comes out too small and the certificate fires too little —
+rows that should be recalled are not. An all-reduce max over the per-query best
+score has to precede the fit. That is a recall failure rather than a tightness
+one, and it is the thing in this tier worth being careful about.
+
+**`decode_fork`** on the GLM line needs a word about where it is installed,
+because the Kimi arrangement does not transplant and the obvious repair is
+worse than the real one. Kimi installs a router as the base's
+`decode_attention_fwd`, an instance attribute, so one assignment redirects
+stage 1 to the fork while the base keeps doing the KV write, the logits
+buffers, stage 2 and the reshape. `DeepseekSparseAttnBackend` has no such
+attribute -- its decode dispatches to whole methods per DSA backend -- so
+making DSA the base would force VestigeKV to reimplement the plumbing Kimi
+deliberately does not touch.
+
+So the GLM arm holds **two** backends rather than replacing one. The base
+stays a plain MLA backend, which keeps the one-assignment redirection and the
+fork exactly as the Kimi line has them; a DSA backend is held alongside it and
+a fenced step is handed to that. The fallback lands on DSA, which is what the
+checkpoint was trained with and measurably better than dense here, and no DSA
+code is copied -- it is called through its own `forward_decode`. A step with
+both fenced and unfenced lanes goes to DSA whole; splitting it by lane is an
+optimisation and not a correctness matter.
 
 **`decode_fork`** already emits the LSE (it inherits upstream's split schedule)
 and stage 2 is upstream's unmodified, so the kernel is untouched; the per-rank
