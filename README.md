@@ -1028,8 +1028,12 @@ bash mexp/health_check.sh kimi 1800 &
 #   Logs: results/glm53/verify_v0520{,_nopatch,_triton}.log.
 # Arms: baseline = the model as shipped (DSA: indexer top-k 2048 + KPool 4:1, Triton DSA
 # kernels); vestigekv = DSA off + vestigekv_mla over the dense-MLA substrate, fp8 side pool
-# (the DSA index-cache format), every --vestigekv-* flag at its default (capacity 4096,
-# overflow fallback on, activation threshold 0, sketch rank 64 -- a queue job can raise
+# (the DSA index-cache format), recall capacity 2048 to match this checkpoint's DSA
+# indexer top-k rather than the 4096 default -- the overflow fence on this line falls back
+# to DSA, and a 4096-row recall budget against a 2048-row baseline is a difference in
+# budget rather than in method; it also halves a per-layer [max_reqs, W] int32 buffer on a
+# box with 2.73 GB left after the pool. Every other --vestigekv-* flag at its default
+# (overflow fallback on, activation threshold 0, sketch rank 64 -- a queue job can raise
 # the rank with "server_args": ["--vestigekv-index-rank", "256"]). "baseline" means DSA on this model
 # (Dense MLA on Kimi Linear); mexp/glm53/dense_mla.sh is the substrate ablation, not a baseline.
 # Quality/RULER line, fixed in mexp/glm53/common.sh: CUDA graph ON (--cuda-graph-max-bs-decode 4),
