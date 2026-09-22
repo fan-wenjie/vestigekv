@@ -53,8 +53,9 @@ VestigeKV = `--attention-backend vestigekv_mla`, seed 0, greedy):
 | MAUVE, 4k prefill (16 contexts x 256 generated tokens, gate vk >= dense - 0.10: PASS) | 0.9997 | 0.9960 | 0.9345 | 0.9805 |
 | MAUVE, 64k prefill (64 contexts x 256 generated tokens, gate vk >= dense - 0.10: PASS) | 0.9954 | 0.9987 | 0.9905 | 0.9861 |
 | RULER mean, 13 tasks x 4k-64k, n=50/cell | 0.922 | 0.860 | 0.942 | 0.920 |
+| LongBench v1 summarisation, ROUGE-L F1 x 100, mean of gov_report/qmsum/multi_news (n=200 each) | -- | -- | 26.06 | 25.45 |
 
-GSM8K-Platinum is madrylab/gsm8k-platinum (n=1209, label-corrected gsm8k test set), 64-shot, exact match on the final answer. MAUVE is scored against the reference continuations of the same prompts (`mexp/m7_mauve_serving.py`); the 4k and 64k rows differ in prefill length. RULER is lm-eval's 13-task suite; the 4k-64k grid below is the one the paper's Table reads (`mexp/kimi/make_ruler_numbers.py`). Records: `results/kimi/gsm8k_*`, `results/quality/quality_mauve*.json`, `results/kimi/ruler/results_*_n50_*.json`.
+GSM8K-Platinum is madrylab/gsm8k-platinum (n=1209, label-corrected gsm8k test set), 64-shot, exact match on the final answer. MAUVE is scored against the reference continuations of the same prompts (`mexp/m7_mauve_serving.py`); the 4k and 64k rows differ in prefill length. RULER is lm-eval's 13-task suite; the 4k-64k grid below is the one the paper's Table reads (`mexp/kimi/make_ruler_numbers.py`). Records: `results/kimi/gsm8k_*`, `results/quality/quality_mauve*.json`, `results/kimi/ruler/results_*_n50_*.json`. ROUGE-L is LongBench's own scoring (`mexp/kimi/make_lb1_numbers.py`, records `results/kimi/longbench1/pred_*`), Instruct checkpoint only.
 
 **RULER, Base checkpoint** (dense / VestigeKV, accuracy, n=50 per cell):
 

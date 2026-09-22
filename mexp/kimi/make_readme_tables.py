@@ -80,6 +80,20 @@ def headline_rows():
             vals = [v for v in vals if v is not None]
             cells.append("pending" if not vals else f"{sum(vals) / len(vals):.3f}")
     rows.append((f"RULER mean, 13 tasks x 4k-64k, n={N_RULER}/cell", cells))
+    # LongBench v1 summarisation, ROUGE-L: the lb1sum pair ran on the Instruct
+    # checkpoint only (mexp/kimi/queue.jsonl, lb1sum-*); the Base cells are
+    # not pending, they are not planned.
+    import make_lb1_numbers as lb1  # noqa: E402
+    lb = os.path.join(ROOT, "results", "kimi", "longbench1")
+    cells = ["--", "--"]
+    for arm in ("baseline", "vestigekv"):
+        vals = []
+        for sub in lb1.SUBSETS:
+            f = os.path.join(lb, f"pred_{arm}_{sub}.jsonl")
+            if os.path.exists(f):
+                vals.append(lb1.score(f)[0])
+        cells.append(f"{sum(vals) / len(vals):.2f}" if len(vals) == len(lb1.SUBSETS) else "pending")
+    rows.append(("LongBench v1 summarisation, ROUGE-L F1 x 100, mean of gov_report/qmsum/multi_news (n=200 each)", cells))
     return rows
 
 
@@ -128,7 +142,9 @@ def render():
              "differ in prefill length. RULER is lm-eval's 13-task suite; the 4k-64k grid below "
              "is the one the paper's Table reads (`mexp/kimi/make_ruler_numbers.py`). Records: "
              "`results/kimi/gsm8k_*`, `results/quality/quality_mauve*.json`, "
-             "`results/kimi/ruler/results_*_n50_*.json`.")
+             "`results/kimi/ruler/results_*_n50_*.json`. ROUGE-L is LongBench's own scoring "
+             "(`mexp/kimi/make_lb1_numbers.py`, records `results/kimi/longbench1/pred_*`), "
+             "Instruct checkpoint only.")
     L.append("")
     for display, line, _, _ in CHECKPOINTS:
         L += ruler_grid(display, line)

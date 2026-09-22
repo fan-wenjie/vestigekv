@@ -1,0 +1,31 @@
+{
+ "arm": "vestigekv",
+ "model": "moonshotai/Kimi-Linear-48B-A3B-Instruct",
+ "max_length": 65536,
+ "subsets": {
+  "gov_report": {
+   "n": 200,
+   "truncated": 0,
+   "max_gen": 512,
+   "wall_s": 379,
+   "tokens_max": 51341,
+   "pred": "/home/user/vestigekv/results/kimi/longbench1/pred_vestigekv_gov_report.jsonl"
+  },
+  "qmsum": {
+   "n": 200,
+   "truncated": 0,
+   "max_gen": 512,
+   "wall_s": 250,
+   "tokens_max": 30308,
+   "pred": "/home/user/vestigekv/results/kimi/longbench1/pred_vestigekv_qmsum.jsonl"
+  },
+  "multi_news": {
+   "n": 200,
+   "truncated": 0,
+   "max_gen": 512,
+   "wall_s": 242,
+   "tokens_max": 13944,
+   "pred": "/home/user/vestigekv/results/kimi/longbench1/pred_vestigekv_multi_news.jsonl"
+  }
+ }
+}
