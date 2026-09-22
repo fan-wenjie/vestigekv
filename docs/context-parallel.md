@@ -256,15 +256,60 @@ optimisation and not a correctness matter.
 and stage 2 is upstream's unmodified, so the kernel is untouched; the per-rank
 `(out, lse)` go to `merge_state` as above.
 
-One question stands between that sentence and working code, and it is about
-operands rather than arithmetic. The router hands stage 1's `attn_logits` and
-`attn_lse` to the base, which runs stage 2 -- upstream's merge over the split-K
-schedule. A cross-rank merge needs each rank's post-stage-2 output AND its
-combined log-sum-exp, and while the `attn_lse` buffer is reachable the same way
-`kv_indptr` is (`base.forward_metadata`), whether stage 2 leaves a combined LSE
-there or only the per-split ones has to be read out of upstream's stage-2
-kernel rather than assumed. If it does not, the fix is upstream's own
-`return_lse` path, which `cutedsl_mla_backend` already uses for exactly this.
+One question stood between that sentence and working code, and it was about
+operands rather than arithmetic: a cross-rank merge needs each rank's
+post-stage-2 output AND its combined log-sum-exp, and whether stage 2 leaves
+one had to be read rather than assumed. Read now. Upstream's
+`_fwd_kernel_stage2` stores `acc` and `e_sum` and nothing else; the `lse` in its
+signature is stage 1's OUTPUT being consumed, not a combined one being
+produced. So there is no combined LSE to collect, and the rank's own is
+recomputed from the per-split buffer -- `combined_lse()` in `tier_decode.py`,
+a masked `logsumexp` over the splits. The mask is the point: `attn_lse` is
+allocated with `torch.empty` at the captured maximum and only the first
+`num_kv_splits` entries of a row are written, so an unmasked reduction folds
+whatever was in memory into the merge.
+
+### The DSA fence arm has no LSE at all, and its LSE is not in the same base
+
+The paragraph above is about the MLA base. The GLM line's fence arm runs DSA,
+and there the situation is worse in two steps.
+
+`triton_sparse_mla_decode` returns `out` alone. Its split-k LSE exists but is
+internal: `_sparse_mla_decode_split_kernel` writes `lse_partial`,
+`_sparse_mla_decode_reduce_kernel` consumes it, and nothing survives the call.
+When the split heuristic picks `kv_splits == 1` the fused kernel runs instead
+and no LSE is computed anywhere. So the fence arm cannot merge across ranks
+today, on either path.
+
+Upstream says this is expected. The note it deleted from the GLM-5.3-Flash
+cookbook (`b98a2d1096`) records the contract per backend: "TRT-LLM DSA DCP
+decode returns the LSE natively, so this arm needs no patch", while "TileLang
+DSA DCP decode needs the LSE fix that ships in the current release image", and
+"other platforms and attention backends are unvalidated". Triton is in that
+last category, and on SM120 it is the only DSA backend there is -- trtllm has
+no FMHA kernel for this device, measured, not assumed (`fb9952b06a`).
+
+The second step is the one that would not have announced itself. These kernels
+are base 2 throughout: `tl.exp2` for the online softmax, and
+`lse = tl.log2(l_i) + m_i`, because `qk_scale = sm_scale * LOG2E` folds the
+change of base into the scores. `merge_state` is natural log (`tl.exp` /
+`tl.log` in `merge_state_triton`). Handing the one to the other raises nothing,
+produces no NaN and looks right in a diff; it rescales every merge weight by a
+constant factor. The conversion therefore belongs in the emit and not in the
+caller: what leaves the kernel is ln, obtained as `* ln(2)` exactly, which is
+exact here precisely because `LOG2E` is already folded into `qk_scale`.
+
+So the fence arm needs a seventh operator change, and it is a fork of what is
+already there rather than new arithmetic: an `EMIT_LSE` constexpr and a pointer
+on both decode kernels, off by default so the existing path stays
+byte-identical. In the reduce kernel the combined value is
+`lse_max + log2(w_sum)`, quantities the kernel already computes for its own
+rescale, stored once per `(t, h)` under `dc == 0`; in the fused kernel it is
+`log2(l_i) + m_i` at the epilogue. An empty lane stores the file's `neg_large`
+rather than `-inf`: `-inf` is the true neutral element for a merge, but two of
+them merge to NaN, where two `neg_large` lanes merge to a zero output -- which
+is the right answer for "no rows on either rank" rather than a value that
+poisons the step.
 
 Ranks could alternatively be folded in as extra splits, since stage 2 is
 already a merge over splits and a rank's partial is the same shape. That is
@@ -319,9 +364,14 @@ then attribute the memory failure to context parallelism.
 fit at all, so this is not an optimization to evaluate but a precondition. Two
 consequences for sequencing:
 
-- The **baseline** arm on GLM is DSA, which is upstream's path, so it can run at
-  `dcp_size 2` today. The **VestigeKV** arm is blocked on the six operators —
-  DCP cannot be bolted on after a first run, it gates the arm.
+- The **baseline** arm on GLM is DSA, and the first version of this note said
+  that made it upstream's path and runnable at `dcp_size 2` today. That was
+  wrong, and wrong in the direction that costs a run: upstream's DCP-ready DSA
+  backend is TRT-LLM, which has no SM120 kernel, and the Triton backend this
+  box falls back to returns no LSE at all (see the DSA subsection above). The
+  baseline arm is blocked too, on the same seventh change.
+- The **VestigeKV** arm is blocked on the six operators, plus that seventh for
+  its fence. DCP cannot be bolted on after a first run, it gates the arm.
 - The missing startup refusal stops being hygiene and becomes urgent. A line
   that *requires* `--dcp-size 2` and a backend that accepts it while selecting
   rows from a sequence each rank only partly holds produce a run that looks
