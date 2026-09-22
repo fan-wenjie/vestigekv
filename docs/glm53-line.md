@@ -692,6 +692,48 @@ DSA's own selection; on the other 90% the arm attends the kept set plus
 what the certificate fetched (about the same row count as the top-k, a
 different row set), which is where the difference lives.
 
+## No crossover against DSA, and what a redesign would have to change
+
+The Kimi line's speedup comes from a dense baseline whose attention bytes
+grow linearly with the context while VestigeKV's do not, so the curves
+cross. DSA is already sparse -- a fixed top-2048 per layer and an indexer
+over a 4:1-pooled index at 33 B per token -- and here the growth is on
+VestigeKV's side. The 4k -> 128k stream pair (queue records
+stream-*-128k), median ITL per 16k-token window of decode position:
+
+| context (k tokens) | DSA | VestigeKV | gap |
+|---|---|---|---|
+| 4-20 | 11.28 ms | 11.45 ms | +0.17 (1.5%) |
+| 20-36 | 11.30 | 11.50 | +0.20 (1.8%) |
+| 36-52 | 11.29 | 11.54 | +0.25 (2.2%) |
+| 52-68 | 11.33 | 11.58 | +0.25 (2.2%) |
+| 68-84 | 11.36 | 11.63 | +0.27 (2.4%) |
+| 84-100 | 11.36 | 11.72 | +0.37 (3.2%) |
+| 100-116 | 11.38 | 11.84 | +0.46 (4.0%) |
+
+A linear fit of the gap is 0.09 ms + 0.36 ms per 100k tokens: positive
+slope, no crossing, and DSA's own slope is about 0.1 ms per 100k. The
+terms that grow are the certificate's kept-row sweep (the kept set is
+about rho S: 2018 rows at 4k, 3044 at 32k, every one scored against the
+step's query), the archive scan (132 B per token, four times DSA's index),
+and the attention over kept + fetched rows, against DSA's fixed 2048. None
+of this is kernel tuning; the three kernels concerned are at or near their
+roofline for the bytes they move.
+
+**The order set on 2026-09-22 21:30 UTC**: the Kimi line finishes first
+(tputB87, figures, paper macros); then the design changes; the GLM line
+enters the paper only if a crossover against DSA appears, otherwise it
+stays here. What the change has to do, from the numbers: (1) cap the kept
+set at a fixed budget instead of rho S, so the sweep and the attention
+stop growing; (2) pool or shrink the sketch below DSA's 33 B per token, so
+the scan's slope falls under the indexer's; (3) make the fence rare (the
+per-layer overflow of layers 0, 3 and 4 is the thing that blocked the lean
+graph), so the indexer's scoring and top-k are skipped on most steps and
+the intercept drops by the 0.3-0.45 ms measured above. With (1)-(3) the
+arm would start below DSA and stay below it; without (3) it can at best
+run parallel to DSA about 0.1 ms above. Every quality job re-runs on that
+tree.
+
 ## Run constraints
 
 Fixed in `mexp/glm53/common.sh`: CUDA graph on, radix cache off,
