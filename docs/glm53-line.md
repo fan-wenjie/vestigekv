@@ -365,12 +365,82 @@ a 4-lane captured scan grid freed), and the baseline RULER is re-run under the
 same knobs;
 `rulerv0520-baseline`'s 4-slot record is kept under `ruler/superseded/`.
 
+### RULER, one slot, both arms: parity
+
+`rulerv0520s1-baseline` (57 min) and `rulerv0520s1-vestigekv` (60 min), 13
+tasks x {4k, 8k, 16k, 32k, 64k}, n=10 per cell, seed 0, both under the one-slot
+knobs, `MEM_FRAC=0.955`, CTX 73728, split pair on the vestigekv arm
+(`mexp/glm53/compare_ruler.py`, records
+`results/glm53/ruler/results_{baseline,vestigekv}_n10_4096-...-65536.json`):
+
+| | 4k | 8k | 16k | 32k | 64k | mean |
+|---|---|---|---|---|---|---|
+| DSA baseline | 0.93 | 0.94 | 0.95 | 0.94 | 0.95 | 0.942 |
+| VestigeKV (split) | 0.97 | 0.94 | 0.94 | 0.97 | 0.93 | 0.950 |
+
+65 cells: VestigeKV below the baseline in 7, above in 8; one sample is 0.10
+at n=10, and every difference is within two samples. The eight NIAH tasks
+and `ruler_vt` are 1.00 on both arms at every length except
+`niah_multivalue`, where the split reads 0.95 at 32k and 0.90 at 64k against
+the baseline's 1.00 -- the one cell family where recall of several planted
+values from one query looks costlier than the baseline's top-2048; the qa
+and fwe tasks move both ways by one or two samples. The 4-slot baseline
+record and a stale 65k-only vestigekv partial (2026-09-21) are under
+`ruler/superseded/`; the comparison reads only the paired one-slot records.
+
 Records: `superseded/...split_needlemiss` (no tap) and
 `superseded/...split_cal_needlemiss` (tap); neither is a result.
 
 The pre-split smoke record is under `superseded/` as `...denseprefill`; the
 split smoke is `diag-smoke32k4k-vestigekv`, whose record now carries the
 NEEDLE_MISS and must not be read as a result.
+
+## Memory, second pass: what the request-lifetime state costs, measured
+
+`mexp/tools/tier_memory.py --tree <engine>` builds one (layer, request) of
+recall state at GLM geometry over a 65536-row closed prefix, points a
+pool-mode in-graph pack at it the way the server does, runs one decode-time
+close, and reads the allocator (process-wide cuBLAS/cusolver workspaces are
+taken first so they are not billed to the request). Per (layer, request):
+
+| | before (9153bb6e4d) | after (exact reductions) |
+|---|---|---|
+| steady after build + pack sync | 8.87 MiB (141.9 B/row) | 8.88 MiB |
+| steady after one close (69632 rows) | 10.01 MiB (150.8 B/row) | 9.49 MiB (142.9 B/row) |
+| build peak above steady | +97.7 MiB | +97.4 MiB |
+| close + pack sync peak above steady | +27.9 MiB | +28.4 MiB |
+
+The steady state is `_csk_all` fp16 [closed, 64] (8.50 MiB, 128 B/row) plus
+`_rho_all` fp32, `_pos_all` (int64 -> int32) and `_arch_idx` int32 at 4 B/row
+each; `arch` was a fourth 4 B/row table and is now a selection over
+`_pos_all` that the pack copies into its arena. Nothing else survives the
+pack sync: side and kept rows are read out of the pool, csk through the
+cache. So the per-token tax of the algorithm is 128 B of fp16 sketch +
+12 B of index per MLA layer, x 11 layers = 1.5 KiB/token at 65k, against
+DSA's own index cache at 132 B/token/layer (fp8 128 + scale 4) -- the same
+order, one channel wider.
+
+What the second pass removed besides the 8 B/row: the pack's `fits()` and
+`update()` gathered the [nk, 576] bf16 kept rows and the archive ids of every
+pair at every epoch to read two lengths (a data movement, not a resident
+cost -- it does not show in the steady column); the fused build wrote and
+discarded a [closed, 64] bf16 sidecar; the kept table
+(`[layers, slots+1, cap]` int32) is sized for the compressed arm,
+`cap = min(max_ctx, max(activation, rho*max_ctx + 3*CLOSE_BLOCK) + CLOSE_BLOCK)`
+= 20608 rows instead of 135168 on this line (11.6 -> 1.7 MiB at one slot,
+29 -> 4.3 at four); a configured FULL-arm flag path keeps max_ctx, and every
+host-side writer refuses to serve short. All bit-identical against the
+previous tree (`compare_operator_trees.py --this engine-pre-memopt`, with a
+new `recall_tier` case covering build, close, refresh and query).
+
+What it did not touch, and what is left: `csk` stays fp16 -- the fire
+decision compares scores near a threshold and the 11-bit mantissa is what
+was argued for; fp8+ue8m0 (the DSA index-cache packing, same precision as
+the baseline's selector position) would take the row to 88 B but is a
+precision change, not an exact one, and is excluded for now. The build peak
+(+97 MiB above steady at 65k, the same on both trees) is the largest
+remaining figure and is transient; it is the next thing to attribute with
+the same tool.
 
 ## Run constraints
 

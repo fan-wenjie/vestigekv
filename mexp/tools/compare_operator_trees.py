@@ -63,7 +63,41 @@ m1, qside, qsk, qres = fused_prologue(q, kr, v, nk, thr, 1 / 24.0)
 OUTPUT = {"max1g": m1, "qside": qside, "qsk": qsk, "qres": qres}
 '''
 
-CASES = {"sigma_fused": SIGMA, "fused_prologue": PROLOGUE}
+TIER = '''
+from sglang.srt.layers.attention.vestigekv import defaults as D
+from sglang.srt.layers.attention.vestigekv.recall_tier import RecallTier
+H, R, POOL, N = 32, 64, 8192, 6000
+g = torch.Generator(device="cuda").manual_seed(7)
+B = torch.randn(24, 576, device="cuda", generator=g)
+A = torch.randn(POOL, 24, device="cuda", generator=g)
+mag = torch.rand(POOL, 1, device="cuda", generator=g) ** 4 * 8 + 0.2
+kbuf = ((A @ B) / 24**0.5 * mag).to(torch.bfloat16)
+perm = torch.randperm(POOL, device="cuda", generator=g)
+slots = perm[:N]
+keep = torch.zeros(N, dtype=torch.bool, device="cuda")
+keep[kbuf[slots].float().norm(dim=-1).topk(max(1, int(D.RHO * N))).indices] = True
+qcal = torch.randn(32, H, 576, device="cuda", generator=g)
+qpos = torch.randint(0, N, (32,), device="cuda", generator=g)
+t = RecallTier(r=R)
+t.build(kbuf, slots, keep, qcal, qpos)
+OUTPUT = {"csk_all": t._csk_all, "rho_all": t._rho_all,
+          "pos_all": t._pos_all.to(torch.int64), "arch": t.arch.to(torch.int64),
+          "kept": t.kept_slots.to(torch.int64), "zp": torch.tensor(t.zp)}
+# one decode-time close: extend the closed prefix and re-decide membership
+more = perm[N:N + 2048]
+t.extend_closed(kbuf[more], more)
+all_slots = torch.cat([slots, more])
+keep2 = torch.zeros(N + 2048, dtype=torch.bool, device="cuda")
+keep2[kbuf[all_slots].float().norm(dim=-1).topk(max(1, int(D.RHO * (N + 2048)))).indices] = True
+t.refresh_membership(keep2, kbuf)
+OUTPUT.update({"csk_all2": t._csk_all, "rho_all2": t._rho_all,
+               "pos_all2": t._pos_all.to(torch.int64), "arch2": t.arch.to(torch.int64),
+               "kept2": t.kept_slots.to(torch.int64)})
+q = torch.randn(H, 576, device="cuda", generator=g)
+OUTPUT["fired"] = t.query(q).to(torch.int64)
+'''
+
+CASES = {"sigma_fused": SIGMA, "fused_prologue": PROLOGUE, "recall_tier": TIER}
 
 RUNNER = '''
 import sys, torch
