@@ -12,6 +12,27 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+
+def _read_record(path):
+    """Last record of a stream JSONL, with any packed arrays expanded.
+
+    The runner packs a job's record as soon as it finishes, so a reader that
+    takes rec["itls"] literally gets the packed pointer -- a dict, not the list
+    it expects. unpack_streams.expand() is the one place that knows the format.
+    """
+    import os
+    import sys
+
+    sys.path.insert(0, os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
+    from unpack_streams import expand
+
+    with open(path) as f:
+        rec = json.loads(f.readlines()[-1])
+    return expand(rec, os.path.dirname(path))
+
+
 ap = argparse.ArgumentParser()
 ap.add_argument("--arm", action="append", required=True,
                 help="NAME:JSONL[:PREFILL]  (PREFILL default 4096)")
@@ -36,7 +57,7 @@ for spec in a.arm:
     parts = spec.split(":")
     name, path = parts[0], parts[1]
     prefill = int(parts[2]) if len(parts) > 2 else 4096
-    rec = json.loads(open(path).read().strip().splitlines()[-1])
+    rec = _read_record(path)
     itls = np.array(rec["itls"][0]) * 1e3
     S = prefill + np.arange(1, len(itls) + 1)
     if a.clip:

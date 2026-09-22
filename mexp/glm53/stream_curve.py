@@ -27,6 +27,27 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 
 
+def _read_record(path):
+    """Last record of a stream JSONL, with any packed arrays expanded.
+
+    The runner packs a job's record as soon as it finishes, so a reader that
+    takes d["itls"] literally gets the packed pointer -- a dict, not the list
+    it expects, and `"itls" in d` is still true so a membership guard does not
+    catch it. unpack_streams.expand() is the one place that knows the format.
+    """
+    import json
+    import os
+    import sys
+
+    sys.path.insert(0, os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
+    from unpack_streams import expand
+
+    with open(path) as f:
+        rec = json.loads(f.readlines()[-1])
+    return expand(rec, os.path.dirname(path))
+
+
 def load(arm, prefill, out_len, line="glm53"):
     """Return a curve that answers median-ms-at-context, from either the full
     per-token array or the reduced record mexp/tools/reduce_streams.py writes.
@@ -35,8 +56,7 @@ def load(arm, prefill, out_len, line="glm53"):
     computed from the full array before it was dropped, so both paths give
     identical numbers -- see that script's --verify."""
     path = os.path.join(ROOT, "results", line, f"latency_stream_{prefill // 1024}k-{out_len}_{arm}.jsonl")
-    with open(path) as f:
-        d = json.loads(f.readlines()[-1])
+    d = _read_record(path)
     if "itls" in d:
         itls = [x * 1000.0 for x in d["itls"][0]]  # seconds -> ms
         return {"full": itls, "inp": d["input_lens"][0],

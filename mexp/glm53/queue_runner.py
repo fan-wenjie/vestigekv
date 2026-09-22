@@ -256,6 +256,35 @@ def run_client(job, port):
     return rc, out, tail
 
 
+def pack_finished_records():
+    """Pack this line's records now that a job has stopped writing them.
+
+    The archive builder packs at build time, which left every record raw on
+    disk until then -- 13.2 MB of throughput records at one point, and the
+    whole per-token history of a 512k stream for as long as the queue ran.
+    Packing at the job boundary is the same transform at the first moment it
+    is safe: the client has exited, so nothing is appending.
+
+    Over the whole line rather than the job's own file, because which files a
+    client wrote depends on the client and the packer skips a record it has
+    already packed or that has no arrays -- so the wide sweep costs a stat per
+    file and cannot miss one. Failure is logged and not raised: a job that
+    measured something has measured it, and an archive built later packs
+    whatever this missed.
+    """
+    r = subprocess.run(
+        [sys.executable,
+         os.path.join(ROOT, "mexp", "tools", "pack_streams.py"),
+         "--glob", os.path.join(RESULTS, "**", "*.jsonl"), "--write"],
+        capture_output=True, text=True)
+    if r.returncode != 0:
+        log(f"pack_streams failed (records left raw): {r.stderr.strip()[-200:]}")
+    else:
+        last = [l for l in r.stdout.splitlines() if "packed" in l]
+        if last:
+            log(f"pack: {last[-1].strip()}")
+
+
 def main():
     import signal
 
@@ -310,6 +339,8 @@ def main():
                           "wall_s": round(time.time() - t0), "end": time.strftime("%F %T"),
                           "tail": tail[-3:]})
             log(f"{job['id']} {status} rc={rc} wall={round(time.time() - t0)}s")
+            if status == "done":
+                pack_finished_records()
     finally:
         for pid in client_pids():
             subprocess.run(["kill", "-TERM", str(pid)])
