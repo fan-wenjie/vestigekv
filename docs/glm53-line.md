@@ -734,6 +734,21 @@ arm would start below DSA and stay below it; without (3) it can at best
 run parallel to DSA about 0.1 ms above. Every quality job re-runs on that
 tree.
 
+**Constraint set with it (2026-09-22): the scan period must match DSA's.**
+The pooled scan runs on the same cadence and phase as the indexer -- every
+step, with the current step's query, at the indexer's position inside
+each MLA layer (after the q projection, before attention), over the same
+pooled index cache the indexer reads at that step, with DSA's own pool
+rule (kpool = 4, the seq mod 4 tail scored unpooled, `compute_dsa_seqlens`
+counts). That retires the stale-by-one recall (the batched scan at the top
+of the step over last step's qbuf), so a row is fetched by the query that
+attends it, as DSA's selection is; the price is one scan launch per layer
+instead of one per step, which the fused ring write already showed is
+2-4 us each at this batch. The certificate over a pool is q . mean + |q| r
+with r the pool's radius, one scalar per pool written when the pool
+closes; without r the scan is DSA's ranking with a threshold, not a
+certificate, and the docs would have to say so.
+
 ## Run constraints
 
 Fixed in `mexp/glm53/common.sh`: CUDA graph on, radix cache off,
