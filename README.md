@@ -1027,7 +1027,12 @@ bash mexp/health_check.sh kimi 1800 &
 #   `python mexp/glm53/needle.py` -> NEEDLE_OK.
 #   Logs: results/glm53/verify_v0520{,_nopatch,_triton}.log.
 # Arms: baseline = the model as shipped (DSA: indexer top-k 2048 + KPool 4:1, Triton DSA
-# kernels); vestigekv = DSA off + vestigekv_mla over the dense-MLA substrate, fp8 side pool
+# kernels); vestigekv = a split pair, --prefill-attention-backend dsa (sparse prefill, the
+# indexer's top-k on, its un-rotated key filed as the salience channel) and
+# --decode-attention-backend vestigekv_mla (decode over the dense-MLA substrate). Before the
+# split VestigeKV attended densely at prefill and paid +5.6 s of TTFT at 32k against DSA's
+# sparse prefill -- the whole gap between the arms, none of it decode (nsys, 2026-09-22).
+# DSA_PREFILL=0 restores the single-backend shape for the ablation. fp8 side ring
 # (the DSA index-cache format), recall capacity 2048 to match this checkpoint's DSA
 # indexer top-k rather than the 4096 default -- the overflow fence on this line falls back
 # to DSA, and a 4096-row recall budget against a 2048-row baseline is a difference in
@@ -1040,7 +1045,10 @@ bash mexp/health_check.sh kimi 1800 &
 # --disable-radix-cache, --max-running-requests 4, --max-mamba-cache-size 4,
 # --chunked-prefill-size 1024 (2048 and 4096 OOM the DSA prefill: weights take 88 GB/GPU, ~4.5 GB is left for the pool plus prefill working memory), --mem-fraction-static 0.955 (pool ~100k tokens: 0.95 gave 61k, below the 64k RULER prompts), --context-length 73728,
 # --random-seed 0, --language-model-only (vision tower skipped), --sampling-backend pytorch;
-# clients are serial and greedy, RULER data generation and lm-eval seeded 0.
+# clients are serial and greedy, RULER data generation and lm-eval seeded 0. After readiness the
+# runner sends one CHUNK+128-token prefill with a one-token generation before any client: DSA's
+# prefill kernel autotunes on its first launch at the chunk shape, and doing that inside a
+# measured request once cost the server (CUDA OOM at 0.41 GiB free on the needle probe).
 # Jobs are a JSONL queue (mexp/glm53/queue.jsonl: one job per line = arm + server env +
 # client + args); the runner launches each job's server, runs the client, keeps the
 # server across same-config jobs, and records results/glm53/queue_state.jsonl. Edit the

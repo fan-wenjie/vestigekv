@@ -112,6 +112,7 @@ class Server:
                 cfg = [l for l in text.splitlines() if "max_total_num_tokens" in l and "TP1]" not in l]
                 vk = [l for l in text.splitlines() if "VestigeKV:" in l and "TP1]" not in l]
                 log(f"server {arm} ready: {cfg[:1]} {vk[:1]}")
+                self._prewarm_prefill(env)
                 self.sig = sig
                 return True
             if self.proc.poll() is not None:
@@ -121,6 +122,39 @@ class Server:
         log(f"server {arm} FAILED: {err}")
         self.stop()
         return False
+
+
+    def _prewarm_prefill(self, env):
+        """One chunk-sized prefill before any client, so a kernel's first-launch
+        autotune runs here and not inside a measured request.
+
+        The engine's own startup warmup is a 3-token prompt. DSA's prefill kernel
+        is first launched at the chunk shape, and Triton autotunes on that first
+        launch with whatever memory is free at that moment: under the split pair
+        (DSA prefill, VestigeKV decode) that was 0.41 GiB on TP1 and the server
+        died with a CUDA OOM on the needle probe's prefill, after a 6-token
+        warmup that had exercised nothing. This sends CHUNK + 128 tokens with a
+        one-token generation, logs the outcome, and never records anything:
+        radix cache is off on this line, so nothing it touched is reused.
+        """
+        import urllib.request
+
+        n = int(env.get("CHUNK", 1024)) + 128
+        body = json.dumps({
+            "input_ids": [(7 * i + 11) % 30000 + 1000 for i in range(n)],
+            "sampling_params": {"max_new_tokens": 1, "temperature": 0},
+        }).encode()
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}/generate", data=body,
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            t0 = time.time()
+            with urllib.request.urlopen(req, timeout=600) as r:
+                r.read()
+            log(f"prewarm: {n}-token prefill ok in {time.time() - t0:.1f}s")
+        except Exception as e:  # a failed prewarm is reported, then the probe decides
+            log(f"prewarm: FAILED ({type(e).__name__}: {str(e)[:120]})")
 
 
 def produced_nothing(job, results):

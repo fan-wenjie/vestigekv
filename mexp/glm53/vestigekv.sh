@@ -12,6 +12,19 @@
 # on a box that has 2.73 GB left after the pool.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"; guard
 SIDE=fp8; [ "${BF16:-0}" = 1 ] && SIDE=bf16
-cd "$ROOT" && exec $PY -m sglang.launch_server "${COMMON[@]}" "${NO_DSA[@]}" \
-  --attention-backend vestigekv_mla --page-size 1 --vestigekv-side-pool-dtype "$SIDE" \
+# Split pair: DSA computes prefill (sparse, the indexer's top-k on), VestigeKV
+# owns decode. Measured before the split: VestigeKV over a dense base attended
+# densely at prefill and paid +5.6 s of TTFT at 32k against DSA's sparse
+# prefill -- the whole gap between the arms, and none of it decode. DSA_PREFILL=0
+# restores the single-backend shape (DSA off) for the ablation.
+if [ "${DSA_PREFILL:-1}" = 1 ]; then
+  # DSA resolves the pool to page 64 (its KPool path requires it); VestigeKV
+  # addresses token slots and runs at whatever page the pool has.
+  BACKENDS=(--prefill-attention-backend dsa --decode-attention-backend vestigekv_mla
+    --dsa-prefill-backend triton --dsa-decode-backend triton)
+else
+  BACKENDS=("${NO_DSA[@]}" --attention-backend vestigekv_mla --page-size 1)
+fi
+cd "$ROOT" && exec $PY -m sglang.launch_server "${COMMON[@]}" "${BACKENDS[@]}" \
+  --vestigekv-side-pool-dtype "$SIDE" \
   --vestigekv-recall-capacity "${RECALL_CAP:-2048}" "$@"
