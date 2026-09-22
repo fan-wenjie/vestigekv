@@ -96,6 +96,38 @@ GSM8K-Platinum is madrylab/gsm8k-platinum (n=1209, label-corrected gsm8k test se
 
 <!-- quality-tables:end -->
 
+### GLM-5.3-Flash-NVFP4 (2 x RTX PRO 6000, TP=2): quality at parity
+
+Hand-kept (not generated): the GLM line stays out of the paper; every row is
+a queue record on engine 8b83b939a9 (`docs/glm53-line.md`), seed 0, one
+serving slot, DSA baseline vs the split pair (DSA prefill, VestigeKV decode).
+
+| RULER (13 tasks, n=10 per cell), mean accuracy | 4k | 8k | 16k | 32k | 64k | all |
+|---|---|---|---|---|---|---|
+| DSA baseline (rulerv0520s1-baseline) | 0.929 | 0.944 | 0.950 | 0.940 | 0.948 | 0.942 |
+| VestigeKV (rulerv0520s1-vestigekv) | 0.980 | 0.957 | 0.947 | 0.958 | 0.948 | 0.958 |
+
+The twelve retrieval/tracking tasks are 1.00 for both arms at every length
+but cwe at 64k (0.94 / 0.97); the spread is in fwe and the two QA tasks,
+where ten samples per cell move a mean by 0.1.
+
+| | DSA baseline | VestigeKV |
+|---|---|---|
+| GSM8K-Platinum, 64-shot greedy, n=1209 (gsm8kv0520-*) | 0.950 | 0.955 |
+| MAUVE 4k prefill x 16 contexts, 256 tokens (mauve4kv0520-*) | 0.993 | 0.930 (PASS) |
+| MAUVE 64k prefill x 64 contexts (mauve64kv0520-*) | 0.994 | 1.000 (PASS) |
+| LongBench v1 gov_report, ROUGE-L F1 x 100 (lb1sumv0520-*) | 36.20 | 33.27 |
+| LongBench v1 qmsum | 25.15 | 24.94 |
+| LongBench v1 multi_news | 26.69 | 26.05 |
+| LongBench v1 mean | 29.35 | 28.09 |
+| 4k prompt -> 128k decode, mean ITL / TTFT (stream-*-128k) | 11.35 ms / 919 ms | 11.61 ms / 1036 ms |
+
+MAUVE PASS is the M7 gate (VestigeKV within 0.10 of the baseline); at 4k
+sixteen contexts put the estimate's own spread at that scale. Throughput is
+not measured on this line (decode is 2% slower than DSA per step at bs=1,
+`docs/glm53-line.md` "Closing the decode gap").
+
+
 ## The vestigekv startup transient, and why bs=1 sits near dense
 
 Every request pays a small **startup transient**: tier-2 fits its conformal

@@ -659,6 +659,38 @@ stand. The RULER vestigekv record of 09:31 predates even the indexer fix
 (its server log has no 'DSA sibling drives'); it is retired and re-runs on
 this tree with the rest of the vestigekv arm (order in the README block).
 
+## Quality on the optimised tree (engine 8b83b939a9, 2026-09-22)
+
+Every vestigekv-arm quality job re-ran on the released tree after the
+autotune fix (README, `dsaopt-smoke32k4k-vestigekv`); the baseline records
+are the ones already on file (its path is untouched). Seed 0, one slot.
+
+| RULER mean over 13 tasks, n=10 per cell | 4k | 8k | 16k | 32k | 64k | all |
+|---|---|---|---|---|---|---|
+| DSA | 0.929 | 0.944 | 0.950 | 0.940 | 0.948 | 0.942 |
+| VestigeKV | 0.980 | 0.957 | 0.947 | 0.958 | 0.948 | 0.958 |
+
+All eight NIAH tasks, vt and cwe (but cwe at 64k: 0.94 / 0.97) are 1.00 for
+both arms at every length; fwe, qa_squad and qa_hotpot carry the spread,
+which at ten samples per cell is the resolution of the test. This replaces
+the 09:31 record, which had no indexer at decode.
+
+| | DSA | VestigeKV |
+|---|---|---|
+| GSM8K-Platinum (n=1209, 64-shot, greedy) | 0.950 | 0.955 |
+| MAUVE, 4k x 16 | 0.993 | 0.930 (PASS) |
+| MAUVE, 64k x 64 | 0.994 | 1.000 (PASS) |
+| ROUGE-L gov_report / qmsum / multi_news | 36.20 / 25.15 / 26.69 | 33.27 / 24.94 / 26.05 |
+| ROUGE-L mean | 29.35 | 28.09 |
+| 4k -> 128k stream, mean ITL | 11.35 ms | 11.61 ms (+2.3%) |
+
+The summarisation gap (1.3 points of ROUGE-L, gov_report carrying most of
+it) is the one place the arm sits below the baseline outside noise; the
+32k VKSTATS of the smoke say why it is small and where it comes from: the
+fetch width caps at 2048 on 10% of layer-steps and those lanes attend
+DSA's own selection, so the arm never attends less than DSA does, and the
+difference is the kept set standing in for the top-k on the other 90%.
+
 ## Run constraints
 
 Fixed in `mexp/glm53/common.sh`: CUDA graph on, radix cache off,
