@@ -1123,8 +1123,9 @@ bash mexp/health_check.sh kimi 1800 &
 #       --mem-fraction-static 0.96, --cuda-graph-max-bs-decode 1. Started 2026-09-22 on engine
 #       ee8b4f5a58 (exact memory reductions, bit-identical to 9153bb6e4d), split pair on the
 #       vestigekv arm, CHUNK 512 with the runner's chunk-sized pre-warm in front of the probe.
-#       DROPPED by decision on 2026-09-22 at 65k/131k decoded tokens of the baseline arm: the
-#       GLM line reports no latency curve; its GPU time goes to the quality gate below.
+#       Stopped once on 2026-09-22 at 65k/131k decoded tokens of the baseline arm to give the
+#       GPU to the quality gate below, then reinstated behind it (the line reports the 4k->128k
+#       latency curve; GLM throughput is not measured).
 #   gsm8kv0520-{baseline,vestigekv} -> GSM8K-Platinum full set (n=1209, 64-shot, greedy), the
 #       Kimi protocol (mexp/quality/gsm8k_platinum.jsonl, sglang.test.few_shot_gsm8k --parallel 1)
 #       on the RULER one-slot config; needle probe in front of each arm.
