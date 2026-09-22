@@ -1,0 +1,31 @@
+{
+ "arm": "baseline",
+ "model": "nvidia/GLM-5.3-Flash-NVFP4",
+ "max_length": 65536,
+ "subsets": {
+  "gov_report": {
+   "n": 200,
+   "truncated": 0,
+   "max_gen": 512,
+   "wall_s": 1575,
+   "tokens_max": 51463,
+   "pred": "/home/user/vestigekv/results/glm53/longbench1/pred_baseline_gov_report.jsonl"
+  },
+  "qmsum": {
+   "n": 200,
+   "truncated": 0,
+   "max_gen": 512,
+   "wall_s": 1049,
+   "tokens_max": 29996,
+   "pred": "/home/user/vestigekv/results/glm53/longbench1/pred_baseline_qmsum.jsonl"
+  },
+  "multi_news": {
+   "n": 200,
+   "truncated": 0,
+   "max_gen": 512,
+   "wall_s": 1290,
+   "tokens_max": 13967,
+   "pred": "/home/user/vestigekv/results/glm53/longbench1/pred_baseline_multi_news.jsonl"
+  }
+ }
+}

@@ -560,6 +560,93 @@ and top-k on every step (the lean/top-k graph variant); (4) the gate-open
 rate and the fetch_len distribution from VKSTATS, which set the scan's and
 the attention's actual byte counts.
 
+## Closing the decode gap: what was found, what was fixed, what remains
+
+Engine `glm53-dsa-decode` at 3f2ab34150, fast-forwarded into the served
+`glm53-v0520-box` on 2026-09-22 15:15 UTC. Every GLM vestigekv-arm job from
+`dsaopt-smoke32k4k-vestigekv` on runs on this tree; the README block on that
+job says which earlier records it retires.
+
+**The numbers.** Decode ITL at bs=1, one request, 2 x RTX PRO 6000, TP=2,
+the arm scripts' one-slot config (`mexp/glm53/*.sh`, MEM_FRAC 0.95).
+
+| prompt / decode | DSA baseline | VestigeKV before | VestigeKV after | gap |
+|---|---|---|---|---|
+| 4k / 2048, no profiler | 11.26 ms | 11.88 ms (+5.5%) | 11.49 ms | +0.23 ms (+2.0%) |
+| 32k / 1024, under nsys node trace | 11.51 ms | -- | 11.80 ms | +0.29 ms (+2.5%) |
+
+"Before" is the served tree at 63f2d6f994 (the indexer-at-decode fix, the
+first tree whose fenced lanes attend the selection). The 32k pair was only
+measured under the profiler (both arms under it, so the comparison holds;
+the absolute numbers carry the trace overhead).
+
+**What the node-level trace attributed, and what each fix bought** (all at
+4k unless said; per decode step, per rank).
+
+1. *Salience-ring writes*, 0.24-0.30 ms: act_quant + three index_copy_ +
+   address arithmetic per MLA layer, seven launches of 2-5 us each. One
+   fused Triton launch (`vestigekv/ring_write.py`, DSA's own ue8m0
+   quantisation copied line for line, byte-identical ring) -- 15 us/step now.
+2. *The decode kernel*, +0.125 ms: upstream's MLA-decode fork (long
+   contiguous CSR schedule) ran 20 us per layer against 9 us for DSA's
+   split-K sparse decode on the same ~2k rows. The DSA kernel is now forked
+   instead (`vestigekv/dsa_decode_fork.py`): the row id comes from the kept
+   table, the fetch buffer or the indexer's selection; the lane's count is a
+   runtime value; an empty split writes its partials. Bit-identical to
+   DSA's kernel on the same rows (test), 6.7 vs 6.9 us per layer.
+3. *Two torch.cat and an index_put per layer*, ~0.13 ms: the model handed a
+   non-DSA backend the concatenated q and k and the base wrote KV through
+   index_put. `vestigekv_dsa` now sits in `FORWARD_ABSORB_CORE_ATTENTION_
+   BACKENDS`: q and k arrive as latent + rope parts, the captured step
+   writes the row with the pool's two-tensor kernel (DSA's own decode write)
+   and the fork reads the parts in place. Eager steps still concatenate.
+4. *Graph-pool memory*: the fork borrowed DSA's split-K partial buffers,
+   which reserve for a batch of 128 at the first call's split count; with
+   the tiers' split count (kept capacity + fetch width over 64 = 96) that
+   was 0.4 GB, and the sparse-prefill autotune then ran out of memory on the
+   first request. Sized to the call now: capture 0.63 GB, 3.30 GB free
+   after capture, the same as the tree before.
+5. *The scan family*, 0.09 ms at 4k: the batched scan took 36 us/step at 4k
+   and at 32k alike -- the serial 16-block loop of each program over a
+   1024-row bucket, 22 programs live at 4k. 256-row buckets
+   (`defaults.SCAN_BUCKET`, the compaction order is unchanged so no fetched
+   row moves): 26.6 us at 32k. The prologue merge (30 us, one program per
+   pair) did not improve at 8 warps in the served graph (35.8 us) although
+   a synthetic timing said 4x; it stays at 4.
+6. *The lean graph* (a second captured decode graph that files the key and
+   skips the indexer's scoring and top-k, chosen when the previous step's
+   probe saw no overflow): built, measured, and **left opt-in and off**
+   (`SGLANG_ENABLE_VESTIGEKV_LEAN_GRAPH`). VKSTATS at 32k showed the
+   overflow tally by layer as [3124, 77, 78, 77, 1032, 103, 77, ...] of 4150
+   steps on rank 0 and [1246, 72, 72, 2161, 1631, ...] on rank 1: two or
+   three of the eleven MLA layers fire past the fetch width on most steps,
+   so a per-step choice fired on 20-23% of steps and bought ~0.08 ms; and a
+   lane that overflows on a lean step attends its page table instead of the
+   selection, which is not what the quality records attend. Off, every step
+   attends exactly what the single-graph tree attends.
+
+**Where the remaining +0.23 ms is.** GPU time that is VestigeKV's and DSA
+does not pay: the kept-row sweep of the prologue (20 us at 4k, 57 us at
+32k: the certificate scores every kept row against the step's query), the
+merge (31), the scan (27-37), the ring write (15-17), the fork's extra
+split partials (4), pack and compaction (~10); about 0.12-0.16 ms. The rest
+is what the nodes cost to launch and the rank skew the all-reduces absorb.
+The ceiling computed above (-0.45 ms, i.e. faster than DSA) required the
+indexer's scoring to be skipped on quiet steps; with two layers never quiet
+on this model that term is not available, so the reachable floor is
+parity plus the sweep and scan -- roughly +0.1 ms -- and the arm is now
+within 0.1 ms of it.
+
+**What the tree change means for the records.** The fork, the ring write
+and the split path attend the same rows and file the same bytes as the tree
+before (tests: bit-identical kernels, byte-identical ring); the attention
+output differs from the MLA-decode fork at bf16 rounding, as any kernel
+change does, and the runner's tree rule is what decides provenance. The
+baseline arm's code path is untouched by these commits, so its records
+stand. The RULER vestigekv record of 09:31 predates even the indexer fix
+(its server log has no 'DSA sibling drives'); it is retired and re-runs on
+this tree with the rest of the vestigekv arm (order in the README block).
+
 ## Run constraints
 
 Fixed in `mexp/glm53/common.sh`: CUDA graph on, radix cache off,
