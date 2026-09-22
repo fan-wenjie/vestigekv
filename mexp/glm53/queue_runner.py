@@ -266,6 +266,17 @@ def run_client(job, port):
                 or str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1"):
             cmd += ["--tag", job["id"]]  # a variant must not overwrite the arm's plain run
         out = os.path.join(RESULTS, f"longbench2_{arm}_{job['id']}.log")
+    elif client == "longbench1":
+        # LongBench v1 summarization subsets (mexp/kimi/run_longbench1.py): serial,
+        # greedy, the dataset's own prompt and max_gen; ROUGE-L is scored
+        # afterwards by make_lb1_numbers.py in the plotting venv (py-rouge).
+        cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "run_longbench1.py"), "--arm", arm,
+               "--port", port, "--model", MODEL, "--out", os.path.join(RESULTS, "longbench1"),
+               "--subsets", args.get("subsets", "gov_report,qmsum,multi_news"),
+               "--max-length", str(args.get("max_length", 65536))]
+        if "limit" in args:
+            cmd += ["--limit", str(args["limit"]), "--tag", job["id"]]
+        out = os.path.join(RESULTS, f"longbench1_{arm}_{job['id']}.log")
     elif client == "profile":
         # Kernel-level decode profiles at the given contexts (mexp/kimi/profile_stream.py).
         cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "profile_stream.py"), "--port", port,
