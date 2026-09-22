@@ -139,7 +139,11 @@ class Server:
         """
         import urllib.request
 
-        n = int(env.get("CHUNK", 1024)) + 128
+        # The needle probe (a ~10.6k prompt) still device-loaded a DSA prefill
+        # kernel variant after a CHUNK+128 pre-warm and OOMed at 0.25 GiB free;
+        # the pre-warm now sends the probe's own scale, so whatever a
+        # probe-sized prefill compiles is compiled while memory is free.
+        n = max(int(env.get("CHUNK", 1024)) + 128, int(env.get("PREWARM_TOKENS", 11264)))
         body = json.dumps({
             "input_ids": [(7 * i + 11) % 30000 + 1000 for i in range(n)],
             "sampling_params": {"max_new_tokens": 1, "temperature": 0},
