@@ -319,6 +319,52 @@ fraction -- numbers are not compared across a knob), then the RULER retry,
 then the 128k pair, which needs the full pool and therefore 0.96 plus the
 pre-warm.
 
+### The 32k pair at a common fraction, and a correction
+
+Both arms at `MEM_FRAC=0.95`, page 64, seed 0, pre-warm on, both `NEEDLE_OK`:
+
+| | mean ITL | p99 | TTFT |
+|---|---|---|---|
+| baseline (DSA) | 11.293 ms | 11.530 | 7070 ms |
+| VestigeKV, split pair | 11.788 ms | 12.352 | 7699 ms |
+
+Decode **0.958x**, prefill **+629 ms** (inside the ~900 ms noise floor, but
+not nothing). These are the first split-pair numbers measured with every hook
+live, and they supersede the 1.005x / 1.006x figures reported earlier for the
+split: those runs had dead hooks -- no kept table, no sigma record, no recall
+-- and measured a decode side that did no VestigeKV work at all. A 4% decode
+cost at 32k against an already-sparse DSA baseline is the honest starting
+point; the Kimi line's crossover against dense is ~24k and its 32k ratio 1.008,
+and DSA is a stronger baseline than dense.
+
+### RULER retry: CUDA OOM in the MoE at 65k, not in VestigeKV
+
+`rulerv0520b-vestigekv` (RULER config: `MEM_FRAC=0.955`, 4 slots, CTX
+73728) died 9 minutes in, at the first 64k cell: `MemoryError: CUDA out of
+memory. Tried to allocate 142.00 MiB ... 129.06 MiB is free`, raised in
+`modelopt_quant.py` -- the NVFP4 MoE -- during a 634-token prefill chunk. Not
+attention, not VestigeKV code. Post-init headroom was 3.15 GB on the split
+against 2.73 GB on the baseline (same 100736-token pool), so the persistent
+structures are not the delta; what is, is VestigeKV's runtime transient at
+65k on the decode side (the recall index build gathers the prefix in fp32 and
+runs an SVD; ~150 MB at 65k before workspace) on a box the baseline already
+runs with ~2.7 GB to spare. 0.955 is the minimum static fraction that fits a
+64k RULER prompt (0.95 gives ~61k tokens), so the fraction cannot give.
+
+DSA's prefill kernel is autotuned per `key=["topk","H","USE_FP8_DOT",
+"SEQ_BUCKET"]`, and `SEQ_BUCKET` is binary on the launch's *query rows*
+(`seq >= 32768`), which chunked prefill at CHUNK <= 1024 never reaches; the
+CHUNK+128 pre-warm therefore already covers the only reachable key. The
+"device-loaded after serving started" lines are benign load messages (826 of
+them across the baseline's hour), not repeated autotunes. Nothing about the
+kernel needs to change; the OOM is headroom alone.
+
+Remedy, for both arms so they stay paired: the RULER client is serial, so
+`MAX_REQS`, `MAMBA_SLOTS` and `GRAPH_BS` go 4 -> 1 (three KDA cache slots and
+a 4-lane captured scan grid freed), and the baseline RULER is re-run under the
+same knobs;
+`rulerv0520-baseline`'s 4-slot record is kept under `ruler/superseded/`.
+
 Records: `superseded/...split_needlemiss` (no tap) and
 `superseded/...split_cal_needlemiss` (tap); neither is a result.
 

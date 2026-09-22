@@ -1045,7 +1045,10 @@ bash mexp/health_check.sh kimi 1800 &
 # --disable-radix-cache, --max-running-requests 4, --max-mamba-cache-size 4,
 # --chunked-prefill-size 1024 (2048 and 4096 OOM the DSA prefill: weights take 88 GB/GPU, ~4.5 GB is left for the pool plus prefill working memory), --mem-fraction-static 0.955 (pool ~100k tokens: 0.95 gave 61k, below the 64k RULER prompts), --context-length 73728,
 # --random-seed 0, --language-model-only (vision tower skipped), --sampling-backend pytorch;
-# clients are serial and greedy, RULER data generation and lm-eval seeded 0. After readiness the
+# clients are serial and greedy, RULER data generation and lm-eval seeded 0. On the split pair the
+# RULER config runs one slot (MAX_REQS, MAMBA_SLOTS, GRAPH_BS = 1, jobs rulerv0520s1-*): the
+# client is serial, and at four slots the vestigekv arm's first 64k cell OOMed in the MoE with
+# 129 MiB free, 0.955 being the smallest static fraction that fits a 64k prompt. After readiness the
 # runner sends one CHUNK+128-token prefill with a one-token generation before any client: DSA's
 # prefill kernel autotunes on its first launch at the chunk shape, and doing that inside a
 # measured request once cost the server (CUDA OOM at 0.41 GiB free on the needle probe).
@@ -1377,6 +1380,8 @@ change an experiment, change it here first.
 {"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"diag-smoke32k4k-baseline","probe":true}
 {"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"diag-smoke32k4k-vestigekv","probe":true}
 {"args":{"n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955"},"id":"rulerv0520b-vestigekv","probe":true}
+{"args":{"n":10,"seed":0},"arm":"baseline","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"rulerv0520s1-baseline","probe":true}
+{"args":{"n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"rulerv0520s1-vestigekv","probe":true}
 {"args":{"concurrency":1,"input_len":131072,"num_prompts":5,"output_len":8192,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB87-bs1-dense","probe":false}
 {"args":{"concurrency":1,"input_len":131072,"num_prompts":5,"output_len":8192,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB87-bs1-vestigekv","probe":false}
 {"args":{"concurrency":2,"input_len":131072,"num_prompts":8,"output_len":8192,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB87-bs2-dense","probe":false}
