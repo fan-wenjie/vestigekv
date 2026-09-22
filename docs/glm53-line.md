@@ -490,7 +490,20 @@ Gate before any vestigekv-arm record is taken again: needle probe, the
 32k/4k smoke against the baseline record, the two evidence lines in the
 server log (`DSA sibling drives decode metadata`, `first DECODE keys
 filed`), then an nsys decode trace of both arms for the bottleneck reading.
-Numbers follow here once the gate has run.
+Gate result (2026-09-22 12:17, engine `63d20ddbc4`, `dsafb-smoke32k4k-vestigekv`
+against `diag-smoke32k4k-baseline`, both `MEM_FRAC=0.95`, page 64, seed 0):
+`NEEDLE_OK`; both ranks log `DSA sibling drives decode metadata; fenced
+lanes attend the indexer's top-2048 rows` and `salience: first DECODE keys
+filed`; no error. ITL **12.01 ms against 11.29** (0.94x), TTFT **7980
+against 7070 ms** (+910 ms). The earlier "1.005x, +36 ms" split figure was
+measured with the hooks dead and is withdrawn. The decode-side price is the
+indexer every step (the baseline's own cost, now paid by both arms) plus the
+ring writes; the prefill side pays the full-path salience tap on every
+512-token chunk. An nsys trace of both arms (4k prompt, 2048 decoded) put
+the steady-state decode graph at a median 11.91 ms (vestigekv) against
+11.23 ms (baseline) on the device, +0.68 ms, which is the whole ITL gap; the
+node-level breakdown of that 0.67 ms follows from the graph-node trace
+scheduled before the Kimi sweep.
 
 ## Run constraints
 
