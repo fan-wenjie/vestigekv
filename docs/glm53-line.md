@@ -688,8 +688,9 @@ The summarisation gap (1.3 points of ROUGE-L, gov_report carrying most of
 it) is the one place the arm sits below the baseline outside noise; the
 32k VKSTATS of the smoke say why it is small and where it comes from: the
 fetch width caps at 2048 on 10% of layer-steps and those lanes attend
-DSA's own selection, so the arm never attends less than DSA does, and the
-difference is the kept set standing in for the top-k on the other 90%.
+DSA's own selection; on the other 90% the arm attends the kept set plus
+what the certificate fetched (about the same row count as the top-k, a
+different row set), which is where the difference lives.
 
 ## Run constraints
 
