@@ -1,0 +1,8 @@
+{
+ "n_ctx": 64,
+ "gen_tokens": 256,
+ "mauve_eng": 0.9942887047412773,
+ "mauve_vk": 0.9999790210613495,
+ "verdict": "PASS",
+ "code": "serving path (tree recorded at score time)"
+}

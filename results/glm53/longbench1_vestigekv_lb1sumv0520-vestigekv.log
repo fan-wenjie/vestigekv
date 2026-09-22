@@ -1,0 +1,38 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[transformers] You are using a model of type `glm5_next` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+gov_report 1/200 8s
+gov_report 21/200 173s
+gov_report 41/200 339s
+gov_report 61/200 518s
+gov_report 81/200 683s
+gov_report 101/200 847s
+gov_report 121/200 1010s
+gov_report 141/200 1173s
+gov_report 161/200 1329s
+gov_report 181/200 1492s
+gov_report 200/200 1639s
+{"gov_report": {"n": 200, "truncated": 0, "max_gen": 512, "wall_s": 1639, "tokens_max": 51463, "pred": "/home/user/vestigekv/results/glm53/longbench1/pred_vestigekv_gov_report.jsonl"}}
+qmsum 1/200 7s
+qmsum 21/200 120s
+qmsum 41/200 235s
+qmsum 61/200 330s
+qmsum 81/200 440s
+qmsum 101/200 572s
+qmsum 121/200 684s
+qmsum 141/200 798s
+qmsum 161/200 902s
+qmsum 181/200 1006s
+qmsum 200/200 1122s
+{"qmsum": {"n": 200, "truncated": 0, "max_gen": 512, "wall_s": 1122, "tokens_max": 29996, "pred": "/home/user/vestigekv/results/glm53/longbench1/pred_vestigekv_qmsum.jsonl"}}
+multi_news 1/200 6s
+multi_news 21/200 136s
+multi_news 41/200 270s
+multi_news 61/200 408s
+multi_news 81/200 541s
+multi_news 101/200 676s
+multi_news 121/200 808s
+multi_news 141/200 942s
+multi_news 161/200 1075s
+multi_news 181/200 1204s
+multi_news 200/200 1329s
+{"multi_news": {"n": 200, "truncated": 0, "max_gen": 512, "wall_s": 1329, "tokens_max": 13967, "pred": "/home/user/vestigekv/results/glm53/longbench1/pred_vestigekv_multi_news.jsonl"}}
