@@ -608,7 +608,16 @@ the absolute numbers carry the trace overhead).
    the tiers' split count (kept capacity + fetch width over 64 = 96) that
    was 0.4 GB, and the sparse-prefill autotune then ran out of memory on the
    first request. Sized to the call now: capture 0.63 GB, 3.30 GB free
-   after capture, the same as the tree before.
+   after capture, the same as the tree before. A second memory finding
+   came out of the first release: DSA's Triton sparse prefill kernel
+   autotunes 27 configs at its first launch, and the one-warp configs'
+   launches each reserve 0.6-0.8 GB of local memory that the driver keeps
+   for the life of the context. In the smoke config (0.95, 135k) that
+   sweep survived; in the RULER one-slot config (0.955) it ran out of
+   memory at the first prefill of every vestigekv-arm job. Engine
+   8b83b939a9 runs the sweep at backend init (4 GB free) and prunes the
+   one-warp configs (never selected, 7-9 ms against 0.8): 5 late kernel
+   loads at 0.8-0.9 GiB free instead of 188 at 0.1-0.35.
 5. *The scan family*, 0.09 ms at 4k: the batched scan took 36 us/step at 4k
    and at 32k alike -- the serial 16-block loop of each program over a
    1024-row bucket, 22 programs live at 4k. 256-row buckets
