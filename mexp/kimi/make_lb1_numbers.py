@@ -17,8 +17,7 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-RESULTS = os.path.join(ROOT, "results", "kimi", "longbench1")
-OUT = os.path.expanduser("~/vestigekv_paper/lb1_numbers.tex")
+OUT = os.path.expanduser("~/vestigekv_paper/lb1_numbers.tex")  # Kimi line only; GLM stays in docs/glm53-line.md
 SUBSETS = ["gov_report", "qmsum", "multi_news"]
 ARMS = {"baseline": "Dense", "vestigekv": "Vk"}
 WORD = {"gov_report": "GovReport", "qmsum": "QMSum", "multi_news": "MultiNews"}
@@ -44,11 +43,13 @@ def score(path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--emit", action="store_true")
+    ap.add_argument("--line", default="kimi", help="results/<line>/longbench1/")
     a = ap.parse_args()
+    results = os.path.join(ROOT, "results", a.line, "longbench1")
     got = {}
     for arm in ARMS:
         for s in SUBSETS:
-            p = os.path.join(RESULTS, f"pred_{arm}_{s}.jsonl")
+            p = os.path.join(results, f"pred_{arm}_{s}.jsonl")
             if os.path.exists(p):
                 got[(arm, s)] = score(p)
     if not got:
@@ -74,7 +75,7 @@ def main():
             lines.append(f"\\newcommand{{\\lbOneMean{mac}}}{{{means[arm]:.2f}}}")
     if len(means) == 2:
         print(f"{'mean':12} {means['baseline']:8.2f} {means['vestigekv']:10.2f}")
-    if a.emit:
+    if a.emit and a.line == "kimi":
         with open(OUT, "w") as f:
             f.write("\n".join(lines) + "\n")
         print(f"wrote {OUT}")
