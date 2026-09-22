@@ -106,8 +106,18 @@ def tree_epoch(root):
     under them, not by the tree growing.
     """
     import subprocess
+
+    # The tree being SERVED, not the one the submodule happens to sit on:
+    # common.sh takes the engine from ENGINE when it is set, and staleness has
+    # to be judged against the checkout a run actually loaded. Latent rather
+    # than observed -- today both branches share their rebase point, so both
+    # answer the same epoch and nothing has diverged yet. It bites the first
+    # time one of them rebases onto a different tag, and then it bites
+    # silently, by calling a result current because some other branch did not
+    # move.
+    engine = os.environ.get("ENGINE") or os.path.join(root, "engine")
     out = subprocess.run(
-        ["git", "-C", os.path.join(root, "engine"), "log", "v0.5.20..HEAD",
+        ["git", "-C", engine, "log", "v0.5.20..HEAD",
          "--format=%cI"], capture_output=True, text=True)
     dates = [l for l in out.stdout.splitlines() if l.strip()]
     return dates[-1][:19].replace("T", " ") if out.returncode == 0 and dates else ""

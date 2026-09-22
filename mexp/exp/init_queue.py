@@ -67,6 +67,17 @@ def main():
     reg = registered(open(os.path.join(ROOT, "README.md")).read())
     if not reg:
         raise SystemExit("ABORT: README.md has no registered launches")
+    # One registry, and it is the Kimi line's. `--line` picks where the queue is
+    # WRITTEN, not where the registry is read from, so pointing this at another
+    # line rewrites that line's queue against a registry that never mentions its
+    # jobs -- every one of them reads as removed. Caught by a dry run that
+    # offered to delete four GLM jobs; with --write it would have taken them.
+    if a.line != "kimi":
+        raise SystemExit(
+            f"ABORT: the registered-launch block in README.md is the kimi line's, "
+            f"so it cannot generate the {a.line} queue -- every {a.line} job would "
+            f"read as a row nobody registered. Edit mexp/{a.line}/queue.jsonl "
+            "directly, which is how that line is maintained.")
 
     rows = [json.loads(v) for v in reg.values()]
     have = {j["id"]: canonical(j) for j in load(queue)} if os.path.exists(queue) else {}
