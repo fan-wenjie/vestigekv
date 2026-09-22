@@ -505,6 +505,61 @@ the steady-state decode graph at a median 11.91 ms (vestigekv) against
 node-level breakdown of that 0.67 ms follows from the graph-node trace
 scheduled before the Kimi sweep.
 
+## The decode ceiling at bs=1, and what the gap can be
+
+Before closing the 0.68 ms, the bound. Per decode step, per TP rank, on
+one RTX PRO 6000 Blackwell (512-bit GDDR7 at 28 Gbps, 1.79 TB/s nominal).
+
+**Weights the step must read (active parameters, from the checkpoint's
+config).** 42 MoE layers x (8 routed + 1 shared experts x 3 x 4096 x 2048)
+= 9.5 B; 3 dense layers x 3 x 4096 x 12288 = 0.45 B; 11 MLA layers x ~124 M
+(q_a/q_b, kv_a/kv_b absorbed, o_proj, the indexer's wq_b/wk) = 1.4 B; 34
+KDA layers, of the order of 2.5 B; the 4096 x 154880 head, 0.63 B. About
+14.5 B active parameters at NVFP4 (0.5625 B/param with the e4m3 block
+scales), ~8.2 GB, ~4.1 GB per rank plus the bf16 head's half: **~4.7 GB per
+rank per step, 2.6 ms at 1.79 TB/s.**
+
+**Attention traffic is a rounding error next to that.** DSA per MLA layer
+at S = 36k: the indexer scores the 4:1-pooled index cache, S/4 x 132 B =
+1.2 MB, and attends 2048 x 1024 B = 2.1 MB; 11 layers, 36 MB, 20 us. The
+VestigeKV arm as served: kept (rho S ~ 1.1k) + fetched (<= 2048) rows at
+1 KB plus, when the gate opens, the archive sketch at S x 132 B = 4.7 MB;
+11 layers, 33-88 MB, 18-49 us; and with the indexer running every step,
+DSA's 1.2 MB per layer on top. Neither arm's attention is bandwidth-bound
+at bs=1.
+
+**So the step is latency-bound.** The measured baseline graph is 11.23 ms
+against a 2.6 ms byte floor: 45 layers x roughly 25 graph nodes is ~1100
+nodes per step at 2-4 us of fixed cost each (3-4 ms), the FP4 grouped MoE
+GEMMs at M=1 run far below the bandwidth roof, and the 90 TP all-reduces
+per step wait on the peer. In that regime an attention path costs what its
+*nodes* cost, not what its bytes cost: DSA's decode attention is 11 x
+(~5 indexer kernels + 2 attention kernels) at ~4 us plus their compute,
+about 0.5-0.6 ms of the 11.2 -- five percent of the step.
+
+**The ceiling for this arm, then.** Its attention-side floor is 11 x (2
+attention kernels over ~2-3k rows, ~25 us) plus the per-step shared work
+(prologue, scan, compact, pack: ~5 launches, ~25 us) plus the salience
+write and the index-cache write per layer (~2 us each): roughly 0.35-0.4
+ms per step, against DSA's 0.5-0.6. The best this line can show is
+therefore **parity to ~2-3% faster than DSA per step**, and only if the
+indexer's scoring is not paid on steps that do not overflow. There is no
+1.5x here: DSA is already sparse, and the step is 95% not attention. The
+Kimi line is where the speedup lives; the GLM line's claims are quality at
+parity and the index's memory.
+
+**The gap to close is ~1 ms/step**, from the measured +0.68 to the ceiling's
+-0.2 to -0.3: the machinery costs ~3.5x its floor today. What the
+node-level trace has to attribute, in the order the arithmetic suggests:
+(1) node count -- every kernel VestigeKV adds per layer per step (qbuf copy,
+two or three ring writes, the fork's two stages, the pack's two launches,
+the prologue/scan/compact family) is 2-4 us of fixed cost whatever its
+bytes; the target is <= 3 extra nodes per layer; (2) the fork against
+DSA's own decode kernel on the same ~2k rows; (3) the indexer's scoring
+and top-k on every step (the lean/top-k graph variant); (4) the gate-open
+rate and the fetch_len distribution from VKSTATS, which set the scan's and
+the attention's actual byte counts.
+
 ## Run constraints
 
 Fixed in `mexp/glm53/common.sh`: CUDA graph on, radix cache off,
