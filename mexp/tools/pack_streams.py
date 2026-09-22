@@ -123,7 +123,9 @@ def main():
 
     before = after = 0
     packed = skipped = 0
-    for path in sorted(glob.glob(a.glob)):
+    # recursive: the archive packs every record under results/, which is two
+    # levels -- the top-level throughput records and the per-line stream ones.
+    for path in sorted(glob.glob(a.glob, recursive=True)):
         size = os.path.getsize(path)
         lines = open(path).read().splitlines()
         if size < a.min_bytes or not lines:
