@@ -1046,6 +1046,12 @@ bash mexp/health_check.sh kimi 1800 &
 # server across same-config jobs, and records results/glm53/queue_state.jsonl. Edit the
 # queue while it runs: it is re-read before every job. Registered queue (in order):
 #   ruler-baseline, ruler-vestigekv   -> 13 RULER tasks x {4k,8k,16k,32k,64k}, 10 samples/cell
+#   diag-smoke32k-vestigekv -> niah_single_1 at 32768 only, n=2, on the ruler config. Not a
+#       result: it is the gate in front of the two long jobs below. The vestigekv arm had
+#       never been started on this tree, and the first attempt died with a Triton NameError
+#       after loading 88 GB of weights (engine 62b69520a8) -- a failure that costs three
+#       minutes to provoke at 32k and an hour to discover at 128k. Runs with --tag so it
+#       writes beside the arm's full RULER run rather than over it.
 #   stream-baseline-128k, stream-vestigekv-128k -> metric 1 (bs=1, 4k prefill, 126976-token
 #       decode; per-token latency curve, 64k point included) with CTX=135168, one mamba slot,
 #       --mem-fraction-static 0.96, --cuda-graph-max-bs-decode 1
