@@ -1065,7 +1065,9 @@ bash mexp/health_check.sh kimi 1800 &
 #       writes beside the arm's full RULER run rather than over it.
 #   stream-baseline-128k, stream-vestigekv-128k -> metric 1 (bs=1, 4k prefill, 126976-token
 #       decode; per-token latency curve, 64k point included) with CTX=135168, one mamba slot,
-#       --mem-fraction-static 0.96, --cuda-graph-max-bs-decode 1
+#       --mem-fraction-static 0.96, --cuda-graph-max-bs-decode 1. Started 2026-09-22 on engine
+#       ee8b4f5a58 (exact memory reductions, bit-identical to 9153bb6e4d), split pair on the
+#       vestigekv arm, CHUNK 512 with the runner's chunk-sized pre-warm in front of the probe.
 #   stats-vestigekv-stream-128k, stats-vestigekv-ruler-64k -> the same two workloads on the
 #       vestigekv arm with SGLANG_DEBUG_VESTIGEKV_STATS=1 (separate jobs: the bookkeeping syncs
 #       every step, so it never runs on a timed arm). The server log's VKSTATS lines (every 50
@@ -1382,6 +1384,8 @@ change an experiment, change it here first.
 {"args":{"n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955"},"id":"rulerv0520b-vestigekv","probe":true}
 {"args":{"n":10,"seed":0},"arm":"baseline","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"rulerv0520s1-baseline","probe":true}
 {"args":{"n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"rulerv0520s1-vestigekv","probe":true}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"stream-baseline-128k","probe":true}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"stream-vestigekv-128k","probe":true}
 {"args":{"concurrency":1,"input_len":131072,"num_prompts":5,"output_len":8192,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB87-bs1-dense","probe":false}
 {"args":{"concurrency":1,"input_len":131072,"num_prompts":5,"output_len":8192,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB87-bs1-vestigekv","probe":false}
 {"args":{"concurrency":2,"input_len":131072,"num_prompts":8,"output_len":8192,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB87-bs2-dense","probe":false}
