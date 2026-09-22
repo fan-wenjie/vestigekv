@@ -1143,7 +1143,7 @@ bash mexp/health_check.sh kimi 1800 &
 #       tree was produced with tier-1 scoring +inf past the first 2048 tokens of a request and on
 #       every decoded token (no indexer at decode), rescued by recall; they are superseded.
 #   dsaopt-smoke32k4k-vestigekv -> the gate in front of the vestigekv arm on the OPTIMISED tree
-#       (engine 3f2ab34150, branch glm53-dsa-decode, docs/glm53-line.md "Closing the decode gap"):
+#       (engine 8b83b939a9, branch glm53-dsa-decode, docs/glm53-line.md "Closing the decode gap"):
 #       the fused salience-ring write, DSA's own split-K decode over the tiers, the model's split
 #       q/k with the pool's two-tensor KV write, 256-row scan buckets and the 8-warp merge; the lean
 #       graph is opt-in and off, so every step attends exactly what the single-graph tree attends.
@@ -1155,6 +1155,13 @@ bash mexp/health_check.sh kimi 1800 &
 #       smoke, mauve4k, mauve64k, the 128k pair's vestigekv arm, gsm8k, RULER, lb1sum). The baseline
 #       arm's code path is untouched by these commits (diff restricted to VestigeKV files, one
 #       backend-name list entry and a capture log line), so its records stand.
+#       The first release (15:18, engine 3f2ab34150) passed this smoke but every vestigekv-arm job on
+#       the RULER one-slot config (MEM_FRAC 0.955) then died at its first prefill: DSA's Triton sparse
+#       prefill kernel autotunes 27 configs at first use, when the driver has <1 GiB, and the one-warp
+#       configs' launches reserve 0.6-0.8 GB of local memory each (the same failure took mauve4k/64k,
+#       the 128k arm and gsm8k at 12:26-12:33). Engine 8b83b939a9 tunes the kernel at backend init
+#       and prunes the one-warp configs; the affected rows are marked superseded in queue_state and
+#       re-run. The baseline arm is unaffected in what it computes (the selected config is the same).
 #   lb1sumv0520-{baseline,vestigekv} -> LongBench v1 summarization (gov_report, qmsum, multi_news),
 #       the Kimi lb1sum protocol (mexp/kimi/run_longbench1.py, ROUGE-L by make_lb1_numbers.py --line glm53)
 #       on the RULER one-slot config, prompts cut with the GLM tokenizer. Order within the GLM line
