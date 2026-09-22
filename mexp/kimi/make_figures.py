@@ -83,9 +83,15 @@ def draw(lat, thr, out_dir, emit):
         xs = [c / 1024 for c, _ in lat[LAT_KEY[arm]]]
         ys = [v for _, v in lat[LAT_KEY[arm]]]
         ax.plot(xs, ys, color=color, lw=1.4, label=label)
-    ax.set_xscale("log", base=2)
-    ax.set_xticks([8, 32, 128, 512])
-    ax.set_xticklabels(["8k", "32k", "128k", "512k"])
+    # Linear, and deliberately. The dense arm's cost is linear in context, and
+    # a linear function on a log x-axis rises like an exponential -- the curve
+    # then reads as a measurement gone wrong rather than as the straight line
+    # it is. On equal spacing dense is a straight line of slope
+    # \serveSlopeDense and VestigeKV is nearly flat, which is both the honest
+    # picture and the stronger one.
+    ax.set_xticks([0, 128, 256, 384, 512])
+    ax.set_xticklabels(["0", "128k", "256k", "384k", "512k"])
+    ax.set_xlim(0, 520)
     ax.set_xlabel("context (tokens)")
     ax.set_ylabel("ms per decoded token")
     ax.legend(frameon=False, fontsize=8, loc="upper left")
