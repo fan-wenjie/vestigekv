@@ -126,14 +126,36 @@ Tier 1's reduction is per block. Tier 2's are per step, and there are two:
    its head (`recall_tier.py` module docstring). Sharded, each rank holds part
    of the kept set, so the max is not local: an all-reduce max over `[heads]`
    has to precede firing.
-2. **Fetch.** The tier then takes the top-j fired archived rows. The global
-   top-j of a union is contained in the union of the per-rank local top-j, so
-   one exchange of the rank-local j candidates yields it **exactly** — no
-   approximation and no per-rank quota. Overflow (more fired than the fetch
-   buffer holds, which falls back to exact attention) is a global predicate and
-   needs the fired counts summed.
+2. **Overflow.** A pair that fires more rows than the fetch buffer holds
+   raises its overflow flag, and this note used to say the cap was a top-j over
+   the fired rows, which would have made the merge a score selection. It is
+   not: `compact_fired` keeps the first W **in position order**. What has to go
+   cross-rank is therefore not a selection but the predicate — each rank counts
+   only the rows it holds, so several ranks can each stay under W while the
+   union goes over it, and then no rank fences when the union should. The
+   fired counts have to be summed before `total > W` is decided.
 
-Both are small — `[heads]` floats and j scores with their ids — but they are
+   Which W rows survive the truncation is a smaller question than it looks,
+   because an overflow raises the fence and a fenced lane attends its full row
+   set -- the rows are still in the pool, since tier 1 stops reading a row
+   rather than freeing it, which is why both arms size the pool identically.
+   The truncated buffer is not read.
+
+   What the fence falls back TO is a per-model decision and not the same one
+   on both lines. On Kimi Linear the base is dense MLA and the full row set is
+   what the model would do anyway. On GLM-5.3-Flash it is not: that checkpoint
+   is DSA-trained, and dense MLA over the same rows is measurably worse than
+   the indexer's own top-k (`ruler-dense-mla-short`: fwe 4k 0.70 against DSA's
+   0.90). So the GLM arm keeps DSA as the base VestigeKV wraps and a fence
+   hands the step to it, rather than turning the indexer off at the config
+   level and falling back to a form the model was never trained in. It is read only under
+   `--disable-vestigekv-recall-overflow-fallback`, the ablation that keeps the
+   truncation instead of falling back, and there a sharded run truncates a
+   different set than an unsharded one — position order across a partition is
+   not position order over the whole. That is a disclosure for that arm, not a
+   correctness problem for the default one.
+
+Both are small — `[heads]` floats and a few counts — but they are
 paid on every decode step of every MLA layer, unlike tier 1's per-block 12 KB.
 If DCP is measured and comes out badly, this is the first place to look.
 
@@ -148,7 +170,7 @@ the pipeline's kernels (`batched_step.py` is the batched form of the scan;
 | σ + histogram | `sigma_fused.py` | split into two kernels around an all-reduce | large |
 | prologue (kept-row statistics) | `fused_prologue.py` | split into two kernels around an all-reduce | large |
 | CSR pack | `pack_csr.py` | ownership predicate on the append; strided page-table walk | medium |
-| tier-2 scan | `scan_kernel.py`, `batched_step.py` | kernel unchanged; the cap and top-j around it go cross-rank | small |
+| tier-2 scan | `scan_kernel.py`, `batched_step.py` | kernel unchanged; the overflow predicate sums across ranks | small |
 | tier-2 operand build | `operand_fused.py` | kernel unchanged; **the sketch basis must be broadcast** | small |
 | decode stage 1 | `decode_fork.py` | kernel unchanged; feed the partials to `merge_state` | small |
 
@@ -184,12 +206,13 @@ strided walk from the rank's offset. Cheap, but real logic.
 
 **`scan_kernel`** reads each archived row's sidecar and sketch once and emits a
 byte; given a threshold that is row-local, so the kernel is untouched. What
-moves is outside it: the fetch cap is global, so the overflow predicate needs
-the fired counts summed and the top-j needs the cross-rank selection described
-above. The docstring's guarantee that *which* rows survive a cap overflow is
-deterministic has to be re-established across ranks by fixing a rank order in
-the merge. `batched_step`'s `a_len` is already masked, so per-rank archives of
-different lengths cost nothing.
+moves is outside it, in `compact_fired`: the overflow predicate compares a
+count against the buffer width, and sharded that count is per-rank while the
+buffer is per-request, so the counts are summed before the comparison. The
+truncation the cap performs is by position and not by score, and it feeds a
+buffer the fence makes unread — see the overflow item above for why that
+matters only to one ablation. `batched_step`'s `a_len` is already masked, so
+per-rank archives of different lengths cost nothing.
 
 **`operand_fused`** is row-local and the kernel does not change — but the
 sketch basis `V_r` does. It is fitted per calibrated build, today independently
