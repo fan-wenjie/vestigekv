@@ -256,6 +256,22 @@ optimisation and not a correctness matter.
 and stage 2 is upstream's unmodified, so the kernel is untouched; the per-rank
 `(out, lse)` go to `merge_state` as above.
 
+One question stands between that sentence and working code, and it is about
+operands rather than arithmetic. The router hands stage 1's `attn_logits` and
+`attn_lse` to the base, which runs stage 2 -- upstream's merge over the split-K
+schedule. A cross-rank merge needs each rank's post-stage-2 output AND its
+combined log-sum-exp, and while the `attn_lse` buffer is reachable the same way
+`kv_indptr` is (`base.forward_metadata`), whether stage 2 leaves a combined LSE
+there or only the per-split ones has to be read out of upstream's stage-2
+kernel rather than assumed. If it does not, the fix is upstream's own
+`return_lse` path, which `cutedsl_mla_backend` already uses for exactly this.
+
+Ranks could alternatively be folded in as extra splits, since stage 2 is
+already a merge over splits and a rank's partial is the same shape. That is
+tempting and wrong by default: the split buffers are sized at capture for
+`max_kv_splits`, so more splits than allocated is a silent overrun rather than
+an error.
+
 ## Choosing the granularity
 
 Any partition is correct, so the choice is made on balance and locality, not on
