@@ -574,7 +574,10 @@ the arm scripts' one-slot config (`mexp/glm53/*.sh`, MEM_FRAC 0.95).
 |---|---|---|---|---|
 | 4k / 2048, no profiler | 11.26 ms | 11.88 ms (+5.5%) | 11.49 ms | +0.23 ms (+2.0%) |
 | 32k / 1024, under nsys node trace | 11.51 ms | -- | 11.80 ms | +0.29 ms (+2.5%) |
+| 32k / 4096, no profiler (the smoke gates, queue records) | 11.29 ms | 12.01 ms (+6.4%) | 11.54 ms | +0.25 ms (+2.2%) |
 
+The smoke rows are diag-smoke32k4k-baseline, dsafb-smoke32k4k-vestigekv
+and dsaopt-smoke32k4k-vestigekv (needle passed on both vestigekv trees).
 "Before" is the served tree at 63f2d6f994 (the indexer-at-decode fix, the
 first tree whose fenced lanes attend the selection). The 32k pair was only
 measured under the profiler (both arms under it, so the comparison holds;
