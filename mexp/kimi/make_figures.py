@@ -24,7 +24,9 @@ queue is live).
 from __future__ import annotations
 
 import argparse
+import glob
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -43,6 +45,32 @@ ARM_STYLE = {"dense": ("#444444", "o", "Dense MLA"),
              "vestigekv": ("#1b6ca8", "s", "VestigeKV")}
 LAT_KEY = {"dense": "dense", "vestigekv": "vestigekv"}
 THR_KEY = {"dense": "baseline", "vestigekv": "vestigekv"}
+# The box the logs were produced on (mexp/kimi/common.sh); the logs carry the
+# model and the TP width but not the GPU, so this one string is typed.
+HARDWARE = "2x RTX PRO 6000 Blackwell"
+
+
+def provenance():
+    """'<model>, <hardware>, TP=<n>' for the panel titles, read from every
+    server log a panel draws from and required to agree -- a figure that
+    named a model its data did not come from would be the caption drift this
+    script exists to remove, one level up."""
+    logs = [os.path.join(speed.RESULTS, n) for n in speed.LOGS.values()]
+    for _, (_, prefix) in tput.CONTEXTS.items():
+        logs += glob.glob(os.path.join(tput.RESULTS, f"server_*_{prefix}-bs*.log"))
+    models, tps = set(), set()
+    for path in logs:
+        head = open(path, errors="replace").read(400000)
+        m = re.search(r"'model_path': '([^']*)'", head)
+        t = re.search(r"'tp_size': (\d+)", head)
+        if not (m and t):
+            raise SystemExit(f"ABORT: {os.path.basename(path)} carries no model_path/tp_size")
+        models.add(m.group(1).split("/")[-1])
+        tps.add(t.group(1))
+    if len(models) != 1 or len(tps) != 1:
+        raise SystemExit(f"ABORT: the panels' logs disagree on model {sorted(models)} "
+                         f"or TP {sorted(tps)}; one figure cannot show two setups")
+    return f"{models.pop()}, {HARDWARE}, TP={tps.pop()}"
 
 
 def latency_series():
@@ -72,13 +100,14 @@ def throughput_series():
     return have
 
 
-def draw(lat, thr, out_dir, emit):
+def draw(lat, thr, out_dir, emit, title):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     # ---- left: per-token latency against context ----
     fig, ax = plt.subplots(figsize=(4.4, 3.0), dpi=200)
+    ax.set_title(title, fontsize=7, loc="left")
     for arm, (color, marker, label) in ARM_STYLE.items():
         xs = [c / 1024 for c, _ in lat[LAT_KEY[arm]]]
         ys = [v for _, v in lat[LAT_KEY[arm]]]
@@ -105,6 +134,7 @@ def draw(lat, thr, out_dir, emit):
 
     # ---- right: throughput against the concurrency the server actually ran ----
     fig, ax = plt.subplots(figsize=(4.4, 3.0), dpi=200)
+    ax.set_title(title, fontsize=7, loc="left")
     dash = {65536: "-", 131072: "--"}
     for ctx in sorted(thr):
         if not thr[ctx]:
@@ -142,7 +172,9 @@ def main():
     thr = throughput_series()
     for ctx in sorted(thr):
         print(f"  throughput {ctx // 1024}k: live {sorted(thr[ctx])}")
-    draw(lat, thr, a.out, a.emit)
+    title = provenance()
+    print(f"  title: {title}")
+    draw(lat, thr, a.out, a.emit, title)
     return 0
 
 
