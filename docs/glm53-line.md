@@ -442,6 +442,56 @@ precision change, not an exact one, and is excluded for now. The build peak
 remaining figure and is transient; it is the next thing to attribute with
 the same tool.
 
+## The decode kernel, reverse-engineered: what the split pair actually attended
+
+Read back from the served process's Triton cache (`~/.cache/sglang/triton`)
+and the source it was compiled from, 2026-09-22. The forked stage-1 kernel
+(`_vk_fwd_grouped_kernel_stage1`, 135 variants for sm_120, 4 warps, 2
+stages) does carry two mutually exclusive arms selected per lane at run time
+by `fetch_ovf[slot] != 0`: the recall arm reads `kept_buf` then `fetch_buf`,
+the fenced arm read `req_to_token[slot, :seq]` -- the whole page table. So an
+overflowing lane on this line was served **dense**, not by DSA's top-2048,
+and the earlier statement that "the overflow fence falls back to DSA" was
+wrong. Dense attention on a DSA-trained model is the worse direction: the
+substrate ablation (`ruler-dense-mla-short`, `results_dense_mla_n10_4096-8192.json`)
+scored 0.788 against DSA's 0.832 over the same eight cells, with `ruler_fwe`
+at 8k reading 0.23 against 0.83.
+
+One level up, the larger defect. Under the split pair the model's indexer
+asks the active backend for its metadata; at decode that is VestigeKV, whose
+base (the Triton MLA backend) answers None, and the indexer returns at once:
+no top-k, no index-cache write, no salience key for any decoded token. On
+the prefill side the only salience tap sat in `_forward_cuda_skip_logits`,
+taken while `max_kv_len <= index_topk`; from the third 1024-token chunk on
+the full path ran and filed nothing. The ring scores an unstamped position
+`+inf`, and tier-1 is a global top-m by sigma: with almost every row at
+`+inf`, the kept set was an arbitrary m of the unscored rows and the rows
+that had real scores -- the first 2048 of each request -- were archived.
+Every GLM vestigekv-arm quality record up to this point (needle passes, the
+RULER parity above) was therefore recall rescuing an index whose tier-1 was
+not working, and is superseded. The note in an earlier draft that "DSA's
+top-k is still computed at decode, wasted" was also wrong.
+
+Fix (engine `glm53-dsa-decode`): the decode backend resolves its DSA sibling
+through the runner's binding before graph capture (a graph captured without
+the sibling's metadata records no indexer launch), drives the sibling's
+decode metadata from its own metadata hooks, answers the indexer with it, and
+the indexer's full path files the salience key. The fenced arm attends the
+indexer's selection with DSA's own row rule, `compute_dsa_seqlens` (whole
+index pools clamped to `index_topk`, plus the `seq % index_kpool` tail;
+`index_kpool = 4` here) over the compact `-1`-padded `[bs, 2051]` selection,
+gathered by row id and masked per entry the way `triton_sparse_mla_decode`
+does. `VK_TOPK = 0` compiles to the previous kernel, so the Kimi line is
+untouched (pinned by `compare_operator_trees.py`). The vestigekv arm now
+pays the indexer every decode step, which is the baseline's own cost; this
+line's claim is quality and index memory, not decode speed.
+
+Gate before any vestigekv-arm record is taken again: needle probe, the
+32k/4k smoke against the baseline record, the two evidence lines in the
+server log (`DSA sibling drives decode metadata`, `first DECODE keys
+filed`), then an nsys decode trace of both arms for the bottleneck reading.
+Numbers follow here once the gate has run.
+
 ## Run constraints
 
 Fixed in `mexp/glm53/common.sh`: CUDA graph on, radix cache off,
