@@ -28,6 +28,7 @@ results/glm53/stream_*.log
 results/glm53/ruler_*.log
 results/glm53/gsm8k_*.log
 results/glm53/queue_runner.log
+results/*/runner_*.log
 results/kimi/server_*.log
 # any line: raw generations run to hundreds of MB
 results/*/ruler/samples_*.json
@@ -52,8 +53,13 @@ results/*/queue_state.jsonl
 # The queue and its state ARE the audit trail: which experiment ran, under
 # which knobs, in which order, and what came back. Ignoring them left the
 # record of every run on the floor.
-!mexp/kimi/queue.jsonl
-!results/kimi/queue_state.jsonl
+#
+# Excepted per line rather than by pattern once, and the GLM line then started
+# without anyone noticing it was invisible: fourteen skip decisions and the
+# whole v0.5.20 re-run order existed only on disk. Written as a glob so the
+# next line is covered by existing it, not by someone remembering this.
+!mexp/*/queue.jsonl
+!results/*/queue_state.jsonl
 
 # Study inputs, not records: whole 576-dim pool rows at 0.5 GB a run. The
 # analysis that reads them ships; the tensors do not.
