@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# vestigekv: DSA off, vestigekv_mla over the dense MLA substrate (page size 1 is a precondition).
+# vestigekv: the split pair, DSA prefill + vestigekv_dsa decode (the DSA-model copy of the
+# backend); DSA_PREFILL=0 is the single-backend vestigekv_mla shape over the dense substrate.
 # Side pool quantized like the DSA index cache (fp8 e4m3 + ue8m0 scale; BF16=1 for the exact
 # ablation); every other --vestigekv-* flag at its default (overflow fallback on, activation
 # threshold 0 = compression from token 0).
@@ -20,7 +21,7 @@ SIDE=fp8; [ "${BF16:-0}" = 1 ] && SIDE=bf16
 if [ "${DSA_PREFILL:-1}" = 1 ]; then
   # DSA resolves the pool to page 64 (its KPool path requires it); VestigeKV
   # addresses token slots and runs at whatever page the pool has.
-  BACKENDS=(--prefill-attention-backend dsa --decode-attention-backend vestigekv_mla
+  BACKENDS=(--prefill-attention-backend dsa --decode-attention-backend vestigekv_dsa
     --dsa-prefill-backend triton --dsa-decode-backend triton)
 else
   BACKENDS=("${NO_DSA[@]}" --attention-backend vestigekv_mla --page-size 1)
