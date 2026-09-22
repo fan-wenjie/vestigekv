@@ -15,11 +15,13 @@ import sys
 
 import requests
 
-MODEL = "moonshotai/Kimi-Linear-48B-A3B-Base"
+# The tokenizer the contexts are cut with: the context file is per model,
+# since a token budget in one vocabulary is not the same text in another.
+MODEL = os.environ.get("M7_MODEL", "moonshotai/Kimi-Linear-48B-A3B-Base")
 T = int(os.environ.get("M7_T", "4096"))  # prefill length; 65536 = long-context gate
 GEN = 256
 N_CTX = int(os.environ.get("M7_N", "16"))  # >=48 for the 64k gate: mauve saturates below ~78 points
-URL = "http://localhost:30000/generate"
+URL = f"http://localhost:{os.environ.get('M7_PORT', '30000')}/generate"
 
 
 def contexts(path):

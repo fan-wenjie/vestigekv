@@ -281,6 +281,20 @@ def run_client(job, port):
                "--data-path", os.path.join(ROOT, "mexp", "quality", "gsm8k_platinum.jsonl"),
                "--parallel", "1", "--port", port]
         out = os.path.join(RESULTS, f"gsm8k_{arm}_{job['id']}.log")
+    elif client == "mauve":
+        # Generation half of the MAUVE gate (mexp/m7_mauve_serving.py gen):
+        # one record per arm against the live server; the score step runs
+        # after both arms, off the queue, because it featurizes on the GPU
+        # the server holds. The context file is cut with the served model's
+        # tokenizer and shared by the two arms.
+        T, N = int(args.get("prefill", 4096)), int(args.get("contexts", 16))
+        qdir = os.path.join(RESULTS, "quality")
+        os.makedirs(qdir, exist_ok=True)
+        env.update(M7_T=str(T), M7_N=str(N), M7_MODEL=MODEL, M7_PORT=str(port))
+        cmd = [PY, os.path.join(ROOT, "mexp", "m7_mauve_serving.py"), "gen",
+               os.path.join(qdir, f"mauve_ctx_T{T}_n{N}.json"),
+               os.path.join(qdir, f"mauve_gen_T{T}_n{N}_{arm}.json")]
+        out = os.path.join(RESULTS, f"mauve_{arm}_{job['id']}.log")
     else:
         raise ValueError(f"unknown client {client!r}")
     log(f"client {client} for {job['id']}: {' '.join(cmd)} -> {out}")
