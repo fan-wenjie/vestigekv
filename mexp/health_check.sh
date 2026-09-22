@@ -8,14 +8,61 @@ LINE=${1:?line: kimi | glm53}; EVERY=${2:-1800}
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 R=$ROOT/results/$LINE; LOG=$R/health.log; mkdir -p "$R"
 prev_prog=""; prev_err=0; prev_slog=""
+# The models THIS line can serve: common.sh's default plus any MODEL a job
+# overrides in its env. Computed once, because the alternative is matching every
+# sglang server on the box -- which is what made a drained Kimi line report a
+# server and 87% GPU that belonged to the GLM run on the other tree.
+MODELS=$(python3 - "$ROOT" "$LINE" <<'PY'
+import json, os, re, sys
+root, line = sys.argv[1], sys.argv[2]
+ms = set()
+common = os.path.join(root, "mexp", line, "common.sh")
+if os.path.exists(common):
+    m = re.search(r"^MODEL=\$\{MODEL:-(.+?)\}|^MODEL=(.+)$", open(common).read(), re.M)
+    if m:
+        ms.add((m.group(1) or m.group(2)).strip())
+q = os.path.join(root, "mexp", line, "queue.jsonl")
+if os.path.exists(q):
+    for l in open(q):
+        if l.strip():
+            ms.add((json.loads(l).get("env") or {}).get("MODEL", ""))
+print("|".join(re.escape(x) for x in sorted(ms) if x))
+PY
+)
 while true; do
   now=$(date +%F_%T)
   # anchored at the python executable, so a shell whose command text quotes these commands
   # (a restart watcher) is not counted
-  runner=$(pgrep -fc "^[^ ]*python[^ ]* mexp/glm53/queue_runner.py --line $LINE"); [ "$LINE" = glm53 ] && runner=$(pgrep -fc "^[^ ]*python[^ ]* mexp/glm53/queue_runner.py")
-  servers=$(pgrep -fc "^[^ ]*python[^ ]* -m sglang.launch_server")
+  # Both lines run the same runner script and both pass --line, so the filter is
+  # the whole answer. It used to be dropped for glm53, which meant the GLM
+  # monitor counted the Kimi line's runner as its own.
+  runner=$(pgrep -fc "^[^ ]*python[^ ]* mexp/glm53/queue_runner.py --line $LINE")
+  # Scoped to this line's models (see MODELS above). Unscoped it counted every
+  # sglang server on the box; with no model resolvable, fall back to that rather
+  # than silently report zero servers while one is up.
+  # NOT `scoped || unscoped`: pgrep -c exits 1 when the count is zero, so the
+  # fallback ran whenever this line had no server up and $servers became the two
+  # lines "0" and "1" -- which broke the log record in half AND defeated the
+  # scoping it was there to provide. The count of zero is an answer, not a
+  # failure, so the branch is on whether a model resolved at all.
+  if [ -n "$MODELS" ]; then
+    servers=$(pgrep -fc "^[^ ]*python[^ ]* -m sglang.launch_server .*--model-path (${MODELS})( |$)" || true)
+  else
+    servers=$(pgrep -fc "^[^ ]*python[^ ]* -m sglang.launch_server" || true)
+  fi
   daemon=$(pgrep -fc "^[^ ]*python[^ ]* -m sglang.srt.weight_cache.daemon")
-  job=$(grep -a '"status": "running"' "$R/queue_state.jsonl" 2>/dev/null | tail -1 | python3 -c 'import sys,json; l=sys.stdin.read().strip(); print(json.loads(l)["id"] if l else "-")')
+  # The LAST row, and only if it is a running one. Taking the last "running" row
+  # anywhere in the file meant every job that had ever started still counted as
+  # running: the runner appends "running" and later "done", so the most recent
+  # "running" line is the last job forever. A drained queue therefore never
+  # reached IDLE and reported STALL on every check instead, because prog had
+  # stopped moving for the entirely correct reason that the client had exited.
+  # It also resurrected a stale row -- gauss-0999-ruler, started 2026-09-18,
+  # never terminated, retired out of queue.jsonl since -- which only the
+  # last-row rule excludes, a killed runner leaving its row behind. A live job
+  # is always the file's tail; a leftover never is, and a leftover that IS the
+  # tail is a dead runner, which RUNNER_DEAD below then says.
+  job=$(tail -1 "$R/queue_state.jsonl" 2>/dev/null | python3 -c 'import sys,json; l=sys.stdin.read().strip(); r=json.loads(l) if l else {}; print(r.get("id","-") if r.get("status")=="running" else "-")')
   done_n=$(grep -ac '"status": "done"' "$R/queue_state.jsonl" 2>/dev/null); fail_n=$(grep -ac '"status": "failed"' "$R/queue_state.jsonl" 2>/dev/null)
   slog=$(ls -t "$R"/server_*.log 2>/dev/null | head -1)
   clog=$(ls -t "$R"/ruler_*_*.log "$R"/stream_*_*.log "$R"/replay_*_*.log "$R"/longbench2_*_*.log "$R"/continue_*_*.log 2>/dev/null | head -1)
