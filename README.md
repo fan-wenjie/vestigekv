@@ -1135,6 +1135,13 @@ bash mexp/health_check.sh kimi 1800 &
 #       with the served model's tokenizer (M7_MODEL) into results/glm53/quality/. The runner's
 #       `mauve` client generates; scoring (gpt2-large features, GPU) runs after both arms with
 #       `mexp/m7_mauve_serving.py score`, writing results/glm53/quality/mauve_verdict_T*_n*.json.
+#   dsafb-smoke32k4k-vestigekv -> the gate in front of the vestigekv arm's re-run on engine 65a85c587e
+#       (DSA's indexer runs at decode under the split pair; a fenced lane attends its selection):
+#       needle probe, then the 32k/4k stream at MEM_FRAC 0.95 against diag-smoke32k4k-baseline's
+#       record. Not a result; the server log must show 'salience: first DECODE keys filed' and
+#       'DSA sibling drives decode metadata'. Every GLM vestigekv-arm quality record before this
+#       tree was produced with tier-1 scoring +inf past the first 2048 tokens of a request and on
+#       every decoded token (no indexer at decode), rescued by recall; they are superseded.
 #   lb1sumv0520-{baseline,vestigekv} -> LongBench v1 summarization (gov_report, qmsum, multi_news),
 #       the Kimi lb1sum protocol (mexp/kimi/run_longbench1.py, ROUGE-L by make_lb1_numbers.py --line glm53)
 #       on the RULER one-slot config, prompts cut with the GLM tokenizer. Order within the GLM line
@@ -1466,6 +1473,7 @@ change an experiment, change it here first.
 {"args":{"n":1209,"shots":64},"arm":"vestigekv","client":"gsm8k","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"gsm8kv0520-vestigekv","probe":true}
 {"args":{"contexts":16,"prefill":4096},"arm":"vestigekv","client":"mauve","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"mauve4kv0520-vestigekv","probe":false}
 {"args":{"contexts":64,"prefill":65536},"arm":"vestigekv","client":"mauve","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"mauve64kv0520-vestigekv","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"dsafb-smoke32k4k-vestigekv","probe":true}
 {"args":{"max_length":65536,"subsets":"gov_report,qmsum,multi_news"},"arm":"baseline","client":"longbench1","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"lb1sumv0520-baseline","probe":false}
 {"args":{"max_length":65536,"subsets":"gov_report,qmsum,multi_news"},"arm":"vestigekv","client":"longbench1","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"lb1sumv0520-vestigekv","probe":false}
 {"args":{"concurrency":1,"input_len":131072,"num_prompts":5,"output_len":8192,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB87-bs1-dense","probe":false}
