@@ -1,3 +1,11 @@
+
+> **Branch `glm53-line`.** This branch carries the GLM-5.3-Flash-NVFP4 line:
+> `mexp/glm53/` and `mexp/dsv2lite/` (arm scripts and queue), `docs/glm53-line.md`
+> (the whole write-up, including "Closing the decode gap" and the 2026-09-23
+> redesign measurements), `results/glm53/` and the GLM sections of this README.
+> `main` is the Kimi Linear line alone. The shared runner and probes live in
+> `mexp/exp/` on main; on this branch they are still under `mexp/glm53/`.
+
 # VestigeKV — experiments
 
 > **Initialize the submodule before anything else:**

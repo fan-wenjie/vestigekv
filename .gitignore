@@ -67,3 +67,4 @@ results/kimi/sidecardump/
 results/kimi/sidecardump_prose/
 results/kimi/sidecardump5/
 results/kimi/sidecardump_prose5/
+*.noindexer.json
