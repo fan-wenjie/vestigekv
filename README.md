@@ -35,7 +35,7 @@ bf16; no quantization anywhere.
 | figure | what it shows |
 |---|---|
 | ![decode latency vs S](results/fig_latency_curve.png) | bs=1 streaming decode: one request prefilled at 4k and decoded continuously to 512k; per-token latency vs. sequence length, vestigekv vs. dense (same tree, triton backend). Crossover ~28k; 1.28x at 256k, 1.46x at 496k. |
-| ![throughput vs batch](results/fig_throughput.png) | Throughput: 64k prefill + 4k decode, batch 1..32; attention cannot batch while shared weights amortize, so the vestigekv advantage grows with batch (+12.4% at bs=12). |
+| ![throughput vs batch](results/fig_throughput.png) | Decode throughput against measured live requests, 64k and 128k prefill, both arms (`tputA-*` at the default memory fraction, `tputB87-*` at 0.87 on both arms: at the default the VestigeKV arm exhausts the GPU above sixteen 128k requests). VestigeKV/dense: 1.06x at one request to 1.39x at 31 on 64k, 1.14x to 1.54x on 128k. Points are steady-decode windows from the server's own log (`mexp/kimi/make_throughput_numbers.py`). |
 
 *(Both figures are produced by `mexp/kimi/make_figures.py --emit --out results/`
 from the same server logs the paper's macros are read from; the panel title
@@ -1307,16 +1307,10 @@ python mexp/quality/needle_chinese.py compare \
   results/quality_needle_zh_verdict.json
 
 # --- figures --------------------------------------------------------------
-python mexp/bench/plot_curve_jsonl.py \
-  --arm dense:results/latency_stream_4k-512k_dense.jsonl \
-  --arm vestigekv:results/latency_stream_4k-512k_vestigekv.jsonl \
-  --srv dense:results/latency_stream_serverlog_dense.log \
-  --srv vestigekv:results/latency_stream_serverlog_vestigekv.log \
-  --clip 8192 --ylim 3.5:8 --out results/fig_latency_curve.png
-python mexp/bench/plot_batch_throughput.py \
-  --arm dense:results/throughput_64k+4k_bs1_dense.jsonl,... \
-  --arm vestigekv:results/throughput_64k+4k_bs1_vestigekv.jsonl,... \
-  --out results/fig_throughput.png
+# Both README figures and the paper's are one script; the panel title carries the
+# model, the hardware and TP read from every server log the panel draws from.
+python mexp/kimi/make_figures.py --emit --out results   # README copies
+python mexp/kimi/make_figures.py --emit                 # the paper's (default --out)
 ```
 
 ### Algorithm claims (single machine, HF-forward harness)
