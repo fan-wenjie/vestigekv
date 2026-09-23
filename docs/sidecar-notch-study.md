@@ -81,6 +81,28 @@ text) reports bins 16/17, the shoulder, on the rest. The needle probe passes
 with the telemetry on. `mexp/kimi/spectrum_notch_study.py` is the offline
 counterpart over dumps.
 
+## What it costs, measured
+
+137 us per closing block per layer (microbenchmark on [4096, 64] bf16), which
+is about fifteen kernel launches and not arithmetic: median 58, the energy
+reduction 35, the transform 21, argmax and max 17. The first version cost 195
+because it subtracted a mean that bin 0 carries and the cutoff excludes, and
+read the device four times per block instead of once per report.
+
+End to end on Kimi, 4k prompt with 2048 decoded tokens, two repeats per arm,
+one launch each:
+
+| | mean ITL | median ITL |
+|---|---|---|
+| telemetry off | 3.95, 3.92 ms | 3.90, 3.90 ms |
+| telemetry on | 3.92, 3.91 ms | 3.89, 3.89 ms |
+
+The arms sit closer than the repeats within an arm. A 4k prompt closes one
+block per layer and all of it in prefill: 2.2 ms there, nothing per decode
+step. At 128k it is 32 closes per layer, 80 ms over the request, 0.6 us per
+decode step amortized. Batching the sixteen layers into one call would cut it
+sixteenfold if it ever needs to be cheaper.
+
 The accumulator pools a layer's blocks across requests on purpose: an operator
 wants the traffic's distribution, not one request's. A per-request view would
 be the first change if this ever fed a decision, which on this evidence it
