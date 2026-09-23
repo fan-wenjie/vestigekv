@@ -98,7 +98,7 @@ run_arm() {  # tag, then any extra env assignments
   # ground truth for which arm actually ran
   grep -m1 "VestigeKV:" "$srv" || true
   env OPENAI_API_KEY=dummy PYTHONPATH="$ROOT/engine/python" CUDA_VISIBLE_DEVICES="" \
-    "$PY" mexp/glm53/run_ruler.py \
+    "$PY" mexp/exp/run_ruler.py \
       --arm vestigekv --port 30000 --model "$MODEL" \
       --n 50 --out "$ROOT/results/kimi/ruler" \
       --lengths "$LENGTHS" --tasks "$TASKS" --seed 0 --tag "$tag" 2>&1 | tee "$cli"

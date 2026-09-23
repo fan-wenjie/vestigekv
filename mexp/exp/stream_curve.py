@@ -1,7 +1,7 @@
 """Per-token decode latency vs context length from the stream jobs.
 
-    python mexp/glm53/stream_curve.py [--arms baseline,vestigekv] [--window 4096]
-    python mexp/glm53/stream_curve.py --source server [--jobs stream-baseline-256k,stream-vestigekv-256k]
+    python mexp/exp/stream_curve.py [--arms baseline,vestigekv] [--window 4096]
+    python mexp/exp/stream_curve.py --source server [--jobs stream-baseline-256k,stream-vestigekv-256k]
 
 Client source (default): results/<line>/latency_stream_4k-<N>_<arm>.jsonl
 (sglang.benchmark.serving --output-details: one request, its inter-token latencies);

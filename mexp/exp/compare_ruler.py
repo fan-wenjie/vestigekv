@@ -1,6 +1,6 @@
 """Two-arm RULER table from mexp/exp/run_ruler.py result files.
 
-    python mexp/glm53/compare_ruler.py [--a baseline] [--b vestigekv] [--n 10]
+    python mexp/exp/compare_ruler.py [--a baseline] [--b vestigekv] [--n 10]
 
 Prints one row per task with the a / b score per length, the per-length means and
 the number of cells where b differs from a; the last column is the mean over
