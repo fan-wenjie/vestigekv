@@ -1,5 +1,6 @@
 """Needle at the head of a ~10k-token filler; the answer needs rows from the first closed block."""
 
+import os
 import json
 import sys
 import time
@@ -16,7 +17,7 @@ body = (
     SECRET + "\n\n" + FILLER * reps
     + "\n\nQuestion: What is the secret access code stated at the very beginning of this document? Answer with the code only."
 )
-req = {"model": "nvidia/GLM-5.3-Flash-NVFP4", "messages": [{"role": "user", "content": body}], "max_tokens": 300, "temperature": 0}
+req = {"model": os.environ.get("NEEDLE_MODEL", "nvidia/GLM-5.3-Flash-NVFP4"), "messages": [{"role": "user", "content": body}], "max_tokens": 1024, "temperature": 0}  # 300 let the thinking eat the answer: a MISS with the code cut mid-string (2026-09-23)
 t0 = time.time()
 r = urllib.request.urlopen(
     urllib.request.Request(f"http://127.0.0.1:{port}/v1/chat/completions", data=json.dumps(req).encode(), headers={"Content-Type": "application/json"}),

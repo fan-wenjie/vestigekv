@@ -1175,6 +1175,10 @@ bash mexp/health_check.sh kimi 1800 &
 #       'DSA sibling drives decode metadata'. Every GLM vestigekv-arm quality record before this
 #       tree was produced with tier-1 scoring +inf past the first 2048 tokens of a request and on
 #       every decoded token (no indexer at decode), rescued by recall; they are superseded.
+#   (2026-09-23) mexp/dsv2lite/ is the DeepSeek-V2-Lite-Chat line (RoPE MLA, dense-MLA baseline):
+#       arm scripts only so far, no jobs registered; needle.py takes NEEDLE_MODEL and now allows
+#       1024 tokens (300 let the model's thinking eat the answer). Redesign measurements are in
+#       docs/glm53-line.md "Redesign measurements (2026-09-23)".
 #   dsaopt-smoke32k4k-vestigekv -> the gate in front of the vestigekv arm on the OPTIMISED tree
 #       (engine 8b83b939a9, branch glm53-dsa-decode, docs/glm53-line.md "Closing the decode gap"):
 #       the fused salience-ring write, DSA's own split-K decode over the tiers, the model's split

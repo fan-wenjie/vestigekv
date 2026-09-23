@@ -749,6 +749,76 @@ with r the pool's radius, one scalar per pool written when the pool
 closes; without r the scan is DSA's ranking with a threshold, not a
 certificate, and the docs would have to say so.
 
+## Redesign measurements (2026-09-23): what each lever is worth
+
+Engine `glm53-dsa-decode` from 2b69d18205 on; none of this is served for
+records yet. The fence stays on in the served arm by decision (the method
+is not a silver bullet; a lane that overflows falls back to DSA's own
+selection), so the numbers with the fence off bound what the redesign can
+reach, they are not a configuration.
+
+**Stage 1 -- fence off, lean graph every step, kept budget capped at 2048.**
+4k/2048: 11.14 ms against DSA's 11.26 (1.011x); 32k/4096: 11.20 against
+11.29 (1.008x); the 4k->128k stream (the request ended at 74k tokens)
+11.16 mean. Needle passes. The whole lean gain is the indexer's decode-time
+scoring, top-k, quantisation and their launches, about 0.35 ms/step; the
+gap against DSA still grows with context at the slope measured before,
+so a crossover in DSA's favour sits near 37k and the arm is faster only
+below it.
+
+**Where a DSA step goes** (node-level trace, 4k, bs=1, per rank; the
+streams overlap so the sum exceeds the 11.26 ms step): dense GEMM/GEMV of
+the projections and the head 7.3 ms, MoE grouped GEMM and routing 2.9,
+norms/elementwise/fills 2.3, NCCL 1.1, KDA layers 0.65, DSA attention
+0.11, DSA indexer 0.10. The attention side is 2-4% of the step and does
+not grow with context (fixed top-2048, a 33 B/token pooled index), which
+is why no selection method can exceed ~1.04x here at bs=1.
+
+**Bytes per step, attention side, per rank** (latent row 1024 B; DSA index
+33 B/token; the sketch 132 B/token; kept and fetch counts from VKSTATS):
+
+| context | DSA per layer | VestigeKV per layer (served) | per step x11 |
+|---|---|---|---|
+| 4k | 0.14 + 2.1 = 2.2 MB | 0.14 + 0.3 + 2.1 + 2.3 = 4.8 MB | 25 / 53 MB |
+| 32k | 1.1 + 2.1 = 3.2 MB | 1.1 + 3.9 + 3.1 + 3.4 = 11.5 MB | 35 / 127 MB |
+| 128k | 4.3 + 2.1 = 6.4 MB | 4.3 + 16 + 6 + 6.3 = 33 MB | 70 / 360 MB |
+
+VestigeKV's growing terms are the sketch scan (4x DSA's index per token),
+the kept-row sweep (DSA has none) and attention over kept + fetched rows.
+With a 4:1 pooled sketch, the kept cap and the lean graph the 128k step
+comes to ~96 MB, still 1.4x DSA; only dropping the kept sweep reaches
+parity in bytes. At 4k the byte difference is 16 us and the measured gap
+is launches.
+
+**The fence hands three layers to DSA.** VKSTATS at 32k with the fence on
+(W=2048 or 512 alike): fetch counts p50=0, p90=6, p99=W -- the fire set is
+either a handful of rows or thousands -- fallback 9.6-10.7% of layer-steps,
+concentrated in layers 0, 3 and 4; on those fenced lanes DSA's top-2048
+covers a median 4% (p10 0.02, p90 0.13) of the certified fire set, i.e.
+the certificate fires the whole archive there. Those layers are DSA in
+all but name, so a static per-layer split (DSA layers fixed, VestigeKV
+layers lean by default, fence as a rare safety net) is the design that
+keeps the fence and most of the lean gain; the dumps for the per-layer
+certificate study are in the scratchpad (`cert_offline.py`).
+
+**Per-layer, current-query scan (the "same period as the indexer" shape)**
+costs five launches per layer; the first measurement (11.82 ms at 4k) was
+void -- the range launch sliced the arena-indexed hit buffer -- and the
+re-measurement is pending. It is opt-in (`SGLANG_ENABLE_VESTIGEKV_PERLAYER_SCAN`).
+
+**W = 512 says nothing yet.** The fetch distribution makes 512 and 2048
+fence the same lanes; the needle "misses" at 512 were the probe's 300-token
+budget, which the model's thinking exhausted on some repeats (one W=2048
+repeat missed the same way). The probe now has 1024 tokens; the fence-width
+question is moot with the fence kept and W at 2048.
+
+**Direction.** For an sglang merge the speed claim lives on dense-MLA
+models (Kimi Linear: 1.14-1.56x at 128k), not here; the RoPE-MLA salience
+channel (`RopeSalienceKey`, engine 77ff9e1673) exists so the DeepSeek
+family can be measured next (`mexp/dsv2lite/`). On DSA models the line's
+claim is parity with a recall guarantee and fallback; the axis with a
+crossover is HBM capacity via archive offload, not decode latency.
+
 ## Run constraints
 
 Fixed in `mexp/glm53/common.sh`: CUDA graph on, radix cache off,
