@@ -53,7 +53,7 @@ WORD = {1: "One", 2: "Two", 4: "Four", 8: "Eight", 12: "Twelve", 16: "Sixteen",
 # The job-id prefixes of the timed, serial-round sweep. The superseded
 # tput32/tput128k runs are quarantined, not read: their windows were 18-45s
 # and their batches were not the batches they claimed.
-CONTEXTS = {65536: ("SixtyFour", "tputA"), 131072: ("OneTwentyEight", "tputB")}
+CONTEXTS = {65536: ("SixtyFour", "tputA"), 131072: ("OneTwentyEight", "tputB87")}
 ARMS = {"baseline": "dense", "vestigekv": "vestigekv"}
 # 40 decode-log lines is 1600 forward steps: long enough that a rate is a rate
 # and not a moment, short enough that a genuine plateau is not thrown away.
