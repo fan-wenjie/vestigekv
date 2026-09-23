@@ -112,7 +112,7 @@ def main():
         os.replace(tmp, queue)  # atomic: never a half file for the runner to read
         print(f"\nwrote {os.path.relpath(queue, ROOT)} ({len(rows)} rows)")
         print("next: python mexp/exp/audit_queue.py && "
-              "python mexp/glm53/queue_runner.py --line " + a.line)
+              "python mexp/exp/queue_runner.py --line " + a.line)
     return 0
 
 

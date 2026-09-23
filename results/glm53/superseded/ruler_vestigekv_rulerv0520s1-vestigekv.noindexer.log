@@ -1,685 +1,0 @@
-Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-[transformers] You are using a model of type `glm5_next` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
-niah_single_1: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-[transformers] You are using a model of type `glm5_next` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
-Generating synthetic samples: repeat | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: repeat | 4096: 100%|██████████| 10/10 [00:00<00:00, 245.31it/s]
-Generating synthetic samples: repeat | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: repeat | 8192: 100%|██████████| 10/10 [00:00<00:00, 103.76it/s]
-Generating synthetic samples: repeat | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: repeat | 16384:  50%|█████     | 5/10 [00:00<00:00, 47.64it/s]Generating synthetic samples: repeat | 16384: 100%|██████████| 10/10 [00:00<00:00, 46.81it/s]Generating synthetic samples: repeat | 16384: 100%|██████████| 10/10 [00:00<00:00, 46.90it/s]
-Generating synthetic samples: repeat | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: repeat | 32768:  20%|██        | 2/10 [00:00<00:00, 19.76it/s]Generating synthetic samples: repeat | 32768:  40%|████      | 4/10 [00:00<00:00, 19.67it/s]Generating synthetic samples: repeat | 32768:  60%|██████    | 6/10 [00:00<00:00, 19.62it/s]Generating synthetic samples: repeat | 32768:  80%|████████  | 8/10 [00:00<00:00, 19.67it/s]Generating synthetic samples: repeat | 32768: 100%|██████████| 10/10 [00:00<00:00, 19.70it/s]Generating synthetic samples: repeat | 32768: 100%|██████████| 10/10 [00:00<00:00, 19.68it/s]
-Generating synthetic samples: repeat | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: repeat | 65536:  10%|█         | 1/10 [00:00<00:00,  9.11it/s]Generating synthetic samples: repeat | 65536:  20%|██        | 2/10 [00:00<00:00,  9.04it/s]Generating synthetic samples: repeat | 65536:  30%|███       | 3/10 [00:00<00:00,  9.02it/s]Generating synthetic samples: repeat | 65536:  40%|████      | 4/10 [00:00<00:00,  9.02it/s]Generating synthetic samples: repeat | 65536:  50%|█████     | 5/10 [00:00<00:00,  9.02it/s]Generating synthetic samples: repeat | 65536:  60%|██████    | 6/10 [00:00<00:00,  9.03it/s]Generating synthetic samples: repeat | 65536:  70%|███████   | 7/10 [00:00<00:00,  9.04it/s]Generating synthetic samples: repeat | 65536:  80%|████████  | 8/10 [00:00<00:00,  9.04it/s]Generating synthetic samples: repeat | 65536:  90%|█████████ | 9/10 [00:00<00:00,  9.02it/s]Generating synthetic samples: repeat | 65536: 100%|██████████| 10/10 [00:01<00:00,  9.03it/s]Generating synthetic samples: repeat | 65536: 100%|██████████| 10/10 [00:01<00:00,  9.03it/s]
-niah_single_2: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Generating synthetic samples: essay | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 4096: 100%|██████████| 10/10 [00:00<00:00, 202.27it/s]
-Generating synthetic samples: essay | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 8192:  90%|█████████ | 9/10 [00:00<00:00, 87.92it/s]Generating synthetic samples: essay | 8192: 100%|██████████| 10/10 [00:00<00:00, 87.80it/s]
-Generating synthetic samples: essay | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 16384:  40%|████      | 4/10 [00:00<00:00, 35.18it/s]Generating synthetic samples: essay | 16384:  80%|████████  | 8/10 [00:00<00:00, 36.54it/s]Generating synthetic samples: essay | 16384: 100%|██████████| 10/10 [00:00<00:00, 36.70it/s]
-Generating synthetic samples: essay | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 32768:  20%|██        | 2/10 [00:00<00:00, 17.21it/s]Generating synthetic samples: essay | 32768:  40%|████      | 4/10 [00:00<00:00, 17.22it/s]Generating synthetic samples: essay | 32768:  60%|██████    | 6/10 [00:00<00:00, 15.50it/s]Generating synthetic samples: essay | 32768:  80%|████████  | 8/10 [00:00<00:00, 16.00it/s]Generating synthetic samples: essay | 32768: 100%|██████████| 10/10 [00:00<00:00, 16.38it/s]Generating synthetic samples: essay | 32768: 100%|██████████| 10/10 [00:00<00:00, 16.32it/s]
-Generating synthetic samples: essay | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 65536:  10%|█         | 1/10 [00:00<00:01,  8.00it/s]Generating synthetic samples: essay | 65536:  20%|██        | 2/10 [00:00<00:01,  7.90it/s]Generating synthetic samples: essay | 65536:  30%|███       | 3/10 [00:00<00:00,  7.92it/s]Generating synthetic samples: essay | 65536:  40%|████      | 4/10 [00:00<00:00,  7.91it/s]Generating synthetic samples: essay | 65536:  50%|█████     | 5/10 [00:00<00:00,  7.90it/s]Generating synthetic samples: essay | 65536:  60%|██████    | 6/10 [00:00<00:00,  7.92it/s]Generating synthetic samples: essay | 65536:  70%|███████   | 7/10 [00:00<00:00,  7.87it/s]Generating synthetic samples: essay | 65536:  80%|████████  | 8/10 [00:01<00:00,  7.81it/s]Generating synthetic samples: essay | 65536:  90%|█████████ | 9/10 [00:01<00:00,  7.87it/s]Generating synthetic samples: essay | 65536: 100%|██████████| 10/10 [00:01<00:00,  7.89it/s]Generating synthetic samples: essay | 65536: 100%|██████████| 10/10 [00:01<00:00,  7.89it/s]
-niah_single_3: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Generating synthetic samples: essay | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 4096: 100%|██████████| 10/10 [00:00<00:00, 200.83it/s]
-Generating synthetic samples: essay | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 8192: 100%|██████████| 10/10 [00:00<00:00, 99.23it/s]Generating synthetic samples: essay | 8192: 100%|██████████| 10/10 [00:00<00:00, 99.03it/s]
-Generating synthetic samples: essay | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 16384:  50%|█████     | 5/10 [00:00<00:00, 40.40it/s]Generating synthetic samples: essay | 16384: 100%|██████████| 10/10 [00:00<00:00, 40.17it/s]Generating synthetic samples: essay | 16384: 100%|██████████| 10/10 [00:00<00:00, 40.15it/s]
-Generating synthetic samples: essay | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 32768:  20%|██        | 2/10 [00:00<00:00, 17.31it/s]Generating synthetic samples: essay | 32768:  40%|████      | 4/10 [00:00<00:00, 16.67it/s]Generating synthetic samples: essay | 32768:  60%|██████    | 6/10 [00:00<00:00, 16.82it/s]Generating synthetic samples: essay | 32768:  80%|████████  | 8/10 [00:00<00:00, 16.98it/s]Generating synthetic samples: essay | 32768: 100%|██████████| 10/10 [00:00<00:00, 17.08it/s]Generating synthetic samples: essay | 32768: 100%|██████████| 10/10 [00:00<00:00, 16.99it/s]
-Generating synthetic samples: essay | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 65536:  10%|█         | 1/10 [00:00<00:01,  7.98it/s]Generating synthetic samples: essay | 65536:  20%|██        | 2/10 [00:00<00:00,  8.00it/s]Generating synthetic samples: essay | 65536:  30%|███       | 3/10 [00:00<00:00,  8.02it/s]Generating synthetic samples: essay | 65536:  40%|████      | 4/10 [00:00<00:00,  8.02it/s]Generating synthetic samples: essay | 65536:  50%|█████     | 5/10 [00:00<00:00,  8.03it/s]Generating synthetic samples: essay | 65536:  60%|██████    | 6/10 [00:00<00:00,  8.02it/s]Generating synthetic samples: essay | 65536:  70%|███████   | 7/10 [00:00<00:00,  8.03it/s]Generating synthetic samples: essay | 65536:  80%|████████  | 8/10 [00:00<00:00,  8.03it/s]Generating synthetic samples: essay | 65536:  90%|█████████ | 9/10 [00:01<00:00,  8.03it/s]Generating synthetic samples: essay | 65536: 100%|██████████| 10/10 [00:01<00:00,  8.03it/s]Generating synthetic samples: essay | 65536: 100%|██████████| 10/10 [00:01<00:00,  8.02it/s]
-niah_multikey_1: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Generating synthetic samples: essay | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 4096: 100%|██████████| 10/10 [00:00<00:00, 197.17it/s]
-Generating synthetic samples: essay | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 8192: 100%|██████████| 10/10 [00:00<00:00, 98.32it/s]Generating synthetic samples: essay | 8192: 100%|██████████| 10/10 [00:00<00:00, 98.19it/s]
-Generating synthetic samples: essay | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 16384:  40%|████      | 4/10 [00:00<00:00, 39.85it/s]Generating synthetic samples: essay | 16384:  80%|████████  | 8/10 [00:00<00:00, 39.83it/s]Generating synthetic samples: essay | 16384: 100%|██████████| 10/10 [00:00<00:00, 39.70it/s]
-Generating synthetic samples: essay | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 32768:  20%|██        | 2/10 [00:00<00:00, 17.18it/s]Generating synthetic samples: essay | 32768:  40%|████      | 4/10 [00:00<00:00, 17.08it/s]Generating synthetic samples: essay | 32768:  60%|██████    | 6/10 [00:00<00:00, 17.09it/s]Generating synthetic samples: essay | 32768:  80%|████████  | 8/10 [00:00<00:00, 17.12it/s]Generating synthetic samples: essay | 32768: 100%|██████████| 10/10 [00:00<00:00, 17.11it/s]Generating synthetic samples: essay | 32768: 100%|██████████| 10/10 [00:00<00:00, 17.10it/s]
-Generating synthetic samples: essay | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 65536:  10%|█         | 1/10 [00:00<00:01,  8.03it/s]Generating synthetic samples: essay | 65536:  20%|██        | 2/10 [00:00<00:00,  8.01it/s]Generating synthetic samples: essay | 65536:  30%|███       | 3/10 [00:00<00:00,  8.01it/s]Generating synthetic samples: essay | 65536:  40%|████      | 4/10 [00:00<00:00,  8.02it/s]Generating synthetic samples: essay | 65536:  50%|█████     | 5/10 [00:00<00:00,  8.01it/s]Generating synthetic samples: essay | 65536:  60%|██████    | 6/10 [00:00<00:00,  8.01it/s]Generating synthetic samples: essay | 65536:  70%|███████   | 7/10 [00:00<00:00,  8.01it/s]Generating synthetic samples: essay | 65536:  80%|████████  | 8/10 [00:01<00:00,  7.97it/s]Generating synthetic samples: essay | 65536:  90%|█████████ | 9/10 [00:01<00:00,  7.98it/s]Generating synthetic samples: essay | 65536: 100%|██████████| 10/10 [00:01<00:00,  7.98it/s]Generating synthetic samples: essay | 65536: 100%|██████████| 10/10 [00:01<00:00,  8.00it/s]
-niah_multikey_2: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Generating synthetic samples: needle | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: needle | 4096: 100%|██████████| 10/10 [00:00<00:00, 178.83it/s]
-Generating synthetic samples: needle | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: needle | 8192: 100%|██████████| 10/10 [00:00<00:00, 97.56it/s]Generating synthetic samples: needle | 8192: 100%|██████████| 10/10 [00:00<00:00, 97.43it/s]
-Generating synthetic samples: needle | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: needle | 16384:  50%|█████     | 5/10 [00:00<00:00, 47.38it/s]Generating synthetic samples: needle | 16384: 100%|██████████| 10/10 [00:00<00:00, 47.71it/s]Generating synthetic samples: needle | 16384: 100%|██████████| 10/10 [00:00<00:00, 47.63it/s]
-Generating synthetic samples: needle | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: needle | 32768:  30%|███       | 3/10 [00:00<00:00, 20.81it/s]Generating synthetic samples: needle | 32768:  60%|██████    | 6/10 [00:00<00:00, 15.23it/s]Generating synthetic samples: needle | 32768:  80%|████████  | 8/10 [00:00<00:00, 13.25it/s]Generating synthetic samples: needle | 32768: 100%|██████████| 10/10 [00:00<00:00, 13.61it/s]Generating synthetic samples: needle | 32768: 100%|██████████| 10/10 [00:00<00:00, 14.22it/s]
-Generating synthetic samples: needle | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: needle | 65536:  10%|█         | 1/10 [00:00<00:00,  9.85it/s]Generating synthetic samples: needle | 65536:  20%|██        | 2/10 [00:00<00:00,  9.65it/s]Generating synthetic samples: needle | 65536:  30%|███       | 3/10 [00:00<00:00,  9.79it/s]Generating synthetic samples: needle | 65536:  40%|████      | 4/10 [00:00<00:00,  9.83it/s]Generating synthetic samples: needle | 65536:  50%|█████     | 5/10 [00:00<00:00,  9.87it/s]Generating synthetic samples: needle | 65536:  60%|██████    | 6/10 [00:00<00:00,  9.87it/s]Generating synthetic samples: needle | 65536:  80%|████████  | 8/10 [00:00<00:00,  9.96it/s]Generating synthetic samples: needle | 65536: 100%|██████████| 10/10 [00:01<00:00,  9.99it/s]Generating synthetic samples: needle | 65536: 100%|██████████| 10/10 [00:01<00:00,  9.91it/s]
-niah_multikey_3: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Generating synthetic samples: needle | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: needle | 4096: 100%|██████████| 10/10 [00:00<00:00, 300.58it/s]
-Generating synthetic samples: needle | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: needle | 8192: 100%|██████████| 10/10 [00:00<00:00, 166.26it/s]
-Generating synthetic samples: needle | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: needle | 16384:  70%|███████   | 7/10 [00:00<00:00, 64.75it/s]Generating synthetic samples: needle | 16384: 100%|██████████| 10/10 [00:00<00:00, 64.65it/s]
-Generating synthetic samples: needle | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: needle | 32768:  30%|███       | 3/10 [00:00<00:00, 27.94it/s]Generating synthetic samples: needle | 32768:  60%|██████    | 6/10 [00:00<00:00, 28.07it/s]Generating synthetic samples: needle | 32768:  90%|█████████ | 9/10 [00:00<00:00, 28.09it/s]Generating synthetic samples: needle | 32768: 100%|██████████| 10/10 [00:00<00:00, 28.03it/s]
-Generating synthetic samples: needle | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: needle | 65536:  20%|██        | 2/10 [00:00<00:00, 12.01it/s]Generating synthetic samples: needle | 65536:  40%|████      | 4/10 [00:00<00:00, 11.96it/s]Generating synthetic samples: needle | 65536:  60%|██████    | 6/10 [00:00<00:00, 11.96it/s]Generating synthetic samples: needle | 65536:  80%|████████  | 8/10 [00:00<00:00, 11.95it/s]Generating synthetic samples: needle | 65536: 100%|██████████| 10/10 [00:00<00:00, 11.93it/s]Generating synthetic samples: needle | 65536: 100%|██████████| 10/10 [00:00<00:00, 11.94it/s]
-niah_multiquery: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Generating synthetic samples: essay | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 4096: 100%|██████████| 10/10 [00:00<00:00, 188.26it/s]
-Generating synthetic samples: essay | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 8192: 100%|██████████| 10/10 [00:00<00:00, 95.01it/s]Generating synthetic samples: essay | 8192: 100%|██████████| 10/10 [00:00<00:00, 94.88it/s]
-Generating synthetic samples: essay | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 16384:  50%|█████     | 5/10 [00:00<00:00, 40.72it/s]Generating synthetic samples: essay | 16384: 100%|██████████| 10/10 [00:00<00:00, 40.96it/s]Generating synthetic samples: essay | 16384: 100%|██████████| 10/10 [00:00<00:00, 40.90it/s]
-Generating synthetic samples: essay | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 32768:  20%|██        | 2/10 [00:00<00:00, 17.21it/s]Generating synthetic samples: essay | 32768:  40%|████      | 4/10 [00:00<00:00, 17.29it/s]Generating synthetic samples: essay | 32768:  60%|██████    | 6/10 [00:00<00:00, 17.07it/s]Generating synthetic samples: essay | 32768:  80%|████████  | 8/10 [00:00<00:00, 17.11it/s]Generating synthetic samples: essay | 32768: 100%|██████████| 10/10 [00:00<00:00, 17.14it/s]Generating synthetic samples: essay | 32768: 100%|██████████| 10/10 [00:00<00:00, 17.14it/s]
-Generating synthetic samples: essay | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 65536:  10%|█         | 1/10 [00:00<00:01,  7.73it/s]Generating synthetic samples: essay | 65536:  20%|██        | 2/10 [00:00<00:01,  7.83it/s]Generating synthetic samples: essay | 65536:  30%|███       | 3/10 [00:00<00:00,  7.91it/s]Generating synthetic samples: essay | 65536:  40%|████      | 4/10 [00:00<00:00,  7.96it/s]Generating synthetic samples: essay | 65536:  50%|█████     | 5/10 [00:00<00:00,  7.98it/s]Generating synthetic samples: essay | 65536:  60%|██████    | 6/10 [00:00<00:00,  7.98it/s]Generating synthetic samples: essay | 65536:  70%|███████   | 7/10 [00:00<00:00,  8.01it/s]Generating synthetic samples: essay | 65536:  80%|████████  | 8/10 [00:01<00:00,  8.02it/s]Generating synthetic samples: essay | 65536:  90%|█████████ | 9/10 [00:01<00:00,  8.01it/s]Generating synthetic samples: essay | 65536: 100%|██████████| 10/10 [00:01<00:00,  8.02it/s]Generating synthetic samples: essay | 65536: 100%|██████████| 10/10 [00:01<00:00,  7.98it/s]
-niah_multivalue: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Generating synthetic samples: essay | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 4096: 100%|██████████| 10/10 [00:00<00:00, 190.89it/s]
-Generating synthetic samples: essay | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 8192: 100%|██████████| 10/10 [00:00<00:00, 92.51it/s]Generating synthetic samples: essay | 8192: 100%|██████████| 10/10 [00:00<00:00, 92.39it/s]
-Generating synthetic samples: essay | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 16384:  50%|█████     | 5/10 [00:00<00:00, 40.54it/s]Generating synthetic samples: essay | 16384: 100%|██████████| 10/10 [00:00<00:00, 40.30it/s]Generating synthetic samples: essay | 16384: 100%|██████████| 10/10 [00:00<00:00, 40.31it/s]
-Generating synthetic samples: essay | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 32768:  20%|██        | 2/10 [00:00<00:00, 17.13it/s]Generating synthetic samples: essay | 32768:  40%|████      | 4/10 [00:00<00:00, 17.38it/s]Generating synthetic samples: essay | 32768:  60%|██████    | 6/10 [00:00<00:00, 17.12it/s]Generating synthetic samples: essay | 32768:  80%|████████  | 8/10 [00:00<00:00, 17.30it/s]Generating synthetic samples: essay | 32768: 100%|██████████| 10/10 [00:00<00:00, 17.42it/s]Generating synthetic samples: essay | 32768: 100%|██████████| 10/10 [00:00<00:00, 17.33it/s]
-Generating synthetic samples: essay | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating synthetic samples: essay | 65536:  10%|█         | 1/10 [00:00<00:01,  8.10it/s]Generating synthetic samples: essay | 65536:  20%|██        | 2/10 [00:00<00:00,  8.10it/s]Generating synthetic samples: essay | 65536:  30%|███       | 3/10 [00:00<00:00,  8.07it/s]Generating synthetic samples: essay | 65536:  40%|████      | 4/10 [00:00<00:00,  8.06it/s]Generating synthetic samples: essay | 65536:  50%|█████     | 5/10 [00:00<00:00,  8.08it/s]Generating synthetic samples: essay | 65536:  60%|██████    | 6/10 [00:00<00:00,  8.07it/s]Generating synthetic samples: essay | 65536:  70%|███████   | 7/10 [00:00<00:00,  8.08it/s]Generating synthetic samples: essay | 65536:  80%|████████  | 8/10 [00:00<00:00,  8.08it/s]Generating synthetic samples: essay | 65536:  90%|█████████ | 9/10 [00:01<00:00,  8.09it/s]Generating synthetic samples: essay | 65536: 100%|██████████| 10/10 [00:01<00:00,  8.09it/s]Generating synthetic samples: essay | 65536: 100%|██████████| 10/10 [00:01<00:00,  8.08it/s]
-ruler_vt: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Max length 500 | Current length 300 | Noises: 5
-Max length 500 | Current length 400 | Noises: 10
-Max length 500 | Current length 522 | Noises: 15
-Num noises: 10
-  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 1390.68it/s]
-Max length 4096 | Current length 780 | Noises: 10
-Max length 4096 | Current length 1020 | Noises: 20
-Max length 4096 | Current length 1263 | Noises: 30
-Max length 4096 | Current length 1493 | Noises: 40
-Max length 4096 | Current length 1738 | Noises: 50
-Max length 4096 | Current length 1977 | Noises: 60
-Max length 4096 | Current length 2219 | Noises: 70
-Max length 4096 | Current length 2457 | Noises: 80
-Max length 4096 | Current length 2699 | Noises: 90
-Max length 4096 | Current length 2940 | Noises: 100
-Max length 4096 | Current length 3176 | Noises: 110
-Max length 4096 | Current length 3420 | Noises: 120
-Max length 4096 | Current length 3657 | Noises: 130
-Max length 4096 | Current length 3900 | Noises: 140
-Max length 4096 | Current length 4140 | Noises: 150
-Num noises: 140
-  0%|          | 0/10 [00:00<?, ?it/s]100%|██████████| 10/10 [00:00<00:00, 239.04it/s]
-Max length 500 | Current length 297 | Noises: 5
-Max length 500 | Current length 401 | Noises: 10
-Max length 500 | Current length 517 | Noises: 15
-Num noises: 10
-  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 1958.13it/s]
-Max length 8192 | Current length 785 | Noises: 10
-Max length 8192 | Current length 1021 | Noises: 20
-Max length 8192 | Current length 1264 | Noises: 30
-Max length 8192 | Current length 1497 | Noises: 40
-Max length 8192 | Current length 1740 | Noises: 50
-Max length 8192 | Current length 1980 | Noises: 60
-Max length 8192 | Current length 2216 | Noises: 70
-Max length 8192 | Current length 2456 | Noises: 80
-Max length 8192 | Current length 2699 | Noises: 90
-Max length 8192 | Current length 2940 | Noises: 100
-Max length 8192 | Current length 3179 | Noises: 110
-Max length 8192 | Current length 3417 | Noises: 120
-Max length 8192 | Current length 3660 | Noises: 130
-Max length 8192 | Current length 3903 | Noises: 140
-Max length 8192 | Current length 4139 | Noises: 150
-Max length 8192 | Current length 4376 | Noises: 160
-Max length 8192 | Current length 4614 | Noises: 170
-Max length 8192 | Current length 4851 | Noises: 180
-Max length 8192 | Current length 5097 | Noises: 190
-Max length 8192 | Current length 5340 | Noises: 200
-Max length 8192 | Current length 5582 | Noises: 210
-Max length 8192 | Current length 5817 | Noises: 220
-Max length 8192 | Current length 6054 | Noises: 230
-Max length 8192 | Current length 6300 | Noises: 240
-Max length 8192 | Current length 6538 | Noises: 250
-Max length 8192 | Current length 6778 | Noises: 260
-Max length 8192 | Current length 7017 | Noises: 270
-Max length 8192 | Current length 7259 | Noises: 280
-Max length 8192 | Current length 7498 | Noises: 290
-Max length 8192 | Current length 7736 | Noises: 300
-Max length 8192 | Current length 7983 | Noises: 310
-Max length 8192 | Current length 8213 | Noises: 320
-Num noises: 310
-  0%|          | 0/10 [00:00<?, ?it/s]100%|██████████| 10/10 [00:00<00:00, 108.64it/s]
-Max length 500 | Current length 300 | Noises: 5
-Max length 500 | Current length 398 | Noises: 10
-Max length 500 | Current length 518 | Noises: 15
-Num noises: 10
-  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 1955.39it/s]
-Max length 16384 | Current length 786 | Noises: 10
-Max length 16384 | Current length 1020 | Noises: 20
-Max length 16384 | Current length 1257 | Noises: 30
-Max length 16384 | Current length 1497 | Noises: 40
-Max length 16384 | Current length 1734 | Noises: 50
-Max length 16384 | Current length 1974 | Noises: 60
-Max length 16384 | Current length 2219 | Noises: 70
-Max length 16384 | Current length 2461 | Noises: 80
-Max length 16384 | Current length 2697 | Noises: 90
-Max length 16384 | Current length 2942 | Noises: 100
-Max length 16384 | Current length 3178 | Noises: 110
-Max length 16384 | Current length 3422 | Noises: 120
-Max length 16384 | Current length 3659 | Noises: 130
-Max length 16384 | Current length 3900 | Noises: 140
-Max length 16384 | Current length 4139 | Noises: 150
-Max length 16384 | Current length 4380 | Noises: 160
-Max length 16384 | Current length 4620 | Noises: 170
-Max length 16384 | Current length 4863 | Noises: 180
-Max length 16384 | Current length 5100 | Noises: 190
-Max length 16384 | Current length 5339 | Noises: 200
-Max length 16384 | Current length 5577 | Noises: 210
-Max length 16384 | Current length 5815 | Noises: 220
-Max length 16384 | Current length 6054 | Noises: 230
-Max length 16384 | Current length 6300 | Noises: 240
-Max length 16384 | Current length 6539 | Noises: 250
-Max length 16384 | Current length 6773 | Noises: 260
-Max length 16384 | Current length 7015 | Noises: 270
-Max length 16384 | Current length 7261 | Noises: 280
-Max length 16384 | Current length 7500 | Noises: 290
-Max length 16384 | Current length 7739 | Noises: 300
-Max length 16384 | Current length 7980 | Noises: 310
-Max length 16384 | Current length 8217 | Noises: 320
-Max length 16384 | Current length 8457 | Noises: 330
-Max length 16384 | Current length 8703 | Noises: 340
-Max length 16384 | Current length 8932 | Noises: 350
-Max length 16384 | Current length 9180 | Noises: 360
-Max length 16384 | Current length 9424 | Noises: 370
-Max length 16384 | Current length 9665 | Noises: 380
-Max length 16384 | Current length 9900 | Noises: 390
-Max length 16384 | Current length 10136 | Noises: 400
-Max length 16384 | Current length 10377 | Noises: 410
-Max length 16384 | Current length 10618 | Noises: 420
-Max length 16384 | Current length 10860 | Noises: 430
-Max length 16384 | Current length 11100 | Noises: 440
-Max length 16384 | Current length 11337 | Noises: 450
-Max length 16384 | Current length 11579 | Noises: 460
-Max length 16384 | Current length 11820 | Noises: 470
-Max length 16384 | Current length 12060 | Noises: 480
-Max length 16384 | Current length 12295 | Noises: 490
-Max length 16384 | Current length 12537 | Noises: 500
-Max length 16384 | Current length 12772 | Noises: 510
-Max length 16384 | Current length 13017 | Noises: 520
-Max length 16384 | Current length 13259 | Noises: 530
-Max length 16384 | Current length 13499 | Noises: 540
-Max length 16384 | Current length 13740 | Noises: 550
-Max length 16384 | Current length 13974 | Noises: 560
-Max length 16384 | Current length 14217 | Noises: 570
-Max length 16384 | Current length 14457 | Noises: 580
-Max length 16384 | Current length 14701 | Noises: 590
-Max length 16384 | Current length 14944 | Noises: 600
-Max length 16384 | Current length 15180 | Noises: 610
-Max length 16384 | Current length 15416 | Noises: 620
-Max length 16384 | Current length 15660 | Noises: 630
-Max length 16384 | Current length 15899 | Noises: 640
-Max length 16384 | Current length 16134 | Noises: 650
-Max length 16384 | Current length 16380 | Noises: 660
-Max length 16384 | Current length 16617 | Noises: 670
-Num noises: 660
-  0%|          | 0/10 [00:00<?, ?it/s] 50%|█████     | 5/10 [00:00<00:00, 45.23it/s]100%|██████████| 10/10 [00:00<00:00, 45.22it/s]100%|██████████| 10/10 [00:00<00:00, 45.20it/s]
-Max length 500 | Current length 296 | Noises: 5
-Max length 500 | Current length 398 | Noises: 10
-Max length 500 | Current length 515 | Noises: 15
-Num noises: 10
-  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 1940.91it/s]
-Max length 32768 | Current length 780 | Noises: 10
-Max length 32768 | Current length 1023 | Noises: 20
-Max length 32768 | Current length 1254 | Noises: 30
-Max length 32768 | Current length 1497 | Noises: 40
-Max length 32768 | Current length 1738 | Noises: 50
-Max length 32768 | Current length 1977 | Noises: 60
-Max length 32768 | Current length 2211 | Noises: 70
-Max length 32768 | Current length 2459 | Noises: 80
-Max length 32768 | Current length 2698 | Noises: 90
-Max length 32768 | Current length 2933 | Noises: 100
-Max length 32768 | Current length 3180 | Noises: 110
-Max length 32768 | Current length 3421 | Noises: 120
-Max length 32768 | Current length 3654 | Noises: 130
-Max length 32768 | Current length 3903 | Noises: 140
-Max length 32768 | Current length 4137 | Noises: 150
-Max length 32768 | Current length 4373 | Noises: 160
-Max length 32768 | Current length 4625 | Noises: 170
-Max length 32768 | Current length 4864 | Noises: 180
-Max length 32768 | Current length 5100 | Noises: 190
-Max length 32768 | Current length 5331 | Noises: 200
-Max length 32768 | Current length 5577 | Noises: 210
-Max length 32768 | Current length 5817 | Noises: 220
-Max length 32768 | Current length 6058 | Noises: 230
-Max length 32768 | Current length 6292 | Noises: 240
-Max length 32768 | Current length 6537 | Noises: 250
-Max length 32768 | Current length 6777 | Noises: 260
-Max length 32768 | Current length 7014 | Noises: 270
-Max length 32768 | Current length 7262 | Noises: 280
-Max length 32768 | Current length 7500 | Noises: 290
-Max length 32768 | Current length 7740 | Noises: 300
-Max length 32768 | Current length 7977 | Noises: 310
-Max length 32768 | Current length 8218 | Noises: 320
-Max length 32768 | Current length 8461 | Noises: 330
-Max length 32768 | Current length 8702 | Noises: 340
-Max length 32768 | Current length 8942 | Noises: 350
-Max length 32768 | Current length 9180 | Noises: 360
-Max length 32768 | Current length 9417 | Noises: 370
-Max length 32768 | Current length 9657 | Noises: 380
-Max length 32768 | Current length 9905 | Noises: 390
-Max length 32768 | Current length 10137 | Noises: 400
-Max length 32768 | Current length 10377 | Noises: 410
-Max length 32768 | Current length 10623 | Noises: 420
-Max length 32768 | Current length 10860 | Noises: 430
-Max length 32768 | Current length 11097 | Noises: 440
-Max length 32768 | Current length 11340 | Noises: 450
-Max length 32768 | Current length 11585 | Noises: 460
-Max length 32768 | Current length 11819 | Noises: 470
-Max length 32768 | Current length 12063 | Noises: 480
-Max length 32768 | Current length 12295 | Noises: 490
-Max length 32768 | Current length 12542 | Noises: 500
-Max length 32768 | Current length 12780 | Noises: 510
-Max length 32768 | Current length 13023 | Noises: 520
-Max length 32768 | Current length 13260 | Noises: 530
-Max length 32768 | Current length 13497 | Noises: 540
-Max length 32768 | Current length 13736 | Noises: 550
-Max length 32768 | Current length 13974 | Noises: 560
-Max length 32768 | Current length 14215 | Noises: 570
-Max length 32768 | Current length 14459 | Noises: 580
-Max length 32768 | Current length 14698 | Noises: 590
-Max length 32768 | Current length 14943 | Noises: 600
-Max length 32768 | Current length 15183 | Noises: 610
-Max length 32768 | Current length 15417 | Noises: 620
-Max length 32768 | Current length 15654 | Noises: 630
-Max length 32768 | Current length 15897 | Noises: 640
-Max length 32768 | Current length 16140 | Noises: 650
-Max length 32768 | Current length 16374 | Noises: 660
-Max length 32768 | Current length 16622 | Noises: 670
-Max length 32768 | Current length 16859 | Noises: 680
-Max length 32768 | Current length 17095 | Noises: 690
-Max length 32768 | Current length 17351 | Noises: 700
-Max length 32768 | Current length 17580 | Noises: 710
-Max length 32768 | Current length 17820 | Noises: 720
-Max length 32768 | Current length 18057 | Noises: 730
-Max length 32768 | Current length 18295 | Noises: 740
-Max length 32768 | Current length 18539 | Noises: 750
-Max length 32768 | Current length 18777 | Noises: 760
-Max length 32768 | Current length 19020 | Noises: 770
-Max length 32768 | Current length 19258 | Noises: 780
-Max length 32768 | Current length 19500 | Noises: 790
-Max length 32768 | Current length 19740 | Noises: 800
-Max length 32768 | Current length 19983 | Noises: 810
-Max length 32768 | Current length 20220 | Noises: 820
-Max length 32768 | Current length 20461 | Noises: 830
-Max length 32768 | Current length 20698 | Noises: 840
-Max length 32768 | Current length 20940 | Noises: 850
-Max length 32768 | Current length 21180 | Noises: 860
-Max length 32768 | Current length 21423 | Noises: 870
-Max length 32768 | Current length 21664 | Noises: 880
-Max length 32768 | Current length 21894 | Noises: 890
-Max length 32768 | Current length 22135 | Noises: 900
-Max length 32768 | Current length 22374 | Noises: 910
-Max length 32768 | Current length 22619 | Noises: 920
-Max length 32768 | Current length 22863 | Noises: 930
-Max length 32768 | Current length 23097 | Noises: 940
-Max length 32768 | Current length 23342 | Noises: 950
-Max length 32768 | Current length 23573 | Noises: 960
-Max length 32768 | Current length 23820 | Noises: 970
-Max length 32768 | Current length 24054 | Noises: 980
-Max length 32768 | Current length 24294 | Noises: 990
-Max length 32768 | Current length 24540 | Noises: 1000
-Max length 32768 | Current length 24780 | Noises: 1010
-Max length 32768 | Current length 25018 | Noises: 1020
-Max length 32768 | Current length 25252 | Noises: 1030
-Max length 32768 | Current length 25497 | Noises: 1040
-Max length 32768 | Current length 25738 | Noises: 1050
-Max length 32768 | Current length 25979 | Noises: 1060
-Max length 32768 | Current length 26216 | Noises: 1070
-Max length 32768 | Current length 26457 | Noises: 1080
-Max length 32768 | Current length 26700 | Noises: 1090
-Max length 32768 | Current length 26943 | Noises: 1100
-Max length 32768 | Current length 27177 | Noises: 1110
-Max length 32768 | Current length 27419 | Noises: 1120
-Max length 32768 | Current length 27656 | Noises: 1130
-Max length 32768 | Current length 27903 | Noises: 1140
-Max length 32768 | Current length 28138 | Noises: 1150
-Max length 32768 | Current length 28377 | Noises: 1160
-Max length 32768 | Current length 28617 | Noises: 1170
-Max length 32768 | Current length 28861 | Noises: 1180
-Max length 32768 | Current length 29102 | Noises: 1190
-Max length 32768 | Current length 29337 | Noises: 1200
-Max length 32768 | Current length 29575 | Noises: 1210
-Max length 32768 | Current length 29822 | Noises: 1220
-Max length 32768 | Current length 30057 | Noises: 1230
-Max length 32768 | Current length 30299 | Noises: 1240
-Max length 32768 | Current length 30540 | Noises: 1250
-Max length 32768 | Current length 30781 | Noises: 1260
-Max length 32768 | Current length 31017 | Noises: 1270
-Max length 32768 | Current length 31260 | Noises: 1280
-Max length 32768 | Current length 31499 | Noises: 1290
-Max length 32768 | Current length 31742 | Noises: 1300
-Max length 32768 | Current length 31983 | Noises: 1310
-Max length 32768 | Current length 32213 | Noises: 1320
-Max length 32768 | Current length 32460 | Noises: 1330
-Max length 32768 | Current length 32697 | Noises: 1340
-Max length 32768 | Current length 32935 | Noises: 1350
-Num noises: 1340
-  0%|          | 0/10 [00:00<?, ?it/s] 20%|██        | 2/10 [00:00<00:00, 17.76it/s] 40%|████      | 4/10 [00:00<00:00, 17.86it/s] 60%|██████    | 6/10 [00:00<00:00, 18.64it/s] 80%|████████  | 8/10 [00:00<00:00, 19.04it/s]100%|██████████| 10/10 [00:00<00:00, 19.26it/s]100%|██████████| 10/10 [00:00<00:00, 18.89it/s]
-Max length 500 | Current length 298 | Noises: 5
-Max length 500 | Current length 403 | Noises: 10
-Max length 500 | Current length 522 | Noises: 15
-Num noises: 10
-  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 1718.27it/s]
-Max length 65536 | Current length 769 | Noises: 10
-Max length 65536 | Current length 1014 | Noises: 20
-Max length 65536 | Current length 1249 | Noises: 30
-Max length 65536 | Current length 1498 | Noises: 40
-Max length 65536 | Current length 1735 | Noises: 50
-Max length 65536 | Current length 1976 | Noises: 60
-Max length 65536 | Current length 2217 | Noises: 70
-Max length 65536 | Current length 2454 | Noises: 80
-Max length 65536 | Current length 2696 | Noises: 90
-Max length 65536 | Current length 2939 | Noises: 100
-Max length 65536 | Current length 3176 | Noises: 110
-Max length 65536 | Current length 3414 | Noises: 120
-Max length 65536 | Current length 3654 | Noises: 130
-Max length 65536 | Current length 3899 | Noises: 140
-Max length 65536 | Current length 4137 | Noises: 150
-Max length 65536 | Current length 4384 | Noises: 160
-Max length 65536 | Current length 4618 | Noises: 170
-Max length 65536 | Current length 4857 | Noises: 180
-Max length 65536 | Current length 5101 | Noises: 190
-Max length 65536 | Current length 5328 | Noises: 200
-Max length 65536 | Current length 5582 | Noises: 210
-Max length 65536 | Current length 5811 | Noises: 220
-Max length 65536 | Current length 6054 | Noises: 230
-Max length 65536 | Current length 6294 | Noises: 240
-Max length 65536 | Current length 6537 | Noises: 250
-Max length 65536 | Current length 6776 | Noises: 260
-Max length 65536 | Current length 7015 | Noises: 270
-Max length 65536 | Current length 7254 | Noises: 280
-Max length 65536 | Current length 7496 | Noises: 290
-Max length 65536 | Current length 7732 | Noises: 300
-Max length 65536 | Current length 7976 | Noises: 310
-Max length 65536 | Current length 8220 | Noises: 320
-Max length 65536 | Current length 8449 | Noises: 330
-Max length 65536 | Current length 8688 | Noises: 340
-Max length 65536 | Current length 8937 | Noises: 350
-Max length 65536 | Current length 9174 | Noises: 360
-Max length 65536 | Current length 9417 | Noises: 370
-Max length 65536 | Current length 9654 | Noises: 380
-Max length 65536 | Current length 9894 | Noises: 390
-Max length 65536 | Current length 10133 | Noises: 400
-Max length 65536 | Current length 10373 | Noises: 410
-Max length 65536 | Current length 10616 | Noises: 420
-Max length 65536 | Current length 10857 | Noises: 430
-Max length 65536 | Current length 11097 | Noises: 440
-Max length 65536 | Current length 11337 | Noises: 450
-Max length 65536 | Current length 11576 | Noises: 460
-Max length 65536 | Current length 11816 | Noises: 470
-Max length 65536 | Current length 12057 | Noises: 480
-Max length 65536 | Current length 12298 | Noises: 490
-Max length 65536 | Current length 12533 | Noises: 500
-Max length 65536 | Current length 12774 | Noises: 510
-Max length 65536 | Current length 13015 | Noises: 520
-Max length 65536 | Current length 13251 | Noises: 530
-Max length 65536 | Current length 13496 | Noises: 540
-Max length 65536 | Current length 13733 | Noises: 550
-Max length 65536 | Current length 13973 | Noises: 560
-Max length 65536 | Current length 14215 | Noises: 570
-Max length 65536 | Current length 14460 | Noises: 580
-Max length 65536 | Current length 14694 | Noises: 590
-Max length 65536 | Current length 14938 | Noises: 600
-Max length 65536 | Current length 15183 | Noises: 610
-Max length 65536 | Current length 15420 | Noises: 620
-Max length 65536 | Current length 15656 | Noises: 630
-Max length 65536 | Current length 15891 | Noises: 640
-Max length 65536 | Current length 16135 | Noises: 650
-Max length 65536 | Current length 16377 | Noises: 660
-Max length 65536 | Current length 16617 | Noises: 670
-Max length 65536 | Current length 16856 | Noises: 680
-Max length 65536 | Current length 17103 | Noises: 690
-Max length 65536 | Current length 17328 | Noises: 700
-Max length 65536 | Current length 17576 | Noises: 710
-Max length 65536 | Current length 17814 | Noises: 720
-Max length 65536 | Current length 18060 | Noises: 730
-Max length 65536 | Current length 18297 | Noises: 740
-Max length 65536 | Current length 18536 | Noises: 750
-Max length 65536 | Current length 18779 | Noises: 760
-Max length 65536 | Current length 19017 | Noises: 770
-Max length 65536 | Current length 19261 | Noises: 780
-Max length 65536 | Current length 19497 | Noises: 790
-Max length 65536 | Current length 19730 | Noises: 800
-Max length 65536 | Current length 19979 | Noises: 810
-Max length 65536 | Current length 20217 | Noises: 820
-Max length 65536 | Current length 20460 | Noises: 830
-Max length 65536 | Current length 20694 | Noises: 840
-Max length 65536 | Current length 20932 | Noises: 850
-Max length 65536 | Current length 21171 | Noises: 860
-Max length 65536 | Current length 21417 | Noises: 870
-Max length 65536 | Current length 21659 | Noises: 880
-Max length 65536 | Current length 21890 | Noises: 890
-Max length 65536 | Current length 22133 | Noises: 900
-Max length 65536 | Current length 22379 | Noises: 910
-Max length 65536 | Current length 22620 | Noises: 920
-Max length 65536 | Current length 22858 | Noises: 930
-Max length 65536 | Current length 23092 | Noises: 940
-Max length 65536 | Current length 23334 | Noises: 950
-Max length 65536 | Current length 23578 | Noises: 960
-Max length 65536 | Current length 23816 | Noises: 970
-Max length 65536 | Current length 24051 | Noises: 980
-Max length 65536 | Current length 24296 | Noises: 990
-Max length 65536 | Current length 24536 | Noises: 1000
-Max length 65536 | Current length 24777 | Noises: 1010
-Max length 65536 | Current length 25016 | Noises: 1020
-Max length 65536 | Current length 25257 | Noises: 1030
-Max length 65536 | Current length 25500 | Noises: 1040
-Max length 65536 | Current length 25739 | Noises: 1050
-Max length 65536 | Current length 25980 | Noises: 1060
-Max length 65536 | Current length 26212 | Noises: 1070
-Max length 65536 | Current length 26457 | Noises: 1080
-Max length 65536 | Current length 26696 | Noises: 1090
-Max length 65536 | Current length 26931 | Noises: 1100
-Max length 65536 | Current length 27177 | Noises: 1110
-Max length 65536 | Current length 27414 | Noises: 1120
-Max length 65536 | Current length 27663 | Noises: 1130
-Max length 65536 | Current length 27889 | Noises: 1140
-Max length 65536 | Current length 28134 | Noises: 1150
-Max length 65536 | Current length 28380 | Noises: 1160
-Max length 65536 | Current length 28618 | Noises: 1170
-Max length 65536 | Current length 28857 | Noises: 1180
-Max length 65536 | Current length 29097 | Noises: 1190
-Max length 65536 | Current length 29333 | Noises: 1200
-Max length 65536 | Current length 29574 | Noises: 1210
-Max length 65536 | Current length 29814 | Noises: 1220
-Max length 65536 | Current length 30049 | Noises: 1230
-Max length 65536 | Current length 30291 | Noises: 1240
-Max length 65536 | Current length 30536 | Noises: 1250
-Max length 65536 | Current length 30782 | Noises: 1260
-Max length 65536 | Current length 31017 | Noises: 1270
-Max length 65536 | Current length 31257 | Noises: 1280
-Max length 65536 | Current length 31497 | Noises: 1290
-Max length 65536 | Current length 31736 | Noises: 1300
-Max length 65536 | Current length 31974 | Noises: 1310
-Max length 65536 | Current length 32221 | Noises: 1320
-Max length 65536 | Current length 32457 | Noises: 1330
-Max length 65536 | Current length 32694 | Noises: 1340
-Max length 65536 | Current length 32934 | Noises: 1350
-Max length 65536 | Current length 33171 | Noises: 1360
-Max length 65536 | Current length 33425 | Noises: 1370
-Max length 65536 | Current length 33654 | Noises: 1380
-Max length 65536 | Current length 33891 | Noises: 1390
-Max length 65536 | Current length 34136 | Noises: 1400
-Max length 65536 | Current length 34375 | Noises: 1410
-Max length 65536 | Current length 34608 | Noises: 1420
-Max length 65536 | Current length 34863 | Noises: 1430
-Max length 65536 | Current length 35094 | Noises: 1440
-Max length 65536 | Current length 35334 | Noises: 1450
-Max length 65536 | Current length 35577 | Noises: 1460
-Max length 65536 | Current length 35820 | Noises: 1470
-Max length 65536 | Current length 36061 | Noises: 1480
-Max length 65536 | Current length 36298 | Noises: 1490
-Max length 65536 | Current length 36534 | Noises: 1500
-Max length 65536 | Current length 36777 | Noises: 1510
-Max length 65536 | Current length 37013 | Noises: 1520
-Max length 65536 | Current length 37258 | Noises: 1530
-Max length 65536 | Current length 37501 | Noises: 1540
-Max length 65536 | Current length 37733 | Noises: 1550
-Max length 65536 | Current length 37979 | Noises: 1560
-Max length 65536 | Current length 38215 | Noises: 1570
-Max length 65536 | Current length 38460 | Noises: 1580
-Max length 65536 | Current length 38692 | Noises: 1590
-Max length 65536 | Current length 38936 | Noises: 1600
-Max length 65536 | Current length 39175 | Noises: 1610
-Max length 65536 | Current length 39417 | Noises: 1620
-Max length 65536 | Current length 39664 | Noises: 1630
-Max length 65536 | Current length 39894 | Noises: 1640
-Max length 65536 | Current length 40137 | Noises: 1650
-Max length 65536 | Current length 40377 | Noises: 1660
-Max length 65536 | Current length 40603 | Noises: 1670
-Max length 65536 | Current length 40854 | Noises: 1680
-Max length 65536 | Current length 41099 | Noises: 1690
-Max length 65536 | Current length 41337 | Noises: 1700
-Max length 65536 | Current length 41573 | Noises: 1710
-Max length 65536 | Current length 41816 | Noises: 1720
-Max length 65536 | Current length 42056 | Noises: 1730
-Max length 65536 | Current length 42296 | Noises: 1740
-Max length 65536 | Current length 42534 | Noises: 1750
-Max length 65536 | Current length 42779 | Noises: 1760
-Max length 65536 | Current length 43015 | Noises: 1770
-Max length 65536 | Current length 43256 | Noises: 1780
-Max length 65536 | Current length 43498 | Noises: 1790
-Max length 65536 | Current length 43734 | Noises: 1800
-Max length 65536 | Current length 43979 | Noises: 1810
-Max length 65536 | Current length 44217 | Noises: 1820
-Max length 65536 | Current length 44454 | Noises: 1830
-Max length 65536 | Current length 44691 | Noises: 1840
-Max length 65536 | Current length 44936 | Noises: 1850
-Max length 65536 | Current length 45172 | Noises: 1860
-Max length 65536 | Current length 45419 | Noises: 1870
-Max length 65536 | Current length 45655 | Noises: 1880
-Max length 65536 | Current length 45892 | Noises: 1890
-Max length 65536 | Current length 46136 | Noises: 1900
-Max length 65536 | Current length 46374 | Noises: 1910
-Max length 65536 | Current length 46611 | Noises: 1920
-Max length 65536 | Current length 46854 | Noises: 1930
-Max length 65536 | Current length 47091 | Noises: 1940
-Max length 65536 | Current length 47332 | Noises: 1950
-Max length 65536 | Current length 47566 | Noises: 1960
-Max length 65536 | Current length 47807 | Noises: 1970
-Max length 65536 | Current length 48056 | Noises: 1980
-Max length 65536 | Current length 48294 | Noises: 1990
-Max length 65536 | Current length 48537 | Noises: 2000
-Max length 65536 | Current length 48776 | Noises: 2010
-Max length 65536 | Current length 49011 | Noises: 2020
-Max length 65536 | Current length 49259 | Noises: 2030
-Max length 65536 | Current length 49489 | Noises: 2040
-Max length 65536 | Current length 49737 | Noises: 2050
-Max length 65536 | Current length 49976 | Noises: 2060
-Max length 65536 | Current length 50214 | Noises: 2070
-Max length 65536 | Current length 50452 | Noises: 2080
-Max length 65536 | Current length 50699 | Noises: 2090
-Max length 65536 | Current length 50931 | Noises: 2100
-Max length 65536 | Current length 51182 | Noises: 2110
-Max length 65536 | Current length 51411 | Noises: 2120
-Max length 65536 | Current length 51651 | Noises: 2130
-Max length 65536 | Current length 51894 | Noises: 2140
-Max length 65536 | Current length 52132 | Noises: 2150
-Max length 65536 | Current length 52369 | Noises: 2160
-Max length 65536 | Current length 52613 | Noises: 2170
-Max length 65536 | Current length 52847 | Noises: 2180
-Max length 65536 | Current length 53092 | Noises: 2190
-Max length 65536 | Current length 53337 | Noises: 2200
-Max length 65536 | Current length 53580 | Noises: 2210
-Max length 65536 | Current length 53813 | Noises: 2220
-Max length 65536 | Current length 54057 | Noises: 2230
-Max length 65536 | Current length 54296 | Noises: 2240
-Max length 65536 | Current length 54534 | Noises: 2250
-Max length 65536 | Current length 54774 | Noises: 2260
-Max length 65536 | Current length 55014 | Noises: 2270
-Max length 65536 | Current length 55254 | Noises: 2280
-Max length 65536 | Current length 55496 | Noises: 2290
-Max length 65536 | Current length 55738 | Noises: 2300
-Max length 65536 | Current length 55972 | Noises: 2310
-Max length 65536 | Current length 56218 | Noises: 2320
-Max length 65536 | Current length 56460 | Noises: 2330
-Max length 65536 | Current length 56698 | Noises: 2340
-Max length 65536 | Current length 56931 | Noises: 2350
-Max length 65536 | Current length 57171 | Noises: 2360
-Max length 65536 | Current length 57423 | Noises: 2370
-Max length 65536 | Current length 57655 | Noises: 2380
-Max length 65536 | Current length 57891 | Noises: 2390
-Max length 65536 | Current length 58137 | Noises: 2400
-Max length 65536 | Current length 58376 | Noises: 2410
-Max length 65536 | Current length 58620 | Noises: 2420
-Max length 65536 | Current length 58854 | Noises: 2430
-Max length 65536 | Current length 59092 | Noises: 2440
-Max length 65536 | Current length 59337 | Noises: 2450
-Max length 65536 | Current length 59577 | Noises: 2460
-Max length 65536 | Current length 59811 | Noises: 2470
-Max length 65536 | Current length 60056 | Noises: 2480
-Max length 65536 | Current length 60294 | Noises: 2490
-Max length 65536 | Current length 60537 | Noises: 2500
-Max length 65536 | Current length 60774 | Noises: 2510
-Max length 65536 | Current length 61016 | Noises: 2520
-Max length 65536 | Current length 61254 | Noises: 2530
-Max length 65536 | Current length 61500 | Noises: 2540
-Max length 65536 | Current length 61734 | Noises: 2550
-Max length 65536 | Current length 61973 | Noises: 2560
-Max length 65536 | Current length 62214 | Noises: 2570
-Max length 65536 | Current length 62456 | Noises: 2580
-Max length 65536 | Current length 62699 | Noises: 2590
-Max length 65536 | Current length 62936 | Noises: 2600
-Max length 65536 | Current length 63175 | Noises: 2610
-Max length 65536 | Current length 63420 | Noises: 2620
-Max length 65536 | Current length 63655 | Noises: 2630
-Max length 65536 | Current length 63897 | Noises: 2640
-Max length 65536 | Current length 64137 | Noises: 2650
-Max length 65536 | Current length 64377 | Noises: 2660
-Max length 65536 | Current length 64613 | Noises: 2670
-Max length 65536 | Current length 64851 | Noises: 2680
-Max length 65536 | Current length 65092 | Noises: 2690
-Max length 65536 | Current length 65334 | Noises: 2700
-Max length 65536 | Current length 65578 | Noises: 2710
-Num noises: 2700
-  0%|          | 0/10 [00:00<?, ?it/s] 10%|█         | 1/10 [00:00<00:00,  9.10it/s] 20%|██        | 2/10 [00:00<00:00,  9.09it/s] 30%|███       | 3/10 [00:00<00:00,  9.09it/s] 40%|████      | 4/10 [00:00<00:00,  9.09it/s] 50%|█████     | 5/10 [00:00<00:00,  9.06it/s] 60%|██████    | 6/10 [00:00<00:00,  9.08it/s] 70%|███████   | 7/10 [00:00<00:00,  9.08it/s] 80%|████████  | 8/10 [00:00<00:00,  9.08it/s] 90%|█████████ | 9/10 [00:00<00:00,  9.03it/s]100%|██████████| 10/10 [00:01<00:00,  8.94it/s]100%|██████████| 10/10 [00:01<00:00,  9.03it/s]
-ruler_cwe: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Generating CWE Samples | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating CWE Samples | 4096: 100%|██████████| 10/10 [00:00<00:00, 306.43it/s]
-Generating CWE Samples | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating CWE Samples | 8192: 100%|██████████| 10/10 [00:00<00:00, 124.69it/s]
-Generating CWE Samples | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating CWE Samples | 16384:  60%|██████    | 6/10 [00:00<00:00, 55.99it/s]Generating CWE Samples | 16384: 100%|██████████| 10/10 [00:00<00:00, 55.88it/s]
-Generating CWE Samples | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating CWE Samples | 32768:  30%|███       | 3/10 [00:00<00:00, 24.99it/s]Generating CWE Samples | 32768:  60%|██████    | 6/10 [00:00<00:00, 24.73it/s]Generating CWE Samples | 32768:  90%|█████████ | 9/10 [00:00<00:00, 24.77it/s]Generating CWE Samples | 32768: 100%|██████████| 10/10 [00:00<00:00, 24.78it/s]
-Generating CWE Samples | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating CWE Samples | 65536:  20%|██        | 2/10 [00:00<00:00, 10.17it/s]Generating CWE Samples | 65536:  40%|████      | 4/10 [00:00<00:00, 10.47it/s]Generating CWE Samples | 65536:  60%|██████    | 6/10 [00:00<00:00, 10.47it/s]Generating CWE Samples | 65536:  80%|████████  | 8/10 [00:00<00:00, 10.21it/s]Generating CWE Samples | 65536: 100%|██████████| 10/10 [00:00<00:00, 10.14it/s]Generating CWE Samples | 65536: 100%|██████████| 10/10 [00:00<00:00, 10.23it/s]
-ruler_fwe: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Generating FWE Samples | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating FWE Samples | 4096:  80%|████████  | 8/10 [00:00<00:00, 78.03it/s]Generating FWE Samples | 4096: 100%|██████████| 10/10 [00:00<00:00, 81.06it/s]
-Generating FWE Samples | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating FWE Samples | 8192:  60%|██████    | 6/10 [00:00<00:00, 48.92it/s]Generating FWE Samples | 8192: 100%|██████████| 10/10 [00:00<00:00, 50.48it/s]
-Generating FWE Samples | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating FWE Samples | 16384:  40%|████      | 4/10 [00:00<00:00, 31.29it/s]Generating FWE Samples | 16384:  80%|████████  | 8/10 [00:00<00:00, 31.15it/s]Generating FWE Samples | 16384: 100%|██████████| 10/10 [00:00<00:00, 31.14it/s]
-Generating FWE Samples | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating FWE Samples | 32768:  20%|██        | 2/10 [00:00<00:00, 12.87it/s]Generating FWE Samples | 32768:  40%|████      | 4/10 [00:00<00:00, 12.79it/s]Generating FWE Samples | 32768:  60%|██████    | 6/10 [00:00<00:00, 12.91it/s]Generating FWE Samples | 32768:  80%|████████  | 8/10 [00:00<00:00, 12.85it/s]Generating FWE Samples | 32768: 100%|██████████| 10/10 [00:00<00:00, 11.65it/s]Generating FWE Samples | 32768: 100%|██████████| 10/10 [00:00<00:00, 12.16it/s]
-Generating FWE Samples | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating FWE Samples | 65536:  10%|█         | 1/10 [00:00<00:01,  5.76it/s]Generating FWE Samples | 65536:  20%|██        | 2/10 [00:00<00:01,  5.72it/s]Generating FWE Samples | 65536:  30%|███       | 3/10 [00:00<00:01,  4.79it/s]Generating FWE Samples | 65536:  40%|████      | 4/10 [00:00<00:01,  5.09it/s]Generating FWE Samples | 65536:  50%|█████     | 5/10 [00:00<00:00,  5.47it/s]Generating FWE Samples | 65536:  60%|██████    | 6/10 [00:01<00:00,  4.51it/s]Generating FWE Samples | 65536:  70%|███████   | 7/10 [00:01<00:00,  4.98it/s]Generating FWE Samples | 65536:  80%|████████  | 8/10 [00:01<00:00,  4.77it/s]Generating FWE Samples | 65536:  90%|█████████ | 9/10 [00:01<00:00,  5.12it/s]Generating FWE Samples | 65536: 100%|██████████| 10/10 [00:02<00:00,  4.40it/s]Generating FWE Samples | 65536: 100%|██████████| 10/10 [00:02<00:00,  4.80it/s]
-ruler_qa_squad: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Generating QA Samples | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating QA Samples | 4096: 100%|██████████| 10/10 [00:00<00:00, 233.61it/s]
-Generating QA Samples | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating QA Samples | 8192:  90%|█████████ | 9/10 [00:00<00:00, 88.36it/s]Generating QA Samples | 8192: 100%|██████████| 10/10 [00:00<00:00, 87.60it/s]
-Generating QA Samples | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating QA Samples | 16384:  50%|█████     | 5/10 [00:00<00:00, 43.65it/s]Generating QA Samples | 16384: 100%|██████████| 10/10 [00:00<00:00, 42.87it/s]Generating QA Samples | 16384: 100%|██████████| 10/10 [00:00<00:00, 42.96it/s]
-Generating QA Samples | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating QA Samples | 32768:  10%|█         | 1/10 [00:00<00:01,  8.72it/s]Generating QA Samples | 32768:  20%|██        | 2/10 [00:00<00:00,  8.57it/s]Generating QA Samples | 32768:  30%|███       | 3/10 [00:00<00:00,  8.64it/s]Generating QA Samples | 32768:  50%|█████     | 5/10 [00:00<00:00, 10.06it/s]Generating QA Samples | 32768:  60%|██████    | 6/10 [00:00<00:00,  9.60it/s]Generating QA Samples | 32768:  80%|████████  | 8/10 [00:00<00:00, 10.39it/s]Generating QA Samples | 32768: 100%|██████████| 10/10 [00:01<00:00,  9.66it/s]Generating QA Samples | 32768: 100%|██████████| 10/10 [00:01<00:00,  9.61it/s]
-Generating QA Samples | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating QA Samples | 65536:  10%|█         | 1/10 [00:00<00:01,  7.54it/s]Generating QA Samples | 65536:  20%|██        | 2/10 [00:00<00:01,  7.75it/s]Generating QA Samples | 65536:  30%|███       | 3/10 [00:00<00:00,  7.89it/s]Generating QA Samples | 65536:  40%|████      | 4/10 [00:00<00:00,  7.68it/s]Generating QA Samples | 65536:  50%|█████     | 5/10 [00:00<00:00,  7.77it/s]Generating QA Samples | 65536:  60%|██████    | 6/10 [00:00<00:00,  5.81it/s]Generating QA Samples | 65536:  70%|███████   | 7/10 [00:01<00:00,  6.35it/s]Generating QA Samples | 65536:  80%|████████  | 8/10 [00:01<00:00,  6.74it/s]Generating QA Samples | 65536:  90%|█████████ | 9/10 [00:01<00:00,  7.06it/s]Generating QA Samples | 65536: 100%|██████████| 10/10 [00:01<00:00,  7.24it/s]Generating QA Samples | 65536: 100%|██████████| 10/10 [00:01<00:00,  7.07it/s]
-ruler_qa_hotpot: Custom kwargs can be passed to `--metadata` in console (as json string) or to the TaskManager.
-For example --metadata='{"max_seq_lengths":[4096, 8192]}'. For details see task Readme.
-Generating QA Samples | 4096:   0%|          | 0/10 [00:00<?, ?it/s]Generating QA Samples | 4096:  60%|██████    | 6/10 [00:00<00:00, 54.91it/s]Generating QA Samples | 4096: 100%|██████████| 10/10 [00:00<00:00, 47.19it/s]
-Generating QA Samples | 8192:   0%|          | 0/10 [00:00<?, ?it/s]Generating QA Samples | 8192:  50%|█████     | 5/10 [00:00<00:00, 46.61it/s]Generating QA Samples | 8192: 100%|██████████| 10/10 [00:00<00:00, 40.05it/s]Generating QA Samples | 8192: 100%|██████████| 10/10 [00:00<00:00, 40.89it/s]
-Generating QA Samples | 16384:   0%|          | 0/10 [00:00<?, ?it/s]Generating QA Samples | 16384:  30%|███       | 3/10 [00:00<00:00, 26.22it/s]Generating QA Samples | 16384:  60%|██████    | 6/10 [00:00<00:00, 25.00it/s]Generating QA Samples | 16384:  90%|█████████ | 9/10 [00:00<00:00, 18.90it/s]Generating QA Samples | 16384: 100%|██████████| 10/10 [00:00<00:00, 19.16it/s]
-Generating QA Samples | 32768:   0%|          | 0/10 [00:00<?, ?it/s]Generating QA Samples | 32768:  20%|██        | 2/10 [00:00<00:00,  8.82it/s]Generating QA Samples | 32768:  40%|████      | 4/10 [00:00<00:00, 11.08it/s]Generating QA Samples | 32768:  60%|██████    | 6/10 [00:00<00:00, 10.07it/s]Generating QA Samples | 32768:  80%|████████  | 8/10 [00:00<00:00,  8.31it/s]Generating QA Samples | 32768: 100%|██████████| 10/10 [00:01<00:00,  8.63it/s]Generating QA Samples | 32768: 100%|██████████| 10/10 [00:01<00:00,  8.96it/s]
-Generating QA Samples | 65536:   0%|          | 0/10 [00:00<?, ?it/s]Generating QA Samples | 65536:  10%|█         | 1/10 [00:00<00:02,  3.53it/s]Generating QA Samples | 65536:  20%|██        | 2/10 [00:00<00:02,  3.52it/s]Generating QA Samples | 65536:  30%|███       | 3/10 [00:00<00:01,  4.60it/s]Generating QA Samples | 65536:  40%|████      | 4/10 [00:00<00:01,  5.24it/s]Generating QA Samples | 65536:  50%|█████     | 5/10 [00:01<00:01,  4.50it/s]Generating QA Samples | 65536:  60%|██████    | 6/10 [00:01<00:00,  5.14it/s]Generating QA Samples | 65536:  70%|███████   | 7/10 [00:01<00:00,  4.47it/s]Generating QA Samples | 65536:  80%|████████  | 8/10 [00:02<00:00,  3.34it/s]Generating QA Samples | 65536:  90%|█████████ | 9/10 [00:02<00:00,  2.94it/s]Generating QA Samples | 65536: 100%|██████████| 10/10 [00:02<00:00,  3.09it/s]Generating QA Samples | 65536: 100%|██████████| 10/10 [00:02<00:00,  3.66it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1768.64it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1779.30it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1434.55it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1453.33it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1663.85it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1766.51it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1392.13it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1461.74it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1680.68it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1708.42it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1745.81it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1453.70it/s]
-  0%|          | 0/50 [00:00<?, ?it/s]100%|██████████| 50/50 [00:00<00:00, 1481.14it/s]
-Requesting API:   0%|          | 0/650 [00:00<?, ?it/s]Requesting API:   0%|          | 1/650 [00:13<2:26:49, 13.57s/it]Requesting API:   0%|          | 2/650 [00:26<2:24:45, 13.40s/it]Requesting API:   0%|          | 3/650 [00:39<2:22:54, 13.25s/it]Requesting API:   1%|          | 4/650 [00:52<2:21:52, 13.18s/it]Requesting API:   1%|          | 5/650 [01:06<2:21:06, 13.13s/it]Requesting API:   1%|          | 6/650 [01:19<2:21:05, 13.15s/it]Requesting API:   1%|          | 7/650 [01:32<2:20:37, 13.12s/it]Requesting API:   1%|          | 8/650 [01:45<2:19:52, 13.07s/it]Requesting API:   1%|▏         | 9/650 [01:58<2:19:39, 13.07s/it]Requesting API:   2%|▏         | 10/650 [02:11<2:19:01, 13.03s/it]Requesting API:   2%|▏         | 11/650 [02:24<2:20:24, 13.18s/it]Requesting API:   2%|▏         | 12/650 [02:37<2:19:02, 13.08s/it]Requesting API:   2%|▏         | 13/650 [02:50<2:17:14, 12.93s/it]Requesting API:   2%|▏         | 14/650 [03:02<2:16:17, 12.86s/it]Requesting API:   2%|▏         | 15/650 [03:15<2:14:13, 12.68s/it]Requesting API:   2%|▏         | 16/650 [03:28<2:14:38, 12.74s/it]Requesting API:   3%|▎         | 17/650 [03:40<2:14:41, 12.77s/it]Requesting API:   3%|▎         | 18/650 [03:53<2:14:45, 12.79s/it]Requesting API:   3%|▎         | 19/650 [04:07<2:16:43, 13.00s/it]Requesting API:   3%|▎         | 20/650 [04:19<2:14:03, 12.77s/it]Requesting API:   3%|▎         | 21/650 [04:31<2:12:15, 12.62s/it]Requesting API:   3%|▎         | 22/650 [04:45<2:14:57, 12.89s/it]Requesting API:   4%|▎         | 23/650 [04:57<2:13:58, 12.82s/it]Requesting API:   4%|▎         | 24/650 [05:10<2:11:56, 12.65s/it]Requesting API:   4%|▍         | 25/650 [05:22<2:10:28, 12.53s/it]Requesting API:   4%|▍         | 26/650 [05:34<2:09:10, 12.42s/it]Requesting API:   4%|▍         | 27/650 [05:46<2:08:23, 12.36s/it]Requesting API:   4%|▍         | 28/650 [05:59<2:07:47, 12.33s/it]Requesting API:   4%|▍         | 29/650 [06:11<2:08:50, 12.45s/it]Requesting API:   5%|▍         | 30/650 [06:24<2:09:21, 12.52s/it]Requesting API:   5%|▍         | 31/650 [06:38<2:12:39, 12.86s/it]Requesting API:   5%|▍         | 32/650 [06:50<2:12:30, 12.87s/it]Requesting API:   5%|▌         | 33/650 [07:03<2:12:05, 12.85s/it]Requesting API:   5%|▌         | 34/650 [07:16<2:11:43, 12.83s/it]Requesting API:   5%|▌         | 35/650 [07:29<2:12:50, 12.96s/it]Requesting API:   6%|▌         | 36/650 [07:42<2:11:54, 12.89s/it]Requesting API:   6%|▌         | 37/650 [07:55<2:11:24, 12.86s/it]Requesting API:   6%|▌         | 38/650 [08:07<2:09:12, 12.67s/it]Requesting API:   6%|▌         | 39/650 [08:20<2:09:13, 12.69s/it]Requesting API:   6%|▌         | 40/650 [08:32<2:07:43, 12.56s/it]Requesting API:   6%|▋         | 41/650 [08:45<2:07:13, 12.53s/it]Requesting API:   6%|▋         | 42/650 [08:57<2:07:55, 12.62s/it]Requesting API:   7%|▋         | 43/650 [09:10<2:06:32, 12.51s/it]Requesting API:   7%|▋         | 44/650 [09:22<2:05:21, 12.41s/it]Requesting API:   7%|▋         | 45/650 [09:35<2:06:14, 12.52s/it]Requesting API:   7%|▋         | 46/650 [09:47<2:05:09, 12.43s/it]Requesting API:   7%|▋         | 47/650 [09:59<2:04:23, 12.38s/it]Requesting API:   7%|▋         | 48/650 [10:11<2:03:57, 12.36s/it]Requesting API:   8%|▊         | 49/650 [10:24<2:03:29, 12.33s/it]Requesting API:   8%|▊         | 50/650 [10:36<2:02:56, 12.29s/it]Requesting API:   8%|▊         | 51/650 [10:48<2:01:00, 12.12s/it]Requesting API:   8%|▊         | 52/650 [10:59<1:59:39, 12.01s/it]Requesting API:   8%|▊         | 53/650 [11:11<1:58:30, 11.91s/it]Requesting API:   8%|▊         | 54/650 [11:23<1:57:43, 11.85s/it]Requesting API:   8%|▊         | 55/650 [11:34<1:57:05, 11.81s/it]Requesting API:   9%|▊         | 56/650 [11:46<1:56:28, 11.76s/it]Requesting API:   9%|▉         | 57/650 [11:58<1:56:05, 11.75s/it]Requesting API:   9%|▉         | 58/650 [12:10<1:55:51, 11.74s/it]Requesting API:   9%|▉         | 59/650 [12:21<1:55:36, 11.74s/it]Requesting API:   9%|▉         | 60/650 [12:33<1:55:18, 11.73s/it]Requesting API:   9%|▉         | 61/650 [12:46<1:59:23, 12.16s/it]Requesting API:  10%|▉         | 62/650 [12:58<1:58:37, 12.10s/it]Requesting API:  10%|▉         | 63/650 [13:10<1:56:51, 11.94s/it]Requesting API:  10%|▉         | 64/650 [13:21<1:55:38, 11.84s/it]Requesting API:  10%|█         | 65/650 [13:34<1:58:21, 12.14s/it]Requesting API:  10%|█         | 66/650 [13:47<2:01:13, 12.46s/it]Requesting API:  10%|█         | 67/650 [14:00<2:01:29, 12.50s/it]Requesting API:  10%|█         | 68/650 [14:11<1:58:36, 12.23s/it]Requesting API:  11%|█         | 69/650 [14:24<1:59:17, 12.32s/it]Requesting API:  11%|█         | 70/650 [14:37<2:01:04, 12.53s/it]Requesting API:  11%|█         | 71/650 [14:44<1:46:06, 11.00s/it]Requesting API:  11%|█         | 72/650 [14:52<1:35:47,  9.94s/it]Requesting API:  11%|█         | 73/650 [14:59<1:28:27,  9.20s/it]Requesting API:  11%|█▏        | 74/650 [15:07<1:22:54,  8.64s/it]Requesting API:  12%|█▏        | 75/650 [15:14<1:18:00,  8.14s/it]Requesting API:  12%|█▏        | 76/650 [15:21<1:14:38,  7.80s/it]Requesting API:  12%|█▏        | 77/650 [15:28<1:13:33,  7.70s/it]Requesting API:  12%|█▏        | 78/650 [15:36<1:12:46,  7.63s/it]Requesting API:  12%|█▏        | 79/650 [15:43<1:10:40,  7.43s/it]Requesting API:  12%|█▏        | 80/650 [15:50<1:10:42,  7.44s/it]Requesting API:  12%|█▏        | 81/650 [15:57<1:08:45,  7.25s/it]Requesting API:  13%|█▎        | 82/650 [16:04<1:09:14,  7.31s/it]Requesting API:  13%|█▎        | 83/650 [16:12<1:09:33,  7.36s/it]Requesting API:  13%|█▎        | 84/650 [16:18<1:05:42,  6.97s/it]Requesting API:  13%|█▎        | 85/650 [16:24<1:03:40,  6.76s/it]Requesting API:  13%|█▎        | 86/650 [16:31<1:04:45,  6.89s/it]Requesting API:  13%|█▎        | 87/650 [16:37<1:02:19,  6.64s/it]Requesting API:  14%|█▎        | 88/650 [16:44<1:01:05,  6.52s/it]Requesting API:  14%|█▎        | 89/650 [16:50<1:01:52,  6.62s/it]Requesting API:  14%|█▍        | 90/650 [16:57<1:02:12,  6.67s/it]Requesting API:  14%|█▍        | 91/650 [17:04<1:02:36,  6.72s/it]Requesting API:  14%|█▍        | 92/650 [17:10<1:00:35,  6.52s/it]Requesting API:  14%|█▍        | 93/650 [17:16<59:46,  6.44s/it]  Requesting API:  14%|█▍        | 94/650 [17:22<58:32,  6.32s/it]Requesting API:  15%|█▍        | 95/650 [17:29<59:45,  6.46s/it]Requesting API:  15%|█▍        | 96/650 [17:36<1:00:22,  6.54s/it]Requesting API:  15%|█▍        | 97/650 [17:43<1:00:57,  6.61s/it]Requesting API:  15%|█▌        | 98/650 [17:49<1:00:43,  6.60s/it]Requesting API:  15%|█▌        | 99/650 [17:56<1:00:36,  6.60s/it]Requesting API:  15%|█▌        | 100/650 [18:02<59:29,  6.49s/it] Requesting API:  16%|█▌        | 101/650 [18:09<1:00:43,  6.64s/it]Requesting API:  16%|█▌        | 102/650 [18:17<1:02:51,  6.88s/it]Requesting API:  16%|█▌        | 103/650 [18:23<1:02:11,  6.82s/it]Requesting API:  16%|█▌        | 104/650 [18:31<1:03:48,  7.01s/it]Requesting API:  16%|█▌        | 105/650 [18:38<1:04:54,  7.15s/it]Requesting API:  16%|█▋        | 106/650 [18:45<1:03:56,  7.05s/it]Requesting API:  16%|█▋        | 107/650 [18:52<1:02:52,  6.95s/it]Requesting API:  17%|█▋        | 108/650 [18:59<1:03:23,  7.02s/it]Requesting API:  17%|█▋        | 109/650 [19:06<1:04:24,  7.14s/it]Requesting API:  17%|█▋        | 110/650 [19:13<1:03:08,  7.02s/it]Requesting API:  17%|█▋        | 111/650 [19:21<1:04:13,  7.15s/it]Requesting API:  17%|█▋        | 112/650 [19:27<1:01:40,  6.88s/it]Requesting API:  17%|█▋        | 113/650 [19:33<59:21,  6.63s/it]  Requesting API:  18%|█▊        | 114/650 [19:40<1:01:34,  6.89s/it]Requesting API:  18%|█▊        | 115/650 [19:47<59:44,  6.70s/it]  Requesting API:  18%|█▊        | 116/650 [19:53<57:53,  6.50s/it]Requesting API:  18%|█▊        | 117/650 [19:59<57:11,  6.44s/it]Requesting API:  18%|█▊        | 118/650 [20:05<56:38,  6.39s/it]Requesting API:  18%|█▊        | 119/650 [20:11<56:11,  6.35s/it]Requesting API:  18%|█▊        | 120/650 [20:18<55:48,  6.32s/it]Requesting API:  19%|█▊        | 121/650 [20:23<53:34,  6.08s/it]Requesting API:  19%|█▉        | 122/650 [20:30<54:59,  6.25s/it]Requesting API:  19%|█▉        | 123/650 [20:36<55:56,  6.37s/it]Requesting API:  19%|█▉        | 124/650 [20:43<56:34,  6.45s/it]Requesting API:  19%|█▉        | 125/650 [20:50<56:54,  6.50s/it]Requesting API:  19%|█▉        | 126/650 [20:55<54:12,  6.21s/it]Requesting API:  20%|█▉        | 127/650 [21:02<55:12,  6.33s/it]Requesting API:  20%|█▉        | 128/650 [21:09<55:49,  6.42s/it]Requesting API:  20%|█▉        | 129/650 [21:15<56:08,  6.47s/it]Requesting API:  20%|██        | 130/650 [21:22<56:28,  6.52s/it]Requesting API:  20%|██        | 131/650 [21:34<1:12:28,  8.38s/it]Requesting API:  20%|██        | 132/650 [21:47<1:23:14,  9.64s/it]Requesting API:  20%|██        | 133/650 [22:00<1:31:08, 10.58s/it]Requesting API:  21%|██        | 134/650 [22:13<1:36:31, 11.22s/it]Requesting API:  21%|██        | 135/650 [22:25<1:40:07, 11.67s/it]Requesting API:  21%|██        | 136/650 [22:38<1:42:44, 11.99s/it]Requesting API:  21%|██        | 137/650 [22:51<1:44:16, 12.20s/it]Requesting API:  21%|██        | 138/650 [23:03<1:45:20, 12.34s/it]Requesting API:  21%|██▏       | 139/650 [23:16<1:46:15, 12.48s/it]Requesting API:  22%|██▏       | 140/650 [23:29<1:46:37, 12.54s/it]Requesting API:  22%|██▏       | 141/650 [23:36<1:32:43, 10.93s/it]Requesting API:  22%|██▏       | 142/650 [23:43<1:22:24,  9.73s/it]Requesting API:  22%|██▏       | 143/650 [23:49<1:13:30,  8.70s/it]Requesting API:  22%|██▏       | 144/650 [23:57<1:10:07,  8.31s/it]Requesting API:  22%|██▏       | 145/650 [24:04<1:06:54,  7.95s/it]Requesting API:  22%|██▏       | 146/650 [24:11<1:05:07,  7.75s/it]Requesting API:  23%|██▎       | 147/650 [24:18<1:03:22,  7.56s/it]Requesting API:  23%|██▎       | 148/650 [24:24<58:56,  7.04s/it]  Requesting API:  23%|██▎       | 149/650 [24:30<56:13,  6.73s/it]Requesting API:  23%|██▎       | 150/650 [24:36<54:45,  6.57s/it]Requesting API:  23%|██▎       | 151/650 [24:41<49:29,  5.95s/it]Requesting API:  23%|██▎       | 152/650 [24:45<45:46,  5.51s/it]Requesting API:  24%|██▎       | 153/650 [24:50<43:09,  5.21s/it]Requesting API:  24%|██▎       | 154/650 [24:54<41:14,  4.99s/it]Requesting API:  24%|██▍       | 155/650 [24:59<39:57,  4.84s/it]Requesting API:  24%|██▍       | 156/650 [25:03<39:01,  4.74s/it]Requesting API:  24%|██▍       | 157/650 [25:07<37:10,  4.52s/it]Requesting API:  24%|██▍       | 158/650 [25:12<37:00,  4.51s/it]Requesting API:  24%|██▍       | 159/650 [25:16<36:30,  4.46s/it]Requesting API:  25%|██▍       | 160/650 [25:20<36:31,  4.47s/it]Requesting API:  25%|██▍       | 161/650 [25:25<36:30,  4.48s/it]Requesting API:  25%|██▍       | 162/650 [25:29<34:48,  4.28s/it]Requesting API:  25%|██▌       | 163/650 [25:33<35:15,  4.34s/it]Requesting API:  25%|██▌       | 164/650 [25:37<33:47,  4.17s/it]Requesting API:  25%|██▌       | 165/650 [25:40<31:08,  3.85s/it]Requesting API:  26%|██▌       | 166/650 [25:44<30:58,  3.84s/it]Requesting API:  26%|██▌       | 167/650 [25:48<30:56,  3.84s/it]Requesting API:  26%|██▌       | 168/650 [25:52<30:53,  3.85s/it]Requesting API:  26%|██▌       | 169/650 [25:56<32:20,  4.04s/it]Requesting API:  26%|██▌       | 170/650 [26:01<33:20,  4.17s/it]Requesting API:  26%|██▋       | 171/650 [26:05<34:01,  4.26s/it]Requesting API:  26%|██▋       | 172/650 [26:10<34:28,  4.33s/it]Requesting API:  27%|██▋       | 173/650 [26:13<33:06,  4.16s/it]Requesting API:  27%|██▋       | 174/650 [26:18<33:49,  4.26s/it]Requesting API:  27%|██▋       | 175/650 [26:21<30:57,  3.91s/it]Requesting API:  27%|██▋       | 176/650 [26:24<29:45,  3.77s/it]Requesting API:  27%|██▋       | 177/650 [26:28<28:40,  3.64s/it]Requesting API:  27%|██▋       | 178/650 [26:32<30:38,  3.90s/it]Requesting API:  28%|██▊       | 179/650 [26:36<29:21,  3.74s/it]Requesting API:  28%|██▊       | 180/650 [26:39<28:46,  3.67s/it]Requesting API:  28%|██▊       | 181/650 [26:43<28:44,  3.68s/it]Requesting API:  28%|██▊       | 182/650 [26:47<29:41,  3.81s/it]Requesting API:  28%|██▊       | 183/650 [26:51<31:12,  4.01s/it]Requesting API:  28%|██▊       | 184/650 [26:56<32:15,  4.15s/it]Requesting API:  28%|██▊       | 185/650 [27:00<32:58,  4.26s/it]Requesting API:  29%|██▊       | 186/650 [27:04<31:32,  4.08s/it]Requesting API:  29%|██▉       | 187/650 [27:09<32:25,  4.20s/it]Requesting API:  29%|██▉       | 188/650 [27:13<33:00,  4.29s/it]Requesting API:  29%|██▉       | 189/650 [27:17<33:20,  4.34s/it]Requesting API:  29%|██▉       | 190/650 [27:22<33:32,  4.37s/it]Requesting API:  29%|██▉       | 191/650 [27:26<32:17,  4.22s/it]Requesting API:  30%|██▉       | 192/650 [27:29<30:10,  3.95s/it]Requesting API:  30%|██▉       | 193/650 [27:34<31:20,  4.12s/it]Requesting API:  30%|██▉       | 194/650 [27:37<29:39,  3.90s/it]Requesting API:  30%|███       | 195/650 [27:40<28:15,  3.73s/it]Requesting API:  30%|███       | 196/650 [27:43<26:47,  3.54s/it]Requesting API:  30%|███       | 197/650 [27:48<28:49,  3.82s/it]Requesting API:  30%|███       | 198/650 [27:52<30:16,  4.02s/it]Requesting API:  31%|███       | 199/650 [27:56<28:47,  3.83s/it]Requesting API:  31%|███       | 200/650 [28:00<30:11,  4.03s/it]Requesting API:  31%|███       | 201/650 [28:04<30:13,  4.04s/it]Requesting API:  31%|███       | 202/650 [28:08<30:16,  4.05s/it]Requesting API:  31%|███       | 203/650 [28:13<30:30,  4.09s/it]Requesting API:  31%|███▏      | 204/650 [28:17<30:21,  4.08s/it]Requesting API:  32%|███▏      | 205/650 [28:20<29:25,  3.97s/it]Requesting API:  32%|███▏      | 206/650 [28:24<29:32,  3.99s/it]Requesting API:  32%|███▏      | 207/650 [28:28<29:36,  4.01s/it]Requesting API:  32%|███▏      | 208/650 [28:33<29:41,  4.03s/it]Requesting API:  32%|███▏      | 209/650 [28:37<29:44,  4.05s/it]Requesting API:  32%|███▏      | 210/650 [28:41<29:44,  4.06s/it]Requesting API:  32%|███▏      | 211/650 [28:48<36:15,  4.96s/it]Requesting API:  33%|███▎      | 212/650 [28:55<40:44,  5.58s/it]Requesting API:  33%|███▎      | 213/650 [29:02<43:54,  6.03s/it]Requesting API:  33%|███▎      | 214/650 [29:09<45:48,  6.30s/it]Requesting API:  33%|███▎      | 215/650 [29:16<47:06,  6.50s/it]Requesting API:  33%|███▎      | 216/650 [29:23<48:01,  6.64s/it]Requesting API:  33%|███▎      | 217/650 [29:30<48:35,  6.73s/it]Requesting API:  34%|███▎      | 218/650 [29:37<49:12,  6.83s/it]Requesting API:  34%|███▎      | 219/650 [29:44<49:35,  6.90s/it]Requesting API:  34%|███▍      | 220/650 [29:51<49:47,  6.95s/it]Requesting API:  34%|███▍      | 221/650 [29:54<42:12,  5.90s/it]Requesting API:  34%|███▍      | 222/650 [29:58<36:51,  5.17s/it]Requesting API:  34%|███▍      | 223/650 [30:01<32:37,  4.58s/it]Requesting API:  34%|███▍      | 224/650 [30:04<29:14,  4.12s/it]Requesting API:  35%|███▍      | 225/650 [30:09<29:50,  4.21s/it]Requesting API:  35%|███▍      | 226/650 [30:12<27:36,  3.91s/it]Requesting API:  35%|███▍      | 227/650 [30:16<28:38,  4.06s/it]Requesting API:  35%|███▌      | 228/650 [30:21<29:18,  4.17s/it]Requesting API:  35%|███▌      | 229/650 [30:25<29:43,  4.24s/it]Requesting API:  35%|███▌      | 230/650 [30:29<29:58,  4.28s/it]Requesting API:  36%|███▌      | 231/650 [30:31<25:07,  3.60s/it]Requesting API:  36%|███▌      | 232/650 [30:34<23:57,  3.44s/it]Requesting API:  36%|███▌      | 233/650 [30:36<20:35,  2.96s/it]Requesting API:  36%|███▌      | 234/650 [30:39<20:43,  2.99s/it]Requesting API:  36%|███▌      | 235/650 [30:42<20:45,  3.00s/it]Requesting API:  36%|███▋      | 236/650 [30:45<20:42,  3.00s/it]Requesting API:  36%|███▋      | 237/650 [30:48<20:42,  3.01s/it]Requesting API:  37%|███▋      | 238/650 [30:51<20:39,  3.01s/it]Requesting API:  37%|███▋      | 239/650 [30:54<20:35,  3.01s/it]Requesting API:  37%|███▋      | 240/650 [30:57<20:34,  3.01s/it]Requesting API:  37%|███▋      | 241/650 [31:00<20:21,  2.99s/it]Requesting API:  37%|███▋      | 242/650 [31:03<20:16,  2.98s/it]Requesting API:  37%|███▋      | 243/650 [31:06<19:15,  2.84s/it]Requesting API:  38%|███▊      | 244/650 [31:09<19:27,  2.88s/it]Requesting API:  38%|███▊      | 245/650 [31:11<18:35,  2.76s/it]Requesting API:  38%|███▊      | 246/650 [31:14<18:58,  2.82s/it]Requesting API:  38%|███▊      | 247/650 [31:17<18:13,  2.71s/it]Requesting API:  38%|███▊      | 248/650 [31:20<18:42,  2.79s/it]Requesting API:  38%|███▊      | 249/650 [31:22<18:04,  2.70s/it]Requesting API:  38%|███▊      | 250/650 [31:25<18:33,  2.78s/it]Requesting API:  39%|███▊      | 251/650 [31:28<18:52,  2.84s/it]Requesting API:  39%|███▉      | 252/650 [31:31<19:02,  2.87s/it]Requesting API:  39%|███▉      | 253/650 [31:33<17:51,  2.70s/it]Requesting API:  39%|███▉      | 254/650 [31:36<18:18,  2.77s/it]Requesting API:  39%|███▉      | 255/650 [31:39<18:39,  2.83s/it]Requesting API:  39%|███▉      | 256/650 [31:42<17:33,  2.67s/it]Requesting API:  40%|███▉      | 257/650 [31:44<18:03,  2.76s/it]Requesting API:  40%|███▉      | 258/650 [31:47<18:23,  2.81s/it]Requesting API:  40%|███▉      | 259/650 [31:50<18:38,  2.86s/it]Requesting API:  40%|████      | 260/650 [31:53<18:47,  2.89s/it]Requesting API:  40%|████      | 261/650 [31:56<18:51,  2.91s/it]Requesting API:  40%|████      | 262/650 [31:59<18:53,  2.92s/it]Requesting API:  40%|████      | 263/650 [32:02<18:54,  2.93s/it]Requesting API:  41%|████      | 264/650 [32:04<16:13,  2.52s/it]Requesting API:  41%|████      | 265/650 [32:06<14:51,  2.32s/it]Requesting API:  41%|████      | 266/650 [32:07<13:51,  2.17s/it]Requesting API:  41%|████      | 267/650 [32:10<15:20,  2.40s/it]Requesting API:  41%|████      | 268/650 [32:13<16:19,  2.57s/it]Requesting API:  41%|████▏     | 269/650 [32:16<17:00,  2.68s/it]Requesting API:  42%|████▏     | 270/650 [32:19<17:29,  2.76s/it]Requesting API:  42%|████▏     | 271/650 [32:22<18:00,  2.85s/it]Requesting API:  42%|████▏     | 272/650 [32:25<18:08,  2.88s/it]Requesting API:  42%|████▏     | 273/650 [32:28<18:14,  2.90s/it]Requesting API:  42%|████▏     | 274/650 [32:31<18:16,  2.92s/it]Requesting API:  42%|████▏     | 275/650 [32:34<18:17,  2.93s/it]Requesting API:  42%|████▏     | 276/650 [32:37<18:17,  2.94s/it]Requesting API:  43%|████▎     | 277/650 [32:39<16:56,  2.73s/it]Requesting API:  43%|████▎     | 278/650 [32:41<15:50,  2.56s/it]Requesting API:  43%|████▎     | 279/650 [32:44<15:25,  2.49s/it]Requesting API:  43%|████▎     | 280/650 [32:47<16:14,  2.63s/it]Requesting API:  43%|████▎     | 281/650 [32:50<16:35,  2.70s/it]Requesting API:  43%|████▎     | 282/650 [32:52<16:44,  2.73s/it]Requesting API:  44%|████▎     | 283/650 [32:55<16:53,  2.76s/it]Requesting API:  44%|████▎     | 284/650 [32:58<16:58,  2.78s/it]Requesting API:  44%|████▍     | 285/650 [33:01<17:01,  2.80s/it]Requesting API:  44%|████▍     | 286/650 [33:04<16:59,  2.80s/it]Requesting API:  44%|████▍     | 287/650 [33:07<16:59,  2.81s/it]Requesting API:  44%|████▍     | 288/650 [33:09<17:00,  2.82s/it]Requesting API:  44%|████▍     | 289/650 [33:11<14:49,  2.46s/it]Requesting API:  45%|████▍     | 290/650 [33:14<15:27,  2.58s/it]Requesting API:  45%|████▍     | 291/650 [33:18<18:30,  3.09s/it]Requesting API:  45%|████▍     | 292/650 [33:22<20:37,  3.46s/it]Requesting API:  45%|████▌     | 293/650 [33:27<22:03,  3.71s/it]Requesting API:  45%|████▌     | 294/650 [33:31<23:02,  3.88s/it]Requesting API:  45%|████▌     | 295/650 [33:35<23:40,  4.00s/it]Requesting API:  46%|████▌     | 296/650 [33:40<24:08,  4.09s/it]Requesting API:  46%|████▌     | 297/650 [33:44<24:28,  4.16s/it]Requesting API:  46%|████▌     | 298/650 [33:48<24:39,  4.20s/it]Requesting API:  46%|████▌     | 299/650 [33:53<24:46,  4.24s/it]Requesting API:  46%|████▌     | 300/650 [33:57<24:52,  4.26s/it]Requesting API:  46%|████▋     | 301/650 [34:00<22:29,  3.87s/it]Requesting API:  46%|████▋     | 302/650 [34:03<20:48,  3.59s/it]Requesting API:  47%|████▋     | 303/650 [34:06<19:36,  3.39s/it]Requesting API:  47%|████▋     | 304/650 [34:09<18:47,  3.26s/it]Requesting API:  47%|████▋     | 305/650 [34:12<18:12,  3.17s/it]Requesting API:  47%|████▋     | 306/650 [34:15<17:45,  3.10s/it]Requesting API:  47%|████▋     | 307/650 [34:17<17:25,  3.05s/it]Requesting API:  47%|████▋     | 308/650 [34:20<17:11,  3.02s/it]Requesting API:  48%|████▊     | 309/650 [34:22<15:05,  2.66s/it]Requesting API:  48%|████▊     | 310/650 [34:25<15:35,  2.75s/it]Requesting API:  48%|████▊     | 311/650 [34:27<14:40,  2.60s/it]Requesting API:  48%|████▊     | 312/650 [34:30<13:59,  2.48s/it]Requesting API:  48%|████▊     | 313/650 [34:32<13:32,  2.41s/it]Requesting API:  48%|████▊     | 314/650 [34:34<13:10,  2.35s/it]Requesting API:  48%|████▊     | 315/650 [34:36<12:53,  2.31s/it]Requesting API:  49%|████▊     | 316/650 [34:39<12:42,  2.28s/it]Requesting API:  49%|████▉     | 317/650 [34:40<11:43,  2.11s/it]Requesting API:  49%|████▉     | 318/650 [34:42<11:06,  2.01s/it]Requesting API:  49%|████▉     | 319/650 [34:44<10:37,  1.93s/it]Requesting API:  49%|████▉     | 320/650 [34:46<11:08,  2.02s/it]Requesting API:  49%|████▉     | 321/650 [34:48<10:26,  1.90s/it]Requesting API:  50%|████▉     | 322/650 [34:49<09:54,  1.81s/it]Requesting API:  50%|████▉     | 323/650 [34:51<10:35,  1.94s/it]Requesting API:  50%|████▉     | 324/650 [34:54<11:02,  2.03s/it]Requesting API:  50%|█████     | 325/650 [34:56<11:18,  2.09s/it]Requesting API:  50%|█████     | 326/650 [34:58<11:30,  2.13s/it]Requesting API:  50%|█████     | 327/650 [35:00<10:28,  1.95s/it]Requesting API:  50%|█████     | 328/650 [35:02<10:54,  2.03s/it]Requesting API:  51%|█████     | 329/650 [35:04<11:09,  2.09s/it]Requesting API:  51%|█████     | 330/650 [35:06<11:20,  2.13s/it]Requesting API:  51%|█████     | 331/650 [35:09<11:28,  2.16s/it]Requesting API:  51%|█████     | 332/650 [35:11<11:34,  2.18s/it]Requesting API:  51%|█████     | 333/650 [35:13<11:34,  2.19s/it]Requesting API:  51%|█████▏    | 334/650 [35:15<11:34,  2.20s/it]Requesting API:  52%|█████▏    | 335/650 [35:17<11:36,  2.21s/it]Requesting API:  52%|█████▏    | 336/650 [35:20<11:34,  2.21s/it]Requesting API:  52%|█████▏    | 337/650 [35:22<11:33,  2.22s/it]Requesting API:  52%|█████▏    | 338/650 [35:24<11:31,  2.22s/it]Requesting API:  52%|█████▏    | 339/650 [35:26<11:28,  2.21s/it]Requesting API:  52%|█████▏    | 340/650 [35:28<10:26,  2.02s/it]Requesting API:  52%|█████▏    | 341/650 [35:30<10:44,  2.08s/it]Requesting API:  53%|█████▎    | 342/650 [35:32<10:53,  2.12s/it]Requesting API:  53%|█████▎    | 343/650 [35:35<11:01,  2.15s/it]Requesting API:  53%|█████▎    | 344/650 [35:37<11:06,  2.18s/it]Requesting API:  53%|█████▎    | 345/650 [35:39<11:07,  2.19s/it]Requesting API:  53%|█████▎    | 346/650 [35:41<11:07,  2.19s/it]Requesting API:  53%|█████▎    | 347/650 [35:43<11:06,  2.20s/it]Requesting API:  54%|█████▎    | 348/650 [35:46<11:06,  2.21s/it]Requesting API:  54%|█████▎    | 349/650 [35:47<10:01,  2.00s/it]Requesting API:  54%|█████▍    | 350/650 [35:49<09:07,  1.83s/it]Requesting API:  54%|█████▍    | 351/650 [35:51<09:41,  1.94s/it]Requesting API:  54%|█████▍    | 352/650 [35:53<10:04,  2.03s/it]Requesting API:  54%|█████▍    | 353/650 [35:55<10:18,  2.08s/it]Requesting API:  54%|█████▍    | 354/650 [35:57<10:27,  2.12s/it]Requesting API:  55%|█████▍    | 355/650 [36:00<10:33,  2.15s/it]Requesting API:  55%|█████▍    | 356/650 [36:01<09:11,  1.87s/it]Requesting API:  55%|█████▍    | 357/650 [36:03<09:42,  1.99s/it]Requesting API:  55%|█████▌    | 358/650 [36:05<09:59,  2.05s/it]Requesting API:  55%|█████▌    | 359/650 [36:08<10:10,  2.10s/it]Requesting API:  55%|█████▌    | 360/650 [36:09<09:04,  1.88s/it]Requesting API:  56%|█████▌    | 361/650 [36:11<09:27,  1.97s/it]Requesting API:  56%|█████▌    | 362/650 [36:13<09:41,  2.02s/it]Requesting API:  56%|█████▌    | 363/650 [36:15<09:18,  1.94s/it]Requesting API:  56%|█████▌    | 364/650 [36:17<09:34,  2.01s/it]Requesting API:  56%|█████▌    | 365/650 [36:19<09:43,  2.05s/it]Requesting API:  56%|█████▋    | 366/650 [36:22<09:52,  2.09s/it]Requesting API:  56%|█████▋    | 367/650 [36:24<09:55,  2.10s/it]Requesting API:  57%|█████▋    | 368/650 [36:26<09:59,  2.13s/it]Requesting API:  57%|█████▋    | 369/650 [36:28<10:00,  2.14s/it]Requesting API:  57%|█████▋    | 370/650 [36:30<09:58,  2.14s/it]Requesting API:  57%|█████▋    | 371/650 [36:32<10:03,  2.16s/it]Requesting API:  57%|█████▋    | 372/650 [36:35<10:07,  2.19s/it]Requesting API:  57%|█████▋    | 373/650 [36:36<08:35,  1.86s/it]Requesting API:  58%|█████▊    | 374/650 [36:38<09:05,  1.98s/it]Requesting API:  58%|█████▊    | 375/650 [36:39<08:04,  1.76s/it]Requesting API:  58%|█████▊    | 376/650 [36:41<08:42,  1.91s/it]Requesting API:  58%|█████▊    | 377/650 [36:44<09:06,  2.00s/it]Requesting API:  58%|█████▊    | 378/650 [36:46<08:55,  1.97s/it]Requesting API:  58%|█████▊    | 379/650 [36:48<09:16,  2.05s/it]Requesting API:  58%|█████▊    | 380/650 [36:50<09:24,  2.09s/it]Requesting API:  59%|█████▊    | 381/650 [36:53<10:11,  2.27s/it]Requesting API:  59%|█████▉    | 382/650 [36:55<10:44,  2.40s/it]Requesting API:  59%|█████▉    | 383/650 [36:58<11:06,  2.50s/it]Requesting API:  59%|█████▉    | 384/650 [37:01<11:18,  2.55s/it]Requesting API:  59%|█████▉    | 385/650 [37:04<11:28,  2.60s/it]Requesting API:  59%|█████▉    | 386/650 [37:06<11:35,  2.63s/it]Requesting API:  60%|█████▉    | 387/650 [37:09<11:38,  2.66s/it]Requesting API:  60%|█████▉    | 388/650 [37:12<11:40,  2.67s/it]Requesting API:  60%|█████▉    | 389/650 [37:14<11:40,  2.68s/it]Requesting API:  60%|██████    | 390/650 [37:17<11:38,  2.69s/it]Requesting API:  60%|██████    | 391/650 [37:19<10:55,  2.53s/it]Requesting API:  60%|██████    | 392/650 [37:21<10:23,  2.42s/it]Requesting API:  60%|██████    | 393/650 [37:24<10:01,  2.34s/it]Requesting API:  61%|██████    | 394/650 [37:26<09:45,  2.29s/it]Requesting API:  61%|██████    | 395/650 [37:28<09:35,  2.26s/it]Requesting API:  61%|██████    | 396/650 [37:30<09:27,  2.23s/it]Requesting API:  61%|██████    | 397/650 [37:32<09:20,  2.21s/it]Requesting API:  61%|██████    | 398/650 [37:34<09:13,  2.20s/it]Requesting API:  61%|██████▏   | 399/650 [37:36<08:49,  2.11s/it]Requesting API:  62%|██████▏   | 400/650 [37:38<08:53,  2.13s/it]Requesting API:  62%|██████▏   | 401/650 [37:49<19:17,  4.65s/it]Requesting API:  62%|██████▏   | 402/650 [38:00<26:30,  6.41s/it]Requesting API:  62%|██████▏   | 403/650 [38:10<31:31,  7.66s/it]Requesting API:  62%|██████▏   | 404/650 [38:21<34:54,  8.52s/it]Requesting API:  62%|██████▏   | 405/650 [38:31<37:17,  9.13s/it]Requesting API:  62%|██████▏   | 406/650 [38:42<38:52,  9.56s/it]Requesting API:  63%|██████▎   | 407/650 [38:52<39:58,  9.87s/it]Requesting API:  63%|██████▎   | 408/650 [39:03<40:41, 10.09s/it]Requesting API:  63%|██████▎   | 409/650 [39:14<41:08, 10.24s/it]Requesting API:  63%|██████▎   | 410/650 [39:24<41:24, 10.35s/it]Requesting API:  63%|██████▎   | 411/650 [39:30<35:28,  8.91s/it]Requesting API:  63%|██████▎   | 412/650 [39:35<31:18,  7.89s/it]Requesting API:  64%|██████▎   | 413/650 [39:41<28:19,  7.17s/it]Requesting API:  64%|██████▎   | 414/650 [39:46<26:16,  6.68s/it]Requesting API:  64%|██████▍   | 415/650 [39:52<24:47,  6.33s/it]Requesting API:  64%|██████▍   | 416/650 [39:57<23:45,  6.09s/it]Requesting API:  64%|██████▍   | 417/650 [40:03<22:59,  5.92s/it]Requesting API:  64%|██████▍   | 418/650 [40:08<22:26,  5.80s/it]Requesting API:  64%|██████▍   | 419/650 [40:14<22:01,  5.72s/it]Requesting API:  65%|██████▍   | 420/650 [40:19<21:42,  5.66s/it]Requesting API:  65%|██████▍   | 421/650 [40:22<18:36,  4.88s/it]Requesting API:  65%|██████▍   | 422/650 [40:25<16:24,  4.32s/it]Requesting API:  65%|██████▌   | 423/650 [40:28<14:51,  3.93s/it]Requesting API:  65%|██████▌   | 424/650 [40:31<13:46,  3.66s/it]Requesting API:  65%|██████▌   | 425/650 [40:35<12:59,  3.47s/it]Requesting API:  66%|██████▌   | 426/650 [40:38<12:24,  3.33s/it]Requesting API:  66%|██████▌   | 427/650 [40:40<11:58,  3.22s/it]Requesting API:  66%|██████▌   | 428/650 [40:44<11:41,  3.16s/it]Requesting API:  66%|██████▌   | 429/650 [40:46<11:27,  3.11s/it]Requesting API:  66%|██████▌   | 430/650 [40:50<11:18,  3.08s/it]Requesting API:  66%|██████▋   | 431/650 [40:51<09:45,  2.68s/it]Requesting API:  66%|██████▋   | 432/650 [40:53<08:40,  2.39s/it]Requesting API:  67%|██████▋   | 433/650 [40:55<07:54,  2.19s/it]Requesting API:  67%|██████▋   | 434/650 [40:56<07:23,  2.05s/it]Requesting API:  67%|██████▋   | 435/650 [40:58<06:58,  1.95s/it]Requesting API:  67%|██████▋   | 436/650 [41:00<06:42,  1.88s/it]Requesting API:  67%|██████▋   | 437/650 [41:02<06:29,  1.83s/it]Requesting API:  67%|██████▋   | 438/650 [41:03<06:20,  1.80s/it]Requesting API:  68%|██████▊   | 439/650 [41:05<06:14,  1.77s/it]Requesting API:  68%|██████▊   | 440/650 [41:07<06:08,  1.76s/it]Requesting API:  68%|██████▊   | 441/650 [41:08<05:24,  1.55s/it]Requesting API:  68%|██████▊   | 442/650 [41:09<04:52,  1.41s/it]Requesting API:  68%|██████▊   | 443/650 [41:10<04:30,  1.31s/it]Requesting API:  68%|██████▊   | 444/650 [41:11<04:14,  1.23s/it]Requesting API:  68%|██████▊   | 445/650 [41:12<04:02,  1.18s/it]Requesting API:  69%|██████▊   | 446/650 [41:13<03:53,  1.15s/it]Requesting API:  69%|██████▉   | 447/650 [41:14<03:48,  1.12s/it]Requesting API:  69%|██████▉   | 448/650 [41:15<03:43,  1.11s/it]Requesting API:  69%|██████▉   | 449/650 [41:16<03:40,  1.10s/it]Requesting API:  69%|██████▉   | 450/650 [41:17<03:37,  1.09s/it]Requesting API:  69%|██████▉   | 451/650 [41:30<15:21,  4.63s/it]Requesting API:  70%|██████▉   | 452/650 [41:43<23:28,  7.11s/it]Requesting API:  70%|██████▉   | 453/650 [41:56<29:02,  8.85s/it]Requesting API:  70%|██████▉   | 454/650 [42:09<32:59, 10.10s/it]Requesting API:  70%|███████   | 455/650 [42:22<35:33, 10.94s/it]Requesting API:  70%|███████   | 456/650 [42:35<37:16, 11.53s/it]Requesting API:  70%|███████   | 457/650 [42:48<38:23, 11.93s/it]Requesting API:  70%|███████   | 458/650 [43:01<39:04, 12.21s/it]Requesting API:  71%|███████   | 459/650 [43:14<39:29, 12.40s/it]Requesting API:  71%|███████   | 460/650 [43:26<39:44, 12.55s/it]Requesting API:  71%|███████   | 461/650 [43:33<34:19, 10.90s/it]Requesting API:  71%|███████   | 462/650 [43:40<30:32,  9.75s/it]Requesting API:  71%|███████   | 463/650 [43:48<27:49,  8.93s/it]Requesting API:  71%|███████▏  | 464/650 [43:55<25:55,  8.36s/it]Requesting API:  72%|███████▏  | 465/650 [44:02<24:34,  7.97s/it]Requesting API:  72%|███████▏  | 466/650 [44:09<23:34,  7.69s/it]Requesting API:  72%|███████▏  | 467/650 [44:16<22:50,  7.49s/it]Requesting API:  72%|███████▏  | 468/650 [44:23<22:17,  7.35s/it]Requesting API:  72%|███████▏  | 469/650 [44:30<21:53,  7.25s/it]Requesting API:  72%|███████▏  | 470/650 [44:37<21:34,  7.19s/it]Requesting API:  72%|███████▏  | 471/650 [44:41<18:42,  6.27s/it]Requesting API:  73%|███████▎  | 472/650 [44:45<16:42,  5.63s/it]Requesting API:  73%|███████▎  | 473/650 [44:49<15:17,  5.19s/it]Requesting API:  73%|███████▎  | 474/650 [44:53<14:16,  4.87s/it]Requesting API:  73%|███████▎  | 475/650 [44:57<13:31,  4.64s/it]Requesting API:  73%|███████▎  | 476/650 [45:02<13:01,  4.49s/it]Requesting API:  73%|███████▎  | 477/650 [45:06<12:37,  4.38s/it]Requesting API:  74%|███████▎  | 478/650 [45:10<12:21,  4.31s/it]Requesting API:  74%|███████▎  | 479/650 [45:14<12:07,  4.25s/it]Requesting API:  74%|███████▍  | 480/650 [45:18<11:57,  4.22s/it]Requesting API:  74%|███████▍  | 481/650 [45:21<10:35,  3.76s/it]Requesting API:  74%|███████▍  | 482/650 [45:23<09:36,  3.43s/it]Requesting API:  74%|███████▍  | 483/650 [45:26<08:55,  3.21s/it]Requesting API:  74%|███████▍  | 484/650 [45:29<08:26,  3.05s/it]Requesting API:  75%|███████▍  | 485/650 [45:31<08:04,  2.94s/it]Requesting API:  75%|███████▍  | 486/650 [45:34<07:48,  2.86s/it]Requesting API:  75%|███████▍  | 487/650 [45:37<07:36,  2.80s/it]Requesting API:  75%|███████▌  | 488/650 [45:39<07:26,  2.76s/it]Requesting API:  75%|███████▌  | 489/650 [45:42<07:20,  2.74s/it]Requesting API:  75%|███████▌  | 490/650 [45:45<07:14,  2.72s/it]Requesting API:  76%|███████▌  | 491/650 [45:47<06:34,  2.48s/it]Requesting API:  76%|███████▌  | 492/650 [45:49<06:06,  2.32s/it]Requesting API:  76%|███████▌  | 493/650 [45:51<05:46,  2.21s/it]Requesting API:  76%|███████▌  | 494/650 [45:53<05:31,  2.13s/it]Requesting API:  76%|███████▌  | 495/650 [45:55<05:21,  2.07s/it]Requesting API:  76%|███████▋  | 496/650 [45:56<05:14,  2.04s/it]Requesting API:  76%|███████▋  | 497/650 [45:58<05:07,  2.01s/it]Requesting API:  77%|███████▋  | 498/650 [46:00<05:02,  1.99s/it]Requesting API:  77%|███████▋  | 499/650 [46:02<04:58,  1.98s/it]Requesting API:  77%|███████▋  | 500/650 [46:04<04:54,  1.97s/it]Requesting API:  77%|███████▋  | 501/650 [46:15<11:36,  4.67s/it]Requesting API:  77%|███████▋  | 502/650 [46:26<16:16,  6.60s/it]Requesting API:  77%|███████▋  | 503/650 [46:37<19:21,  7.90s/it]Requesting API:  78%|███████▊  | 504/650 [46:48<21:31,  8.85s/it]Requesting API:  78%|███████▊  | 505/650 [47:00<23:15,  9.62s/it]Requesting API:  78%|███████▊  | 506/650 [47:11<24:32, 10.23s/it]Requesting API:  78%|███████▊  | 507/650 [47:23<25:20, 10.63s/it]Requesting API:  78%|███████▊  | 508/650 [47:34<25:36, 10.82s/it]Requesting API:  78%|███████▊  | 509/650 [47:45<25:31, 10.86s/it]Requesting API:  78%|███████▊  | 510/650 [47:56<25:31, 10.94s/it]Requesting API:  79%|███████▊  | 511/650 [48:02<21:55,  9.46s/it]Requesting API:  79%|███████▉  | 512/650 [48:08<19:12,  8.35s/it]Requesting API:  79%|███████▉  | 513/650 [48:14<17:30,  7.67s/it]Requesting API:  79%|███████▉  | 514/650 [48:20<16:19,  7.20s/it]Requesting API:  79%|███████▉  | 515/650 [48:26<15:21,  6.82s/it]Requesting API:  79%|███████▉  | 516/650 [48:32<14:29,  6.49s/it]Requesting API:  80%|███████▉  | 517/650 [48:38<14:07,  6.37s/it]Requesting API:  80%|███████▉  | 518/650 [48:44<13:33,  6.16s/it]Requesting API:  80%|███████▉  | 519/650 [48:49<13:04,  5.99s/it]Requesting API:  80%|████████  | 520/650 [48:55<13:01,  6.01s/it]Requesting API:  80%|████████  | 521/650 [48:58<10:58,  5.11s/it]Requesting API:  80%|████████  | 522/650 [49:02<09:44,  4.57s/it]Requesting API:  80%|████████  | 523/650 [49:05<08:45,  4.14s/it]Requesting API:  81%|████████  | 524/650 [49:08<07:59,  3.80s/it]Requesting API:  81%|████████  | 525/650 [49:11<07:37,  3.66s/it]Requesting API:  81%|████████  | 526/650 [49:14<07:15,  3.51s/it]Requesting API:  81%|████████  | 527/650 [49:18<07:05,  3.46s/it]Requesting API:  81%|████████  | 528/650 [49:21<06:48,  3.35s/it]Requesting API:  81%|████████▏ | 529/650 [49:24<06:45,  3.36s/it]Requesting API:  82%|████████▏ | 530/650 [49:27<06:35,  3.30s/it]Requesting API:  82%|████████▏ | 531/650 [49:29<05:45,  2.90s/it]Requesting API:  82%|████████▏ | 532/650 [49:31<05:08,  2.62s/it]Requesting API:  82%|████████▏ | 533/650 [49:33<04:43,  2.42s/it]Requesting API:  82%|████████▏ | 534/650 [49:35<04:24,  2.28s/it]Requesting API:  82%|████████▏ | 535/650 [49:37<04:11,  2.18s/it]Requesting API:  82%|████████▏ | 536/650 [49:39<04:01,  2.12s/it]Requesting API:  83%|████████▎ | 537/650 [49:41<03:54,  2.08s/it]Requesting API:  83%|████████▎ | 538/650 [49:43<03:49,  2.05s/it]Requesting API:  83%|████████▎ | 539/650 [49:45<03:45,  2.03s/it]Requesting API:  83%|████████▎ | 540/650 [49:47<03:41,  2.01s/it]Requesting API:  83%|████████▎ | 541/650 [49:48<03:16,  1.80s/it]Requesting API:  83%|████████▎ | 542/650 [49:50<02:57,  1.64s/it]Requesting API:  84%|████████▎ | 543/650 [49:51<02:44,  1.54s/it]Requesting API:  84%|████████▎ | 544/650 [49:52<02:35,  1.47s/it]Requesting API:  84%|████████▍ | 545/650 [49:53<02:29,  1.42s/it]Requesting API:  84%|████████▍ | 546/650 [49:55<02:23,  1.38s/it]Requesting API:  84%|████████▍ | 547/650 [49:56<02:19,  1.36s/it]Requesting API:  84%|████████▍ | 548/650 [49:57<02:16,  1.34s/it]Requesting API:  84%|████████▍ | 549/650 [49:59<02:13,  1.32s/it]Requesting API:  85%|████████▍ | 550/650 [50:00<02:11,  1.31s/it]Requesting API:  85%|████████▍ | 551/650 [50:12<07:21,  4.46s/it]Requesting API:  85%|████████▍ | 552/650 [50:23<10:47,  6.60s/it]Requesting API:  85%|████████▌ | 553/650 [50:35<13:04,  8.09s/it]Requesting API:  85%|████████▌ | 554/650 [50:47<14:37,  9.14s/it]Requesting API:  85%|████████▌ | 555/650 [50:58<15:37,  9.87s/it]Requesting API:  86%|████████▌ | 556/650 [51:10<16:20, 10.43s/it]Requesting API:  86%|████████▌ | 557/650 [51:22<16:50, 10.87s/it]Requesting API:  86%|████████▌ | 558/650 [51:33<17:02, 11.11s/it]Requesting API:  86%|████████▌ | 559/650 [51:45<16:56, 11.17s/it]Requesting API:  86%|████████▌ | 560/650 [51:56<16:43, 11.15s/it]Requesting API:  86%|████████▋ | 561/650 [52:07<16:43, 11.27s/it]Requesting API:  86%|████████▋ | 562/650 [52:19<16:39, 11.36s/it]Requesting API:  87%|████████▋ | 563/650 [52:31<16:38, 11.47s/it]Requesting API:  87%|████████▋ | 564/650 [52:42<16:23, 11.44s/it]Requesting API:  87%|████████▋ | 565/650 [52:54<16:18, 11.51s/it]Requesting API:  87%|████████▋ | 566/650 [53:05<16:05, 11.49s/it]Requesting API:  87%|████████▋ | 567/650 [53:17<15:51, 11.46s/it]Requesting API:  87%|████████▋ | 568/650 [53:27<15:27, 11.32s/it]Requesting API:  88%|████████▊ | 569/650 [53:39<15:16, 11.31s/it]Requesting API:  88%|████████▊ | 570/650 [53:50<15:01, 11.26s/it]Requesting API:  88%|████████▊ | 571/650 [53:56<12:50,  9.75s/it]Requesting API:  88%|████████▊ | 572/650 [54:02<11:13,  8.63s/it]Requesting API:  88%|████████▊ | 573/650 [54:08<10:01,  7.81s/it]Requesting API:  88%|████████▊ | 574/650 [54:14<09:13,  7.28s/it]Requesting API:  88%|████████▊ | 575/650 [54:20<08:37,  6.91s/it]Requesting API:  89%|████████▊ | 576/650 [54:26<08:15,  6.69s/it]Requesting API:  89%|████████▉ | 577/650 [54:32<07:49,  6.44s/it]Requesting API:  89%|████████▉ | 578/650 [54:38<07:28,  6.23s/it]Requesting API:  89%|████████▉ | 579/650 [54:44<07:12,  6.09s/it]Requesting API:  89%|████████▉ | 580/650 [54:49<06:53,  5.91s/it]Requesting API:  89%|████████▉ | 581/650 [54:55<06:48,  5.92s/it]Requesting API:  90%|████████▉ | 582/650 [55:01<06:41,  5.90s/it]Requesting API:  90%|████████▉ | 583/650 [55:07<06:34,  5.88s/it]Requesting API:  90%|████████▉ | 584/650 [55:13<06:32,  5.95s/it]Requesting API:  90%|█████████ | 585/650 [55:19<06:24,  5.92s/it]Requesting API:  90%|█████████ | 586/650 [55:25<06:22,  5.98s/it]Requesting API:  90%|█████████ | 587/650 [55:31<06:17,  5.99s/it]Requesting API:  90%|█████████ | 588/650 [55:37<06:11,  5.99s/it]Requesting API:  91%|█████████ | 589/650 [55:43<05:59,  5.90s/it]Requesting API:  91%|█████████ | 590/650 [55:48<05:48,  5.81s/it]Requesting API:  91%|█████████ | 591/650 [55:52<04:58,  5.05s/it]Requesting API:  91%|█████████ | 592/650 [55:55<04:20,  4.49s/it]Requesting API:  91%|█████████ | 593/650 [55:58<03:48,  4.01s/it]Requesting API:  91%|█████████▏| 594/650 [56:01<03:31,  3.78s/it]Requesting API:  92%|█████████▏| 595/650 [56:04<03:20,  3.64s/it]Requesting API:  92%|█████████▏| 596/650 [56:07<03:05,  3.44s/it]Requesting API:  92%|█████████▏| 597/650 [56:10<02:55,  3.31s/it]Requesting API:  92%|█████████▏| 598/650 [56:13<02:46,  3.21s/it]Requesting API:  92%|█████████▏| 599/650 [56:16<02:36,  3.08s/it]Requesting API:  92%|█████████▏| 600/650 [56:19<02:28,  2.98s/it]Requesting API:  92%|█████████▏| 601/650 [56:22<02:25,  2.97s/it]Requesting API:  93%|█████████▎| 602/650 [56:25<02:22,  2.97s/it]Requesting API:  93%|█████████▎| 603/650 [56:27<02:17,  2.92s/it]Requesting API:  93%|█████████▎| 604/650 [56:30<02:15,  2.94s/it]Requesting API:  93%|█████████▎| 605/650 [56:33<02:08,  2.85s/it]Requesting API:  93%|█████████▎| 606/650 [56:36<02:03,  2.80s/it]Requesting API:  93%|█████████▎| 607/650 [56:39<02:05,  2.91s/it]Requesting API:  94%|█████████▎| 608/650 [56:42<02:01,  2.88s/it]Requesting API:  94%|█████████▎| 609/650 [56:44<01:57,  2.87s/it]Requesting API:  94%|█████████▍| 610/650 [56:47<01:52,  2.80s/it]Requesting API:  94%|█████████▍| 611/650 [56:49<01:36,  2.47s/it]Requesting API:  94%|█████████▍| 612/650 [56:50<01:24,  2.22s/it]Requesting API:  94%|█████████▍| 613/650 [56:52<01:15,  2.04s/it]Requesting API:  94%|█████████▍| 614/650 [56:54<01:08,  1.90s/it]Requesting API:  95%|█████████▍| 615/650 [56:55<01:03,  1.81s/it]Requesting API:  95%|█████████▍| 616/650 [56:57<01:00,  1.77s/it]Requesting API:  95%|█████████▍| 617/650 [56:59<00:58,  1.79s/it]Requesting API:  95%|█████████▌| 618/650 [57:01<00:57,  1.80s/it]Requesting API:  95%|█████████▌| 619/650 [57:02<00:53,  1.71s/it]Requesting API:  95%|█████████▌| 620/650 [57:04<00:50,  1.67s/it]Requesting API:  96%|█████████▌| 621/650 [57:05<00:48,  1.66s/it]Requesting API:  96%|█████████▌| 622/650 [57:07<00:44,  1.60s/it]Requesting API:  96%|█████████▌| 623/650 [57:08<00:41,  1.53s/it]Requesting API:  96%|█████████▌| 624/650 [57:09<00:38,  1.49s/it]Requesting API:  96%|█████████▌| 625/650 [57:11<00:36,  1.45s/it]Requesting API:  96%|█████████▋| 626/650 [57:12<00:36,  1.51s/it]Requesting API:  96%|█████████▋| 627/650 [57:14<00:33,  1.46s/it]Requesting API:  97%|█████████▋| 628/650 [57:15<00:31,  1.44s/it]Requesting API:  97%|█████████▋| 629/650 [57:17<00:31,  1.50s/it]Requesting API:  97%|█████████▋| 630/650 [57:18<00:29,  1.46s/it]Requesting API:  97%|█████████▋| 631/650 [57:19<00:26,  1.37s/it]Requesting API:  97%|█████████▋| 632/650 [57:20<00:22,  1.23s/it]Requesting API:  97%|█████████▋| 633/650 [57:21<00:20,  1.20s/it]Requesting API:  98%|█████████▊| 634/650 [57:23<00:18,  1.18s/it]Requesting API:  98%|█████████▊| 635/650 [57:23<00:15,  1.06s/it]Requesting API:  98%|█████████▊| 636/650 [57:24<00:14,  1.07s/it]Requesting API:  98%|█████████▊| 637/650 [57:25<00:13,  1.01s/it]Requesting API:  98%|█████████▊| 638/650 [57:26<00:11,  1.06it/s]Requesting API:  98%|█████████▊| 639/650 [57:27<00:10,  1.09it/s]Requesting API:  98%|█████████▊| 640/650 [57:28<00:08,  1.12it/s]Requesting API:  99%|█████████▊| 641/650 [57:29<00:08,  1.07it/s]Requesting API:  99%|█████████▉| 642/650 [57:30<00:07,  1.07it/s]Requesting API:  99%|█████████▉| 643/650 [57:31<00:06,  1.08it/s]Requesting API:  99%|█████████▉| 644/650 [57:32<00:05,  1.03it/s]Requesting API:  99%|█████████▉| 645/650 [57:33<00:04,  1.07it/s]Requesting API:  99%|█████████▉| 646/650 [57:33<00:03,  1.13it/s]Requesting API: 100%|█████████▉| 647/650 [57:34<00:02,  1.21it/s]Requesting API: 100%|█████████▉| 648/650 [57:35<00:01,  1.25it/s]Requesting API: 100%|█████████▉| 649/650 [57:35<00:00,  1.35it/s]Requesting API: 100%|██████████| 650/650 [57:36<00:00,  1.41it/s]Requesting API: 100%|██████████| 650/650 [57:36<00:00,  5.32s/it]
-[niah_single_1] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[niah_single_2] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[niah_single_3] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[niah_multikey_1] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[niah_multikey_2] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[niah_multikey_3] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[niah_multiquery] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[niah_multivalue] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[ruler_vt] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[ruler_cwe] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[ruler_fwe] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[ruler_qa_squad] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-[ruler_qa_hotpot] Metrics were not scored on the same number of documents (16384,none=10, 32768,none=10, 4096,none=50, 65536,none=10, 8192,none=10). Each metric was aggregated over only the documents that produced it; reporting 50 as the evaluated sample count. Size-weighted group aggregation applies that single count to every metric of this task, so any metric scored on fewer than 50 documents is over-weighted in the group score.
-== RULER vestigekv n=10 wall=3617s
-niah_single_1 {'4096': 1.0, '8192': 1.0, '16384': 1.0, '32768': 1.0, '65536': 1.0}
-niah_single_2 {'4096': 1.0, '8192': 1.0, '16384': 1.0, '32768': 1.0, '65536': 1.0}
-niah_single_3 {'4096': 1.0, '8192': 1.0, '16384': 1.0, '32768': 1.0, '65536': 1.0}
-niah_multikey_1 {'4096': 1.0, '8192': 1.0, '16384': 1.0, '32768': 1.0, '65536': 1.0}
-niah_multikey_2 {'4096': 1.0, '8192': 1.0, '16384': 1.0, '32768': 1.0, '65536': 1.0}
-niah_multikey_3 {'4096': 1.0, '8192': 1.0, '16384': 1.0, '32768': 1.0, '65536': 1.0}
-niah_multiquery {'4096': 1.0, '8192': 1.0, '16384': 1.0, '32768': 1.0, '65536': 1.0}
-niah_multivalue {'4096': 1.0, '8192': 1.0, '16384': 1.0, '32768': 0.95, '65536': 0.9}
-ruler_vt {'4096': 1.0, '8192': 1.0, '16384': 1.0, '32768': 1.0, '65536': 1.0}
-ruler_cwe {'4096': 1.0, '8192': 1.0, '16384': 1.0, '32768': 1.0, '65536': 0.99}
-ruler_fwe {'4096': 0.8, '8192': 0.8, '16384': 0.8, '32768': 1.0, '65536': 0.9}
-ruler_qa_squad {'4096': 0.85, '8192': 0.642, '16384': 0.617, '32768': 0.717, '65536': 0.617}
-ruler_qa_hotpot {'4096': 1.0, '8192': 0.8, '16384': 0.8, '32768': 0.9, '65536': 0.7}

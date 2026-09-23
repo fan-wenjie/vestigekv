@@ -17,7 +17,7 @@ cd "$ROOT"
 ENGINE=$WT setsid nohup bash mexp/kimi/vestigekv.sh > "$OUT/server_$C.log" 2>&1 &
 until grep -qa "fired up\|Scheduler hit\|ABORT" "$OUT/server_$C.log"; do sleep 10; done
 if ! grep -qa "fired up" "$OUT/server_$C.log"; then echo "$C server failed"; exit 1; fi
-CUDA_VISIBLE_DEVICES="" $PY mexp/glm53/run_ruler.py --arm "bisect-$C" --port 30000 \
+CUDA_VISIBLE_DEVICES="" $PY mexp/exp/run_ruler.py --arm "bisect-$C" --port 30000 \
   --model moonshotai/Kimi-Linear-48B-A3B-Instruct --n "$N" --tasks "$TASKS" --out "$OUT" > "$OUT/ruler_$C.log" 2>&1 || true
 for p in $(pgrep -f "^$PY -m sglang[.]launch_server"); do kill -TERM "$p"; done
 line=$($PY - "$OUT/samples_bisect-${C}_n${N}_4096-8192-16384-32768-65536.json" "$C" <<'PYEOF'

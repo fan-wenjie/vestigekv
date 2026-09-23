@@ -1,0 +1,414 @@
+"""JSONL job queue for an experiment line (mexp/<line>/queue.jsonl): edit it, run this
+with --line kimi (default).
+
+One job per line of queue.jsonl:
+  {"id": "ruler-baseline", "arm": "baseline", "client": "ruler",
+   "env": {"CTX": "73728", "MAX_REQS": "4", "MAMBA_SLOTS": "4", "MEM_FRAC": "0.955",
+           "CHUNK": "1024", "GRAPH_BS": "4"},
+   "args": {"n": 10}, "probe": true, "skip": false}
+arm: which mexp/<line>/<arm>.sh launches the server; env: its knobs; server_args:
+extra sglang flags appended to that launch (e.g. ["--vestigekv-index-rank", "256"]); client:
+ruler | stream | needle | gsm8k | replay (saved RULER prompts, args.samples/tasks/length); probe: run needle.py against the server before
+the client. The queue file is re-read before every job, so lines can be added,
+removed or reordered while a job runs; ids already in queue_state.jsonl (done or
+failed) are not run again -- delete their state line to rerun. A server is kept
+between consecutive jobs with the same arm and env.
+"""
+
+import json
+import os
+import subprocess
+import sys
+import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "exp"))
+import naming  # noqa: E402
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+PY = os.environ.get("PYTHON", os.path.expanduser("~/.conda/envs/sglang-dev/bin/python"))
+# --line <name> (default kimi): jobs, arm scripts and results live under mexp/<name>/
+# and results/<name>/; the line's model is what its clients are told to talk to.
+LINE = sys.argv[sys.argv.index("--line") + 1] if "--line" in sys.argv else "kimi"
+MODELS = {"kimi": "moonshotai/Kimi-Linear-48B-A3B-Instruct"}  # a line adds its model here
+MODEL = MODELS[LINE]
+HERE = os.path.join(ROOT, "mexp", LINE)
+QUEUE = os.path.join(HERE, "queue.jsonl")
+RESULTS = os.path.join(ROOT, "results", LINE)
+STATE = os.path.join(RESULTS, "queue_state.jsonl")
+SERVER_LOG = os.path.join(RESULTS, "server_{arm}_{job}.log")  # one log per job: a crash must stay readable
+
+
+def log(msg):
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
+
+def read_jsonl(path):
+    if not os.path.exists(path):
+        return []
+    with open(path) as f:
+        return [json.loads(line) for line in f if line.strip() and not line.lstrip().startswith("#")]
+
+
+def append_state(rec):
+    with open(STATE, "a") as f:
+        f.write(json.dumps(rec) + "\n")
+
+
+def gpu_used_mib():
+    out = subprocess.run(
+        ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
+        capture_output=True, text=True,
+    ).stdout
+    return sum(int(x) for x in out.split())
+
+
+def client_pids():
+    out = subprocess.run(["ps", "-eo", "pid,comm,args"], capture_output=True, text=True).stdout
+    return [int(l.split()[0]) for l in out.splitlines()[1:]
+            if l.split()[1].startswith("python")
+            and any(k in l for k in ("run_ruler.py", "sglang.benchmark.serving", "needle.py", "replay_prompts.py"))]
+
+
+def server_pids():
+    out = subprocess.run(["ps", "-eo", "pid,comm,args"], capture_output=True, text=True).stdout
+    return [int(l.split()[0]) for l in out.splitlines()[1:]
+            if l.split()[1].startswith("python") and "sglang.launch_server" in l]
+
+
+class Server:
+    def __init__(self):
+        self.sig = None
+        self.proc = None
+        self.port = "30000"
+
+    def stop(self):
+        for pid in server_pids():
+            subprocess.run(["kill", "-TERM", str(pid)])
+        for _ in range(90):
+            if gpu_used_mib() < 2000 and not server_pids():
+                break
+            time.sleep(2)
+        self.sig = self.proc = None
+
+    def ensure(self, arm, env, job_id, server_args=()):
+        sig = (arm, json.dumps(env, sort_keys=True), tuple(server_args))
+        if self.sig == sig and self.proc is not None and self.proc.poll() is None:
+            return True
+        self.stop()
+        logpath = SERVER_LOG.format(arm=arm, job=job_id)
+        os.makedirs(RESULTS, exist_ok=True)
+        full_env = dict(os.environ, **{k: str(v) for k, v in env.items()})
+        self.port = str(env.get("PORT", "30000"))
+        with open(logpath, "w") as f:
+            self.proc = subprocess.Popen(
+                ["bash", os.path.join(HERE, f"{arm}.sh"), *server_args],
+                stdout=f, stderr=subprocess.STDOUT, env=full_env, cwd=ROOT,
+            )
+        log(f"server {arm} env={env} args={list(server_args)} launching -> {logpath}")
+        for _ in range(360):
+            time.sleep(5)
+            text = open(logpath, errors="replace").read()
+            if "fired up" in text:
+                cfg = [l for l in text.splitlines() if "max_total_num_tokens" in l and "TP1]" not in l]
+                vk = [l for l in text.splitlines() if "VestigeKV:" in l and "TP1]" not in l]
+                log(f"server {arm} ready: {cfg[:1]} {vk[:1]}")
+                self._prewarm_prefill(env)
+                self.sig = sig
+                return True
+            if self.proc.poll() is not None:
+                break
+        err = [l for l in open(logpath, errors="replace").read().splitlines()
+               if ("Error" in l or "error:" in l) and "TP1]" not in l][-3:]
+        log(f"server {arm} FAILED: {err}")
+        self.stop()
+        return False
+
+
+    def _prewarm_prefill(self, env):
+        """One chunk-sized prefill before any client, so a kernel's first-launch
+        autotune runs here and not inside a measured request.
+
+        The engine's own startup warmup is a 3-token prompt. DSA's prefill kernel
+        is first launched at the chunk shape, and Triton autotunes on that first
+        launch with whatever memory is free at that moment: under the split pair
+        (DSA prefill, VestigeKV decode) that was 0.41 GiB on TP1 and the server
+        died with a CUDA OOM on the needle probe's prefill, after a 6-token
+        warmup that had exercised nothing. This sends CHUNK + 128 tokens with a
+        one-token generation, logs the outcome, and never records anything:
+        radix cache is off on this line, so nothing it touched is reused.
+        """
+        import urllib.request
+
+        # The needle probe (a ~10.6k prompt) still device-loaded a DSA prefill
+        # kernel variant after a CHUNK+128 pre-warm and OOMed at 0.25 GiB free;
+        # the pre-warm now sends the probe's own scale, so whatever a
+        # probe-sized prefill compiles is compiled while memory is free.
+        n = max(int(env.get("CHUNK", 1024)) + 128, int(env.get("PREWARM_TOKENS", 11264)))
+        body = json.dumps({
+            "input_ids": [(7 * i + 11) % 30000 + 1000 for i in range(n)],
+            "sampling_params": {"max_new_tokens": 1, "temperature": 0},
+        }).encode()
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}/generate", data=body,
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            t0 = time.time()
+            with urllib.request.urlopen(req, timeout=600) as r:
+                r.read()
+            log(f"prewarm: {n}-token prefill ok in {time.time() - t0:.1f}s")
+        except Exception as e:  # a failed prewarm is reported, then the probe decides
+            log(f"prewarm: FAILED ({type(e).__name__}: {str(e)[:120]})")
+
+
+def produced_nothing(job, results):
+    """True when a stream job's record says the run generated no tokens.
+
+    The diagnostic that found this asked for 131072 prompt tokens plus 16384
+    generated from a server holding 135168: every request was refused, the
+    client wrote a complete summary of zeros, and the runner recorded rc=0.
+    A clean record of nothing is worse than a crash, because nothing looks
+    wrong until a reducer divides by it.
+    """
+    if job.get("client") != "stream":
+        return False
+    path = naming.stream_out(results, job)
+    if not os.path.exists(path):
+        return True
+    try:
+        blob = json.loads(open(path).read().splitlines()[0])
+    except (ValueError, IndexError):
+        return True
+    return not blob.get("completed") or not blob.get("total_output_tokens")
+
+
+def run_client(job, port):
+    client, args = job["client"], job.get("args", {})
+    arm = job["arm"]
+    # The arm script already honours MODEL (common.sh: ${MODEL:-...Instruct}),
+    # so a job can serve a different checkpoint. The client has to be told the
+    # same one or it asks a Base server for Instruct and the record is
+    # labelled with a checkpoint it did not run.
+    MODEL = job.get("env", {}).get("MODEL", MODELS[LINE])
+    env = dict(os.environ, OPENAI_API_KEY="dummy", PYTHONPATH=os.path.join(ROOT, "engine", "python"))
+    env.pop("HF_HUB_OFFLINE", None)  # RULER pulls its corpora from the Hub
+    env["CUDA_VISIBLE_DEVICES"] = ""  # clients are HTTP only; no CUDA context next to the server
+    os.makedirs(RESULTS, exist_ok=True)
+    if client == "ruler":
+        cmd = [PY, os.path.join(ROOT, "mexp", "exp", "run_ruler.py"), "--arm", arm, "--port", port,
+               "--model", MODEL, "--n", str(args.get("n", 10)), "--out", os.path.join(RESULTS, "ruler")]
+        if "lengths" in args:
+            cmd += ["--lengths", args["lengths"]]
+        if "tasks" in args:
+            cmd += ["--tasks", args["tasks"]]
+        if "seed" in args:
+            cmd += ["--seed", str(args["seed"])]
+        if job.get("server_args") or "tasks" in args or "lengths" in args:
+            cmd += ["--tag", job["id"]]  # a sweep job must not overwrite the arm's full run
+        out = os.path.join(RESULTS, f"ruler_{arm}_{job['id']}.log")
+    elif client == "stream":
+        # README metric 1: bs=1, 4k prefill, continuous decode; per-token latency
+        # curve. num_prompts > 1 with matching concurrency makes it a throughput
+        # point instead. The record's name comes from mexp/exp/naming.py, the
+        # same module the auditor reads, because two copies of these rules is
+        # how a repeat once landed inside the record it was repeating.
+        n_out = int(args.get("output_len", 126976))
+        out_jsonl = naming.stream_out(RESULTS, job)
+        # SystemExit here would take the queue down with the job -- it did,
+        # once, after four hours of work had already landed. The refusal is
+        # still a refusal; it just stops one job.
+        naming.refuse_existing(out_jsonl, job["id"])
+        conc = int(args.get("concurrency", 1))
+        cmd = [PY, "-m", "sglang.benchmark.serving", "--backend", "sglang", "--model", MODEL,
+               # num_prompts > 1 makes this a controlled comparison against a
+               # short-answer benchmark: same context, same generated length,
+               # enough requests to accumulate steps. Default 1 = the latency curve.
+               "--port", port, "--num-prompts", str(args.get("num_prompts", 1)), "--dataset-name", "random",
+               "--random-input-len", str(args.get("input_len", 4096)), "--random-output-len", str(n_out),
+               "--random-range-ratio", "1", "--max-concurrency", str(conc), "--warmup-requests", "0",
+               "--output-details", "--output-file", out_jsonl]
+        # The client seeds random and np.random from --seed, default 42. The
+        # default makes a run reproducible only for as long as upstream keeps
+        # it, and a record that does not name its seed cannot say which it got.
+        if "seed" in args:
+            cmd += ["--seed", str(args["seed"])]
+        out = os.path.join(RESULTS, f"stream_{arm}_{job['id']}.log")
+    elif client == "continue":
+        # Continue a real novel: the natural-text column of the 2x2 against the
+        # random-token stream, holding context and request count fixed.
+        cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "continue_text.py"),
+               "--port", port, "--model", MODEL,
+               "--input-len", str(args.get("input_len", 65536)),
+               "--output-len", str(args.get("output_len", 14)),
+               "--num-prompts", str(args.get("num_prompts", 130))]
+        if "sub_domains" in args:
+            cmd += ["--sub-domains", args["sub_domains"]]
+        out = os.path.join(RESULTS, f"continue_{arm}_{job['id']}.log")
+    elif client == "needle":
+        cmd = [PY, os.path.join(ROOT, "mexp", "exp", "needle.py"), str(args.get("reps", 330)), port]
+        out = os.path.join(RESULTS, f"needle_{arm}_{job['id']}.log")
+    elif client == "replay":
+        cmd = [PY, os.path.join(ROOT, "mexp", "exp", "replay_prompts.py"), "--port", port,
+               "--samples", os.path.join(ROOT, args["samples"]), "--tasks", args.get("tasks", "niah_single_2,ruler_qa_squad,ruler_cwe"),
+               "--length", str(args.get("length", 65536)), "--n", str(args.get("n", 1)),
+               "--max-tokens", str(args.get("max_tokens", 64))]
+        if args.get("ignore_eos"):
+            cmd.append("--ignore-eos")
+        out = os.path.join(RESULTS, f"replay_{arm}_{job['id']}.log")
+    elif client == "longbench2":
+        # LongBench v2, <= 120k-token subset (mexp/kimi/longbench2/): serial, greedy,
+        # the four choices scored at the "Answer:" position, one request per question.
+        cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "run_longbench2.py"), "--arm", arm, "--port", port,
+               "--model", MODEL, "--out", os.path.join(RESULTS, "longbench2")]
+        if "limit" in args:
+            cmd += ["--limit", str(args["limit"])]
+        # max_tokens>0 switches to the generating protocol, which is the only one
+        # that puts decode steps on the compressed path (see run_longbench2.py).
+        if args.get("max_tokens"):
+            cmd += ["--max-tokens", str(args["max_tokens"])]
+        if (job.get("server_args") or "limit" in args or args.get("max_tokens")
+                or str(job.get("env", {}).get("SGLANG_DEBUG_VESTIGEKV_STATS", "0")) == "1"):
+            cmd += ["--tag", job["id"]]  # a variant must not overwrite the arm's plain run
+        out = os.path.join(RESULTS, f"longbench2_{arm}_{job['id']}.log")
+    elif client == "longbench1":
+        # LongBench v1 summarization subsets (mexp/kimi/run_longbench1.py): serial,
+        # greedy, the dataset's own prompt and max_gen; ROUGE-L is scored
+        # afterwards by make_lb1_numbers.py in the plotting venv (py-rouge).
+        cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "run_longbench1.py"), "--arm", arm,
+               "--port", port, "--model", MODEL, "--out", os.path.join(RESULTS, "longbench1"),
+               "--subsets", args.get("subsets", "gov_report,qmsum,multi_news"),
+               "--max-length", str(args.get("max_length", 65536))]
+        if "limit" in args:
+            cmd += ["--limit", str(args["limit"]), "--tag", job["id"]]
+        out = os.path.join(RESULTS, f"longbench1_{arm}_{job['id']}.log")
+    elif client == "profile":
+        # Kernel-level decode profiles at the given contexts (mexp/kimi/profile_stream.py).
+        cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "profile_stream.py"), "--port", port,
+               "--out", os.path.join(RESULTS, "profile", job["id"]),
+               "--ctxs", str(args.get("ctxs", "131072,262144")), "--steps", str(args.get("steps", 200)),
+               # TODO(fan-wenjie): the client ignores this; drop both once the
+               # long-running runner has been restarted onto this file.
+               "--server-log-glob", os.path.join(RESULTS, f"server_{arm}_*.log")]
+        out = os.path.join(RESULTS, f"profile_{arm}_{job['id']}.log")
+    elif client == "gsm8k":
+        cmd = [PY, "-m", "sglang.test.few_shot_gsm8k", "--num-shots", str(args.get("shots", 64)),
+               "--num-questions", str(args.get("n", 1209)),
+               "--data-path", os.path.join(ROOT, "mexp", "quality", "gsm8k_platinum.jsonl"),
+               "--parallel", "1", "--port", port]
+        out = os.path.join(RESULTS, f"gsm8k_{arm}_{job['id']}.log")
+    elif client == "mauve":
+        # Generation half of the MAUVE gate (mexp/m7_mauve_serving.py gen):
+        # one record per arm against the live server; the score step runs
+        # after both arms, off the queue, because it featurizes on the GPU
+        # the server holds. The context file is cut with the served model's
+        # tokenizer and shared by the two arms.
+        T, N = int(args.get("prefill", 4096)), int(args.get("contexts", 16))
+        qdir = os.path.join(RESULTS, "quality")
+        os.makedirs(qdir, exist_ok=True)
+        env.update(M7_T=str(T), M7_N=str(N), M7_MODEL=MODEL, M7_PORT=str(port))
+        cmd = [PY, os.path.join(ROOT, "mexp", "m7_mauve_serving.py"), "gen",
+               os.path.join(qdir, f"mauve_ctx_T{T}_n{N}.json"),
+               os.path.join(qdir, f"mauve_gen_T{T}_n{N}_{arm}.json")]
+        out = os.path.join(RESULTS, f"mauve_{arm}_{job['id']}.log")
+    else:
+        raise ValueError(f"unknown client {client!r}")
+    log(f"client {client} for {job['id']}: {' '.join(cmd)} -> {out}")
+    with open(out, "w") as f:
+        rc = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, env=env, cwd=ROOT).returncode
+    tail = open(out, errors="replace").read().replace("\r", "\n").strip().splitlines()[-6:]
+    return rc, out, tail
+
+
+def pack_finished_records():
+    """Pack this line's records now that a job has stopped writing them.
+
+    The archive builder packs at build time, which left every record raw on
+    disk until then -- 13.2 MB of throughput records at one point, and the
+    whole per-token history of a 512k stream for as long as the queue ran.
+    Packing at the job boundary is the same transform at the first moment it
+    is safe: the client has exited, so nothing is appending.
+
+    Over the whole line rather than the job's own file, because which files a
+    client wrote depends on the client and the packer skips a record it has
+    already packed or that has no arrays -- so the wide sweep costs a stat per
+    file and cannot miss one. Failure is logged and not raised: a job that
+    measured something has measured it, and an archive built later packs
+    whatever this missed.
+    """
+    r = subprocess.run(
+        [sys.executable,
+         os.path.join(ROOT, "mexp", "tools", "pack_streams.py"),
+         "--glob", os.path.join(RESULTS, "**", "*.jsonl"), "--write"],
+        capture_output=True, text=True)
+    if r.returncode != 0:
+        log(f"pack_streams failed (records left raw): {r.stderr.strip()[-200:]}")
+    else:
+        last = [l for l in r.stdout.splitlines() if "packed" in l]
+        if last:
+            log(f"pack: {last[-1].strip()}")
+
+
+def main():
+    import signal
+
+    os.makedirs(RESULTS, exist_ok=True)
+    server = Server()
+    # SIGTERM (a restart) must run the finally below: Python's default handler
+    # exits without it and leaves the server and the client running as orphans.
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+    try:
+        while True:
+            # done means done on THIS tree: a terminal row older than the
+            # engine's HEAD commit was produced somewhere that no longer
+            # exists. See naming.tree_epoch.
+            epoch = naming.tree_epoch(ROOT)
+            done = {r["id"] for r in read_jsonl(STATE)
+                    if r.get("status") in ("done", "failed") and r.get("end", "") >= epoch}
+            jobs = [j for j in read_jsonl(QUEUE) if not j.get("skip") and j["id"] not in done]
+            if not jobs:
+                log("queue empty; exiting")
+                break
+            job = jobs[0]
+            t0 = time.time()
+            append_state({"id": job["id"], "status": "running", "start": time.strftime("%F %T")})
+            if not server.ensure(job["arm"], job.get("env", {}), job["id"], job.get("server_args", ())):
+                append_state({"id": job["id"], "status": "failed", "note": "server did not start",
+                              "end": time.strftime("%F %T")})
+                continue
+            try:
+                if job.get("probe", False):
+                    rc, out, tail = run_client({**job, "client": "needle", "id": job["id"] + "-probe"}, server.port)
+                    log(f"probe: {tail[-1:] if tail else rc}")
+                rc, out, tail = run_client(job, server.port)
+            except (Exception, SystemExit) as e:
+                # A malformed job is that job's failure, not the queue's: a
+                # missing `args` key used to raise out of the loop and take
+                # every remaining job down with the runner. SystemExit is
+                # named explicitly because it is not an Exception, which is
+                # how a refusal inside run_client killed the queue once.
+                log(f"{job['id']} failed to launch: {type(e).__name__}: {e}")
+                append_state({"id": job["id"], "status": "failed",
+                              "note": f"client not launched: {type(e).__name__}: {e}",
+                              "wall_s": round(time.time() - t0), "end": time.strftime("%F %T")})
+                continue
+            status = "done" if rc == 0 else "failed"
+            empty = status == "done" and produced_nothing(job, RESULTS)
+            if empty:
+                # rc=0 is the client saying it finished, not that it measured
+                # anything. A refused request produces a full summary of zeros.
+                status = "failed"
+            append_state({"id": job["id"], "status": status, "rc": rc, "log": out,
+                          **({"note": "client reported no generated tokens"} if empty else {}),
+                          "wall_s": round(time.time() - t0), "end": time.strftime("%F %T"),
+                          "tail": tail[-3:]})
+            log(f"{job['id']} {status} rc={rc} wall={round(time.time() - t0)}s")
+            if status == "done":
+                pack_finished_records()
+    finally:
+        for pid in client_pids():
+            subprocess.run(["kill", "-TERM", str(pid)])
+        server.stop()
+
+
+if __name__ == "__main__":
+    main()

@@ -36,7 +36,7 @@ while true; do
   # Both lines run the same runner script and both pass --line, so the filter is
   # the whole answer. It used to be dropped for glm53, which meant the GLM
   # monitor counted the Kimi line's runner as its own.
-  runner=$(pgrep -fc "^[^ ]*python[^ ]* mexp/glm53/queue_runner.py --line $LINE")
+  runner=$(pgrep -fc "^[^ ]*python[^ ]* mexp/exp/queue_runner.py --line $LINE")
   # Scoped to this line's models (see MODELS above). Unscoped it counted every
   # sglang server on the box; with no model resolvable, fall back to that rather
   # than silently report zero servers while one is up.

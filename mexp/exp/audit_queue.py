@@ -74,7 +74,7 @@ def _runner_clients():
 
     A hand-kept list drifts: this one was missing longbench2 and profile, so
     two jobs the runner runs fine would have been refused as unimplemented."""
-    src = open(os.path.join(ROOT, "mexp", "glm53", "queue_runner.py")).read()
+    src = open(os.path.join(ROOT, "mexp", "exp", "queue_runner.py")).read()
     return set(re.findall(r'client == "(\w+)"', src))
 
 

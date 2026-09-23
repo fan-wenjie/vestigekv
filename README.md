@@ -53,9 +53,8 @@ VestigeKV = `--attention-backend vestigekv_mla`, seed 0, greedy):
 | MAUVE, 4k prefill (16 contexts x 256 generated tokens, gate vk >= dense - 0.10: PASS) | 0.9997 | 0.9960 | 0.9345 | 0.9805 |
 | MAUVE, 64k prefill (64 contexts x 256 generated tokens, gate vk >= dense - 0.10: PASS) | 0.9954 | 0.9987 | 0.9905 | 0.9861 |
 | RULER mean, 13 tasks x 4k-64k, n=50/cell | 0.922 | 0.860 | 0.942 | 0.920 |
-| LongBench v1 summarisation, ROUGE-L F1 x 100, mean of gov_report/qmsum/multi_news (n=200 each) | -- | -- | 26.06 | 25.45 |
 
-GSM8K-Platinum is madrylab/gsm8k-platinum (n=1209, label-corrected gsm8k test set), 64-shot, exact match on the final answer. MAUVE is scored against the reference continuations of the same prompts (`mexp/m7_mauve_serving.py`); the 4k and 64k rows differ in prefill length. RULER is lm-eval's 13-task suite; the 4k-64k grid below is the one the paper's Table reads (`mexp/kimi/make_ruler_numbers.py`). Records: `results/kimi/gsm8k_*`, `results/quality/quality_mauve*.json`, `results/kimi/ruler/results_*_n50_*.json`. ROUGE-L is LongBench's own scoring (`mexp/kimi/make_lb1_numbers.py`, records `results/kimi/longbench1/pred_*`), Instruct checkpoint only.
+GSM8K-Platinum is madrylab/gsm8k-platinum (n=1209, label-corrected gsm8k test set), 64-shot, exact match on the final answer. MAUVE is scored against the reference continuations of the same prompts (`mexp/m7_mauve_serving.py`); the 4k and 64k rows differ in prefill length. RULER is lm-eval's 13-task suite; the 4k-64k grid below is the one the paper's Table reads (`mexp/kimi/make_ruler_numbers.py`). Records: `results/kimi/gsm8k_*`, `results/quality/quality_mauve*.json`, `results/kimi/ruler/results_*_n50_*.json`.
 
 **RULER, Base checkpoint** (dense / VestigeKV, accuracy, n=50 per cell):
 
@@ -96,38 +95,6 @@ GSM8K-Platinum is madrylab/gsm8k-platinum (n=1209, label-corrected gsm8k test se
 | **mean** | 0.944 / 0.940 | 0.953 / 0.940 | 0.948 / 0.922 | 0.942 / 0.915 | 0.924 / 0.884 | **0.942 / 0.920** |
 
 <!-- quality-tables:end -->
-
-### GLM-5.3-Flash-NVFP4 (2 x RTX PRO 6000, TP=2): quality at parity
-
-Hand-kept (not generated): the GLM line stays out of the paper; every row is
-a queue record on engine 8b83b939a9 (`docs/glm53-line.md`), seed 0, one
-serving slot, DSA baseline vs the split pair (DSA prefill, VestigeKV decode).
-
-| RULER (13 tasks, n=10 per cell), mean accuracy | 4k | 8k | 16k | 32k | 64k | all |
-|---|---|---|---|---|---|---|
-| DSA baseline (rulerv0520s1-baseline) | 0.929 | 0.944 | 0.950 | 0.940 | 0.948 | 0.942 |
-| VestigeKV (rulerv0520s1-vestigekv) | 0.980 | 0.957 | 0.947 | 0.958 | 0.948 | 0.958 |
-
-The twelve retrieval/tracking tasks are 1.00 for both arms at every length
-but cwe at 64k (0.94 / 0.97); the spread is in fwe and the two QA tasks,
-where ten samples per cell move a mean by 0.1.
-
-| | DSA baseline | VestigeKV |
-|---|---|---|
-| GSM8K-Platinum, 64-shot greedy, n=1209 (gsm8kv0520-*) | 0.950 | 0.955 |
-| MAUVE 4k prefill x 16 contexts, 256 tokens (mauve4kv0520-*) | 0.993 | 0.930 (PASS) |
-| MAUVE 64k prefill x 64 contexts (mauve64kv0520-*) | 0.994 | 1.000 (PASS) |
-| LongBench v1 gov_report, ROUGE-L F1 x 100 (lb1sumv0520-*) | 36.20 | 33.27 |
-| LongBench v1 qmsum | 25.15 | 24.94 |
-| LongBench v1 multi_news | 26.69 | 26.05 |
-| LongBench v1 mean | 29.35 | 28.09 |
-| 4k prompt -> 128k decode, mean ITL / TTFT (stream-*-128k) | 11.35 ms / 919 ms | 11.61 ms / 1036 ms |
-
-MAUVE PASS is the M7 gate (VestigeKV within 0.10 of the baseline); at 4k
-sixteen contexts put the estimate's own spread at that scale. Throughput is
-not measured on this line (decode is 2% slower than DSA per step at bs=1,
-`docs/glm53-line.md` "Closing the decode gap").
-
 
 ## The vestigekv startup transient, and why bs=1 sits near dense
 
@@ -461,7 +428,7 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #   stream-baseline-256k, stream-vestigekv-256k -> metric 1 on this box (bs=1, 4k prefill,
 #       258048-token decode, stats off): the dense vs margin-0 gain at 64k/128k/256k that the
 #       pre-registered latency gate (give-back rate <= 0.25 of that gain) is measured against;
-#       python mexp/glm53/stream_curve.py --line kimi --output-len 258048 (results/kimi/latency_stream_*);
+#       python mexp/exp/stream_curve.py --line kimi --output-len 258048 (results/kimi/latency_stream_*);
 #       the paper's metric is the server-side one, --source server (the scheduler's gen-throughput
 #       lines within +/-2k tokens of each context, median with p10-p90): the client curve's last
 #       window carries an end-of-stream artifact (dense 5.6 -> 12.7 ms at 256k on the client
@@ -503,7 +470,7 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       log's last VKSTATS line is that task's fallback rate and fetch p50/p90/p99.
 #   ruler-baseline-n50, ruler-vestigekv-n50 -> the 13 tasks x 4k-64k at 50 samples/cell (one sample
 #       = 0.02), the numbers that replace the n=10 tables; compare with
-#       python mexp/glm53/compare_ruler.py --out results/kimi/ruler --n 50.
+#       python mexp/exp/compare_ruler.py --out results/kimi/ruler --n 50.
 #       Gates and interpretation rules for these three groups are pre-registered in
 #       mexp/kimi/prereg3_realdoc_and_fallback.md (frozen before any of them ran).
 #   base-ruler-probe -> whether Table 1's RULER row CAN have a Base column. That row reads
@@ -516,7 +483,7 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       baseline is on the floor. Run the full 13x5 grid on Base only if this says otherwise.
 #         MODEL=moonshotai/Kimi-Linear-48B-A3B-Base VK_JOB=base-ruler-probe \
 #           bash mexp/kimi/baseline.sh
-#         python mexp/glm53/run_ruler.py --arm baseline --port 30000 \
+#         python mexp/exp/run_ruler.py --arm baseline --port 30000 \
 #           --model moonshotai/Kimi-Linear-48B-A3B-Base --n 10 \
 #           --tasks niah_single_1,ruler_qa_squad --lengths 32768 \
 #           --out results/kimi/ruler --tag base-ruler-probe
@@ -532,7 +499,7 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #       cannot collide with the Instruct grid, whose files carry the same arm/n/lengths stem.
 #         MODEL=moonshotai/Kimi-Linear-48B-A3B-Base VK_JOB=ruler-base-n50 \
 #           bash mexp/kimi/{baseline,vestigekv}.sh
-#         python mexp/glm53/run_ruler.py --arm {baseline,vestigekv} --port 30000 \
+#         python mexp/exp/run_ruler.py --arm {baseline,vestigekv} --port 30000 \
 #           --model moonshotai/Kimi-Linear-48B-A3B-Base --n 50 \
 #           --lengths 4096,8192,16384,32768,65536 --out results/kimi_base/ruler
 #       Macros come from make_ruler_numbers.py's kimi_base line (tag KB); Table 1's two dashes
@@ -556,7 +523,7 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #         # server -- quality line, so common.sh defaults apply (CTX=73728, radix OFF, seed 0)
 #         VK_JOB=mk3-copyfidelity-n50 bash mexp/kimi/{baseline,vestigekv}.sh
 #         # client
-#         python mexp/glm53/run_ruler.py --arm {baseline,vestigekv} --port 30000 \
+#         python mexp/exp/run_ruler.py --arm {baseline,vestigekv} --port 30000 \
 #           --model moonshotai/Kimi-Linear-48B-A3B-Instruct --n 50 \
 #           --tasks niah_multikey_3,niah_single_3 --lengths 32768,65536 \
 #           --out results/kimi/ruler --tag mk3-copyfidelity-n50
@@ -655,7 +622,7 @@ bash mexp/quality/run_quality.sh score     # after both arms; needs the GPU
 #           SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 VK_JOB=<job> \
 #           bash mexp/kimi/{baseline,vestigekv}.sh
 #         # client                       -mid: --lengths 131072,262144   -max: --lengths 524288
-#         python mexp/glm53/run_ruler.py --arm {baseline,vestigekv} --port 30000 \
+#         python mexp/exp/run_ruler.py --arm {baseline,vestigekv} --port 30000 \
 #           --model moonshotai/Kimi-Linear-48B-A3B-Instruct --n 5 \
 #           --lengths <lengths> --out results/kimi/ruler --tag <job>
 #       SEEDS: server --random-seed 0 (common.sh default); run_ruler.py --seed 0 sets the
@@ -1064,7 +1031,7 @@ nohup python tools/weight_daemon.py --model moonshotai/Kimi-Linear-48B-A3B-Instr
 # the queue runs with disk loading (~60 s per server launch) until then.
 nohup bash mexp/kimi/weight_daemon.sh > results/kimi/weight_daemon.log 2>&1 &
 bash mexp/kimi/weight_daemon.sh status     # or stop
-python mexp/glm53/queue_runner.py --line kimi
+python mexp/exp/queue_runner.py --line kimi
 # health monitor (read-only; one line per 30 min in results/kimi/health.log: runner/server/
 # daemon liveness, current job, client progress or STALL, new tracebacks in the newest
 # server log counted per file, GPU, disk):
@@ -1073,197 +1040,11 @@ bash mexp/health_check.sh kimi 1800 &
 # throwaway worktree via ENGINE=<dir>, counts garbage answers; results/kimi/bisect.log):
 #   bash mexp/kimi/bisect_niah.sh <engine-commit> [n=10] [tasks]
 # by hand:
-#   bash mexp/kimi/baseline.sh ; python mexp/glm53/run_ruler.py --arm baseline --n 10 \
+#   bash mexp/kimi/baseline.sh ; python mexp/exp/run_ruler.py --arm baseline --n 10 \
 #     --model moonshotai/Kimi-Linear-48B-A3B-Instruct --out results/kimi/ruler
 #   bash mexp/kimi/vestigekv.sh ; (same client with --arm vestigekv)
 # results: results/kimi/ruler/results_<arm>_n10_4096-8192-16384-32768-65536.json;
-# two-arm table: python mexp/glm53/compare_ruler.py --out results/kimi/ruler
-
-# --- GLM-5.3-Flash-NVFP4 on 2x RTX PRO 6000 Blackwell (SM120; branch vestigekv-pro6000x2) ---
-# REBASED ONTO v0.5.20 AND RE-TESTED, 2026-09-21. Serving branch is now
-# `glm53-v0520-box` = v0.5.20 + the VestigeKV line + three box commits, each
-# committed and verified separately. Outcome: ALL FIVE PATCHES ARE STILL
-# REQUIRED. The test existed because reading could not answer it; it answered
-# the opposite way to the hypothesis, which is why it was run.
-#   The hypothesis was that upstream had made three of them unreachable: at
-#   v0.5.20 a DSA-family architecture with kv_cache_dtype bfloat16 and compute
-#   capability >= 10 is routed by resolution alone, and one of those defaults
-#   (trtllm) is already in the KPool allow-list. Served with NO --dsa-*-backend
-#   and let it pick. It picked prefill=flashmla_sparse, decode=trtllm, loaded
-#   every weight, allocated the KV pool (100736 tokens, 4.23 GB left) and died
-#   on the first decode warm-up:
-#     tvm.error.InternalError: Error in function 'TllmGenFmhaRunner' at
-#     flashinfer/data/include/flashinfer/trtllm/fmha/fmhaRunner.cuh:37:
-#     Unsupported architecture
-#   trtllm has no FMHA kernel for SM120. Triton remains the only workable DSA
-#   backend, so the SM120 exception, the KPool allow-list entry and the
-#   D_TAIL == 0 compile all stay (engine commit fb9952b0). Note the KPool
-#   NotImplementedError never fired -- the run died before any prefill with
-#   tail tokens, so that path is untested by this experiment, not cleared.
-#   modelopt_quant placeholders: also still required, and now measured rather
-#   than argued (engine 2f2bf1f2). Without it the server dies loading weights
-#   at 94.87 of 94.97 GiB on GPU 0, failing a 144 MiB allocation. Upstream does
-#   now auto-select the flashinfer_cutlass MoE runner for modelopt_fp4 on SM120,
-#   but the guard that patch replaces skips the allocation only for trtllm and
-#   megamoe -- cutlass is neither, so the better auto-selection routes straight
-#   into the branch that allocates.
-#   --language-model-only: both halves still required (engine 09ffd672).
-#   handle_language_model_only only validates against an architecture allow-list
-#   Glm5Next is absent from, and glm5_next.py at v0.5.20 never reads the field.
-#   Verified working end to end 2026-09-21 23:08 UTC: server up with
-#   --dsa-{prefill,decode}-backend triton, KV pool 100736 tokens / 2.73 GB free,
-#   `python mexp/glm53/needle.py` -> NEEDLE_OK.
-#   Logs: results/glm53/verify_v0520{,_nopatch,_triton}.log.
-# Arms: baseline = the model as shipped (DSA: indexer top-k 2048 + KPool 4:1, Triton DSA
-# kernels); vestigekv = a split pair, --prefill-attention-backend dsa (sparse prefill, the
-# indexer's top-k on, its un-rotated key filed as the salience channel) and
-# --decode-attention-backend vestigekv_mla (decode over the dense-MLA substrate). Before the
-# split VestigeKV attended densely at prefill and paid +5.6 s of TTFT at 32k against DSA's
-# sparse prefill -- the whole gap between the arms, none of it decode (nsys, 2026-09-22).
-# DSA_PREFILL=0 restores the single-backend shape for the ablation. fp8 side ring
-# (the DSA index-cache format), recall capacity 2048 to match this checkpoint's DSA
-# indexer top-k rather than the 4096 default -- the overflow fence on this line falls back
-# to DSA, and a 4096-row recall budget against a 2048-row baseline is a difference in
-# budget rather than in method; it also halves a per-layer [max_reqs, W] int32 buffer on a
-# box with 2.73 GB left after the pool. Every other --vestigekv-* flag at its default
-# (overflow fallback on, activation threshold 0, sketch rank 64 -- a queue job can raise
-# the rank with "server_args": ["--vestigekv-index-rank", "256"]). "baseline" means DSA on this model
-# (Dense MLA on Kimi Linear); mexp/glm53/dense_mla.sh is the substrate ablation, not a baseline.
-# Quality/RULER line, fixed in mexp/glm53/common.sh: CUDA graph ON (--cuda-graph-max-bs-decode 4),
-# --disable-radix-cache, --max-running-requests 4, --max-mamba-cache-size 4,
-# --chunked-prefill-size 1024 (2048 and 4096 OOM the DSA prefill: weights take 88 GB/GPU, ~4.5 GB is left for the pool plus prefill working memory), --mem-fraction-static 0.955 (pool ~100k tokens: 0.95 gave 61k, below the 64k RULER prompts), --context-length 73728,
-# --random-seed 0, --language-model-only (vision tower skipped), --sampling-backend pytorch;
-# clients are serial and greedy, RULER data generation and lm-eval seeded 0. On the split pair the
-# RULER config runs one slot (MAX_REQS, MAMBA_SLOTS, GRAPH_BS = 1, jobs rulerv0520s1-*): the
-# client is serial, and at four slots the vestigekv arm's first 64k cell OOMed in the MoE with
-# 129 MiB free, 0.955 being the smallest static fraction that fits a 64k prompt. After readiness the
-# runner sends one CHUNK+128-token prefill with a one-token generation before any client: DSA's
-# prefill kernel autotunes on its first launch at the chunk shape, and doing that inside a
-# measured request once cost the server (CUDA OOM at 0.41 GiB free on the needle probe).
-# Jobs are a JSONL queue (mexp/glm53/queue.jsonl: one job per line = arm + server env +
-# client + args); the runner launches each job's server, runs the client, keeps the
-# server across same-config jobs, and records results/glm53/queue_state.jsonl. Edit the
-# queue while it runs: it is re-read before every job. Registered queue (in order):
-#   ruler-baseline, ruler-vestigekv   -> 13 RULER tasks x {4k,8k,16k,32k,64k}, 10 samples/cell
-#   diag-smoke32k-vestigekv -> niah_single_1 at 32768 only, n=2, on the ruler config. Not a
-#       result: it is the gate in front of the two long jobs below. The vestigekv arm had
-#       never been started on this tree, and the first attempt died with a Triton NameError
-#       after loading 88 GB of weights (engine 62b69520a8) -- a failure that costs three
-#       minutes to provoke at 32k and an hour to discover at 128k. Runs with --tag so it
-#       writes beside the arm's full RULER run rather than over it.
-#   stream-baseline-128k, stream-vestigekv-128k -> metric 1 (bs=1, 4k prefill, 126976-token
-#       decode; per-token latency curve, 64k point included) with CTX=135168, one mamba slot,
-#       --mem-fraction-static 0.96, --cuda-graph-max-bs-decode 1. Started 2026-09-22 on engine
-#       ee8b4f5a58 (exact memory reductions, bit-identical to 9153bb6e4d), split pair on the
-#       vestigekv arm, CHUNK 512 with the runner's chunk-sized pre-warm in front of the probe.
-#       Stopped once on 2026-09-22 at 65k/131k decoded tokens of the baseline arm to give the
-#       GPU to the quality gate below, then reinstated behind it (the line reports the 4k->128k
-#       latency curve; GLM throughput is not measured).
-#   gsm8kv0520-{baseline,vestigekv} -> GSM8K-Platinum full set (n=1209, 64-shot, greedy), the
-#       Kimi protocol (mexp/quality/gsm8k_platinum.jsonl, sglang.test.few_shot_gsm8k --parallel 1)
-#       on the RULER one-slot config; needle probe in front of each arm.
-#   mauve4kv0520-*, mauve64kv0520-* -> MAUVE gate, the frozen M7 protocol: 4k prefill x 16
-#       fineweb-edu contexts and 64k prefill x 64, 256 generated tokens at temperature 1.0 /
-#       top-p 0.95 with sampling_seed 1000+i per context shared across arms; contexts are cut
-#       with the served model's tokenizer (M7_MODEL) into results/glm53/quality/. The runner's
-#       `mauve` client generates; scoring (gpt2-large features, GPU) runs after both arms with
-#       `mexp/m7_mauve_serving.py score`, writing results/glm53/quality/mauve_verdict_T*_n*.json.
-#   dsafb-smoke32k4k-vestigekv -> the gate in front of the vestigekv arm's re-run on engine 65a85c587e
-#       (DSA's indexer runs at decode under the split pair; a fenced lane attends its selection):
-#       needle probe, then the 32k/4k stream at MEM_FRAC 0.95 against diag-smoke32k4k-baseline's
-#       record. Not a result; the server log must show 'salience: first DECODE keys filed' and
-#       'DSA sibling drives decode metadata'. Every GLM vestigekv-arm quality record before this
-#       tree was produced with tier-1 scoring +inf past the first 2048 tokens of a request and on
-#       every decoded token (no indexer at decode), rescued by recall; they are superseded.
-#   (2026-09-23) mexp/dsv2lite/ is the DeepSeek-V2-Lite-Chat line (RoPE MLA, dense-MLA baseline):
-#       arm scripts only so far, no jobs registered; needle.py takes NEEDLE_MODEL and now allows
-#       1024 tokens (300 let the model's thinking eat the answer). Redesign measurements are in
-#       docs/glm53-line.md "Redesign measurements (2026-09-23)".
-#   dsaopt-smoke32k4k-vestigekv -> the gate in front of the vestigekv arm on the OPTIMISED tree
-#       (engine 8b83b939a9, branch glm53-dsa-decode, docs/glm53-line.md "Closing the decode gap"):
-#       the fused salience-ring write, DSA's own split-K decode over the tiers, the model's split
-#       q/k with the pool's two-tensor KV write, 256-row scan buckets and the 8-warp merge; the lean
-#       graph is opt-in and off, so every step attends exactly what the single-graph tree attends.
-#       Needle probe, then the 32k/4k stream at MEM_FRAC 0.95 against diag-smoke32k4k-baseline's
-#       record. Not a result. dsafb-smoke32k4k-vestigekv's record (engine 63f2d6f994) is retired to
-#       superseded/*.preopt*. rulerv0520s1-vestigekv's 09:31 record was produced BEFORE the indexer
-#       fix (its server log has no 'DSA sibling drives'): retired to superseded/*.noindexer*, state
-#       row marked superseded, and the job re-runs on this tree after gsm8kv0520-vestigekv (order:
-#       smoke, mauve4k, mauve64k, the 128k pair's vestigekv arm, gsm8k, RULER, lb1sum). The baseline
-#       arm's code path is untouched by these commits (diff restricted to VestigeKV files, one
-#       backend-name list entry and a capture log line), so its records stand.
-#       The first release (15:18, engine 3f2ab34150) passed this smoke but every vestigekv-arm job on
-#       the RULER one-slot config (MEM_FRAC 0.955) then died at its first prefill: DSA's Triton sparse
-#       prefill kernel autotunes 27 configs at first use, when the driver has <1 GiB, and the one-warp
-#       configs' launches reserve 0.6-0.8 GB of local memory each (the same failure took mauve4k/64k,
-#       the 128k arm and gsm8k at 12:26-12:33). Engine 8b83b939a9 tunes the kernel at backend init
-#       and prunes the one-warp configs; the affected rows are marked superseded in queue_state and
-#       re-run. The baseline arm is unaffected in what it computes (the selected config is the same).
-#   lb1sumv0520-{baseline,vestigekv} -> LongBench v1 summarization (gov_report, qmsum, multi_news),
-#       the Kimi lb1sum protocol (mexp/kimi/run_longbench1.py, ROUGE-L by make_lb1_numbers.py --line glm53)
-#       on the RULER one-slot config, prompts cut with the GLM tokenizer. Order within the GLM line
-#       after gsm8kv0520-baseline (already running when it was set, 2026-09-22): shortest experiment
-#       first -- mauve4k, mauve64k (both arms), the 128k pair, gsm8k vestigekv, lb1sum -- and the
-#       whole GLM line before the Kimi line so the served checkpoint switches once.
-#   stats-vestigekv-stream-128k, stats-vestigekv-ruler-64k -> the same two workloads on the
-#       vestigekv arm with SGLANG_DEBUG_VESTIGEKV_STATS=1 (separate jobs: the bookkeeping syncs
-#       every step, so it never runs on a timed arm). The server log's VKSTATS lines (every 50
-#       decode steps, cumulative) carry fetched rows per scan p50/p90/p99 and
-#       fallback = overflow scans / scans; the stream job's successive lines are the
-#       context-length curve, the RULER-64k job the value at 64k prompts.
-#   replay-vestigekv-r64, -r128, -r256 -> the same three saved 64k RULER prompts
-#       (niah_single_2, qa_squad, cwe from the baseline samples) replayed on the vestigekv arm
-#       at sketch ranks 64, 128 and 256 with stats on; the per-job server log's VKCAL lines
-#       carry need-vs-fire per calibrated build (mexp/glm53/replay_prompts.py). The r128 job
-#       also sets SGLANG_DEBUG_VESTIGEKV_DUMP_DIR=results/glm53/caldump: one snapshot per
-#       (slot, layer) of the rows, keep set and calibration queries the index was fitted on;
-#       python mexp/glm53/cert_offline.py refits sketch bases and ranks on them offline
-#       (certificate zp, fire counts vs need, fallback fraction) without re-serving.
-#       They run before the two stats jobs: the rank decision gates the stats config.
-#   dsadump-vestigekv-{64k,8k,4k} -> DSA-indexer certificate study (engine branch
-#       vestigekv-dsa-index / serving vestigekv-dsa-index-pro6000x2, checked out in engine/ for
-#       these jobs): saved RULER prompts (niah_single_2, cwe, fwe, qa_squad; 2-3 samples per
-#       task) replayed with --ignore-eos (64 tokens, so every request reaches a calibrated
-#       build), GRAPH=0 (the indexer stash copies to the host every step, which a captured
-#       graph cannot) and SGLANG_DEBUG_VESTIGEKV_DUMP_DIR=results/glm53/dsadump, whose snapshots also
-#       carry the indexer keys / KPool gates of every token and the indexer query heads of the
-#       calibration queries; python mexp/glm53/dsa_cert_offline.py scores the indexer-based
-#       certificate (mass coverage, conformal z) against the content-sketch one on them.
-#   ruler-dense-mla-short -> fwe, cwe, qa_squad, niah_single_1 at 4k and 8k (10/cell) on the
-#       dense_mla substrate (DSA off, no VestigeKV): RULER "4k" prompts are ~3.9k tokens, below
-#       one 4096 close block, so the vestigekv arm attends them dense; this separates the
-#       substrate's effect (a DSA-trained model run dense) from VestigeKV's at 4k/8k.
-#   memtrace-vestigekv-64k -> 13 tasks x 3 samples at 64k on the vestigekv arm with
-#       SGLANG_DEBUG_VESTIGEKV_MEM_DIR=results/glm53/memtrace and stats OFF: the server log's
-#       VKMEM lines (allocated / reserved at every request's first prefill chunk) and one
-#       allocator snapshot per five requests (mem_req<N>.pickle; diff two with
-#       python mexp/glm53/memdiff.py). Background: ruler-vestigekv OOMed at its 27th 64k
-#       prompt twice while the same prompts with stats on served 119; the stats syncs
-#       change what the allocator sees, so the trace must not sync.
-python mexp/glm53/queue_runner.py
-# by hand (same commands the runner issues):
-#   bash mexp/glm53/baseline.sh ; python mexp/glm53/run_ruler.py --arm baseline --n 10
-#   bash mexp/glm53/vestigekv.sh ; python mexp/glm53/run_ruler.py --arm vestigekv --n 10
-#   CTX=135168 MAX_REQS=1 MAMBA_SLOTS=1 MEM_FRAC=0.96 CHUNK=512 GRAPH_BS=1 bash mexp/glm53/<arm>.sh
-#   PYTHONPATH=$PWD/engine/python python -m sglang.benchmark.serving --backend sglang \
-#     --model nvidia/GLM-5.3-Flash-NVFP4 --num-prompts 1 --dataset-name random \
-#     --random-input-len 4096 --random-output-len 126976 --random-range-ratio 1 \
-#     --max-concurrency 1 --warmup-requests 0 --output-details \
-#     --output-file results/glm53/latency_stream_4k-126976_<arm>.jsonl
-# results: results/glm53/ruler/results_<arm>_n10_4096-8192-16384-32768-65536.json (+ samples),
-#          results/glm53/latency_stream_4k-126976_<arm>.jsonl, server_<arm>_<job>.log per job.
-#          RECORD NOTE: the vestigekv stream file on disk is the stats-on run (a stats job
-#          used to write the same name and overwrote the timed one; the runner now suffixes
-#          _stats). The timed vestigekv curve, read before that overwrite (fixed engine,
-#          per-token median over the 4096 tokens ending at each point): 8k 11.535, 16k 11.613,
-#          32k 11.731, 64k 11.885, 128k 12.207 ms vs baseline 11.265/11.283/11.301/11.340/11.398
-#          (ratio 0.977 -> 0.934; means 11.908 vs 11.342 ms/token).
-# two-arm RULER table (task x length, a/b, means): python mexp/glm53/compare_ruler.py
-# per-token latency vs context from the stream jobs: python mexp/glm53/stream_curve.py
-# GSM8K-Platinum (64-shot, n=1209, serial) on either arm: relaunch with CTX=16384, then
-#   PYTHONPATH=$PWD/engine/python python -m sglang.test.few_shot_gsm8k --num-shots 64 \
-#     --num-questions 1209 --data-path mexp/quality/gsm8k_platinum.jsonl --parallel 1 --port 30000
-# Head-needle probe (10.6k tokens, code at position 0): python mexp/glm53/needle.py
+# two-arm table: python mexp/exp/compare_ruler.py --out results/kimi/ruler
 
 # --- quality: long-context MAUVE (64k prefill; the decode-path fidelity gate)
 # 16 fineweb-edu contexts of 65536 tokens (compression genuinely engaged),
@@ -1334,7 +1115,7 @@ with the isolated target dir on PYTHONPATH (checkpoints as plain dirs, see
 ### Experiments are queue entries, not typed commands
 
 Serving experiments go in `mexp/<line>/queue.jsonl` and are run by
-`mexp/glm53/queue_runner.py --line <line>`, never launched by hand. Before the
+`mexp/exp/queue_runner.py --line <line>`, never launched by hand. Before the
 runner starts, `python mexp/exp/audit_queue.py` resolves each pending job to
 the command and output path it will actually produce and refuses on: a job
 pinned to any tree but `engine/` (the unified v0.5.20 one), an output file that
@@ -1407,7 +1188,7 @@ its own header.
 | `tputA-bs{1,2,4,8,12,16,24}` and `tputB-...` -- each a `-dense` / `-vestigekv` pair (queue) | the throughput sweep rebuilt around what the machine actually does. `tput32`/`tput128k` are superseded and their records quarantined: the metric asked the client how fast a batch decoded and never asked whether the batch existed, and the server's log says 64k bs=32 ran 31-then-1 and 128k bs=4 ran 2. A point is now tokens counted into the KV pool over wall clock, inside a window where `#running-req` is constant and equal to the batch, cross-checked against the server's own reported rate. `output_len` is set per point so that window lasts about 150 s: the log stamps whole seconds, and the first sweep's bs=1 plateau lasted 18 s, which is 11% of quantisation on its own. At 128k the output is further raised to 1.4x the batch's total prefill, because otherwise early requests finish decoding before late ones finish prefilling and the batch is never whole. About 3.5 hours for both contexts, both arms |
 | `tput128k-bs{N}r{2,3}` -- each a `-dense` / `-vestigekv` pair (queue) | three runs of every 128k point, because one is not enough to read a shape. At 64k the dense arm repeats to 0.00-0.11% while VestigeKV spreads 1.22% at bs=4 and 4.36% at bs=12, so the 0.7% dip that prompted the check is inside its own noise. The variance is one-sided and grows with batch, which is a property worth reporting rather than averaging away -- and it is not dispatch: every per-step kernel launches a grid of max_bs lanes regardless of the live batch, so bs=12 and bs=32 dispatch identically and non-powers-of-two cost nothing extra. About 108 minutes for the two extra passes across both arms |
 | `tput128k-bs{1,2,4,8,12,16,24,32}` -- each a `-dense` / `-vestigekv` pair (queue) | the same throughput sweep at 128k prefill. 64k is the weakest context this method has: the bs=1 latency curve reads 1.052 there against 1.136 at 128k, so a throughput panel that stops at 64k understates the method at the context the paper argues for. Both contexts are kept rather than one replaced -- the pair is what shows the advantage growing with context at fixed batch, and 64k is already measured. Capacity is the binding constraint and dense is the arm that binds: 32 x (128k+4k) = 4325376 tokens against a 5020421-token pool, 86%. `GRAPH_BS=32=MAX_REQS`, radix off, seed 0, decode-only throughput (bs / mean ITL), about 56 minutes of prefill across both arms |
-| `tput32-bs1`, `tput32-bs4`, `tput32-bs12`, `tput32-bs24`, `tput32-bs32` -- each a `-dense` / `-vestigekv` pair (queue, staged) | Figure 2's right panel, re-measured on the one tree. `GRAPH_BS=32` with `MAX_REQS=32` for every point in the sweep, so the captured graph is the same width at bs=1 as at bs=32 and the curve's shape is the batch's doing rather than the capture's; that width is stated in the caption. Radix cache off on both arms, per the RADIX POLICY block in `mexp/exp/latency-pair-512k.sh`. 64k prefill, 4096 decoded tokens, `concurrency == num_prompts` at each point. Staged in `mexp/kimi/queue_staged_throughput.jsonl` rather than queued, because the running runner holds the code from before `args.concurrency` existed and would have run all ten jobs at concurrency 1 and marked them done. Launch: `python mexp/exp/audit_queue.py && python mexp/glm53/queue_runner.py --line kimi` after appending the staged rows to `mexp/kimi/queue.jsonl` and restarting the runner |
+| `tput32-bs1`, `tput32-bs4`, `tput32-bs12`, `tput32-bs24`, `tput32-bs32` -- each a `-dense` / `-vestigekv` pair (queue, staged) | Figure 2's right panel, re-measured on the one tree. `GRAPH_BS=32` with `MAX_REQS=32` for every point in the sweep, so the captured graph is the same width at bs=1 as at bs=32 and the curve's shape is the batch's doing rather than the capture's; that width is stated in the caption. Radix cache off on both arms, per the RADIX POLICY block in `mexp/exp/latency-pair-512k.sh`. 64k prefill, 4096 decoded tokens, `concurrency == num_prompts` at each point. Staged in `mexp/kimi/queue_staged_throughput.jsonl` rather than queued, because the running runner holds the code from before `args.concurrency` existed and would have run all ten jobs at concurrency 1 and marked them done. Launch: `python mexp/exp/audit_queue.py && python mexp/exp/queue_runner.py --line kimi` after appending the staged rows to `mexp/kimi/queue.jsonl` and restarting the runner |
 
 | `tputB87-bs{1,2,4,8,12,16,24,32}` -- each a `-dense` / `-vestigekv` pair (queue) | the 128k sweep re-measured with `MEM_FRAC=0.87` on BOTH arms, because the published series stops at 16 and the two points it is missing are missing for two different reasons, neither of them a limit of the method. At 32 the VestigeKV arm dies: the server drops the streams mid-generation (`ClientPayloadError`, 4080 of 8192 tokens) and `tputB-bs32r2` reproduces it. That is the OOM already recorded two rows above -- an allocation outside a KV pool both arms size identically at 5020421 tokens, where after startup dense has 9.02 GB free and VestigeKV 8.22. At 24 the run completes cleanly (24/24, 196608 tokens, zero errors) and the POINT is refused: counted 1083.4 tok/s against a reported 1113.6, 2.72% over a 2% tolerance, reproduced at 2.29% on `bs24r2`. That gap is not an error, it is the metric disagreeing with itself -- `counted` is total tokens over wall clock, `reported` is the arithmetic mean of the server's per-line rate, and the two part company exactly in proportion to how variable the rate is. VestigeKV's rate is variable by construction: it closes a block and rebuilds an index every 4096 tokens, measured here as cv 13.8% against dense's 7.0%, with its mean 4.1% below its median where dense's is 0.5%. So the tolerance is a cap on how periodic an arm is allowed to be, and only one arm has periodic work. 0.87 and not 0.85: bs=32 at 128k needs 4456448 pool tokens, 0.87 gives 4707275 (5.6% of margin) and 10.58 GB of non-pool headroom, while 0.85 gives 4456759 -- 311 tokens above the requirement, which is luck rather than margin. Both arms move together because giving only VestigeKV a smaller static fraction would vary a launch knob alongside the backend, which is the defect this file already charges the superseded 512k pair with. 16 jobs, about 5 hours; the existing `tputB` records are then superseded, not deleted |
 | `lb1sum-{dense,vestigekv}` (queue, before tputB87: shortest first within the Kimi line) | LongBench v1 summarization (gov_report, qmsum, multi_news; 200 items each, `mexp/kimi/longbench1/` from THUDM/LongBench data.zip), the dataset's prompt and max_gen (512), greedy, raw completion, prompts over 65536 tokens middle-truncated as LongBench's pred.py does; ROUGE-L F1 by LongBench's eval.py rule with py-rouge (`make_lb1_numbers.py`, plotting venv). The one generative long-context task where nothing points at the rows that matter: eviction plus recall has to hold with a whole-document query. Kimi Instruct, RULER one-slot config. Registered 2026-09-22. |
@@ -1422,7 +1203,7 @@ maintained beside it --- two hand-kept copies is how they diverge:
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl
 python mexp/exp/audit_queue.py                       # nine refusals
-python mexp/glm53/queue_runner.py --line kimi        # run it
+python mexp/exp/queue_runner.py --line kimi        # run it
 ```
 
 `init_queue.py` refuses to rewrite the queue under a live runner, and
@@ -1511,23 +1292,6 @@ change an experiment, change it here first.
 {"args":{"n":50,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MODEL":"moonshotai/Kimi-Linear-48B-A3B-Base"},"id":"rulern50base-vestigekv","probe":false}
 {"args":{"n":1209,"shots":64},"arm":"baseline","client":"gsm8k","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"gsm8krep3-baseline","probe":false}
 {"args":{"n":1209,"shots":64},"arm":"vestigekv","client":"gsm8k","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"gsm8krep3-vestigekv","probe":false}
-{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"diag-smoke32k4k-baseline","probe":true}
-{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"diag-smoke32k4k-vestigekv","probe":true}
-{"args":{"n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955"},"id":"rulerv0520b-vestigekv","probe":true}
-{"args":{"n":10,"seed":0},"arm":"baseline","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"rulerv0520s1-baseline","probe":true}
-{"args":{"n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"rulerv0520s1-vestigekv","probe":true}
-{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"stream-baseline-128k","probe":true}
-{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"stream-vestigekv-128k","probe":true}
-{"args":{"n":1209,"shots":64},"arm":"baseline","client":"gsm8k","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"gsm8kv0520-baseline","probe":true}
-{"args":{"contexts":16,"prefill":4096},"arm":"baseline","client":"mauve","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"mauve4kv0520-baseline","probe":false}
-{"args":{"contexts":64,"prefill":65536},"arm":"baseline","client":"mauve","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"mauve64kv0520-baseline","probe":false}
-{"args":{"n":1209,"shots":64},"arm":"vestigekv","client":"gsm8k","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"gsm8kv0520-vestigekv","probe":true}
-{"args":{"contexts":16,"prefill":4096},"arm":"vestigekv","client":"mauve","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"mauve4kv0520-vestigekv","probe":false}
-{"args":{"contexts":64,"prefill":65536},"arm":"vestigekv","client":"mauve","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"mauve64kv0520-vestigekv","probe":false}
-{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"dsafb-smoke32k4k-vestigekv","probe":true}
-{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"dsaopt-smoke32k4k-vestigekv","probe":true}
-{"args":{"max_length":65536,"subsets":"gov_report,qmsum,multi_news"},"arm":"baseline","client":"longbench1","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"lb1sumv0520-baseline","probe":false}
-{"args":{"max_length":65536,"subsets":"gov_report,qmsum,multi_news"},"arm":"vestigekv","client":"longbench1","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.955"},"id":"lb1sumv0520-vestigekv","probe":false}
 {"args":{"concurrency":1,"input_len":131072,"num_prompts":5,"output_len":8192,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB87-bs1-dense","probe":false}
 {"args":{"concurrency":1,"input_len":131072,"num_prompts":5,"output_len":8192,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB87-bs1-vestigekv","probe":false}
 {"args":{"concurrency":2,"input_len":131072,"num_prompts":8,"output_len":8192,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB87-bs2-dense","probe":false}

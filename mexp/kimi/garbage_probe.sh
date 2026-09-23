@@ -13,7 +13,7 @@ cd "$ROOT"
 setsid nohup bash mexp/kimi/vestigekv.sh "$@" > "$OUT/server_probe_$TAG.log" 2>&1 &
 until grep -qa "fired up\|Scheduler hit\|ABORT" "$OUT/server_probe_$TAG.log"; do sleep 10; done
 grep -qa "fired up" "$OUT/server_probe_$TAG.log" || { echo "$TAG server failed"; exit 1; }
-CUDA_VISIBLE_DEVICES="" $PY mexp/glm53/run_ruler.py --arm "probe-$TAG" --port 30000 \
+CUDA_VISIBLE_DEVICES="" $PY mexp/exp/run_ruler.py --arm "probe-$TAG" --port 30000 \
   --model moonshotai/Kimi-Linear-48B-A3B-Instruct --n "$N" --out "$OUT" > "$OUT/ruler_probe_$TAG.log" 2>&1 || true
 for p in $(pgrep -f "^$PY -m sglang[.]launch_server"); do kill -TERM "$p"; done
 line=$($PY - "$OUT/samples_probe-${TAG}_n${N}_4096-8192-16384-32768-65536.json" "$TAG" <<'PYEOF'
