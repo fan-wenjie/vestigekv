@@ -802,9 +802,11 @@ keeps the fence and most of the lean gain; the dumps for the per-layer
 certificate study are in the scratchpad (`cert_offline.py`).
 
 **Per-layer, current-query scan (the "same period as the indexer" shape)**
-costs five launches per layer; the first measurement (11.82 ms at 4k) was
-void -- the range launch sliced the arena-indexed hit buffer -- and the
-re-measurement is pending. It is opt-in (`SGLANG_ENABLE_VESTIGEKV_PERLAYER_SCAN`).
+costs five launches per layer: 11.82 ms at 4k against stage 1's 11.14 on
+the same flags (+0.68 ms/step, more than the whole lean gain), needle
+passing, re-measured after the range launch's arena-index bug was fixed.
+It is opt-in (`SGLANG_ENABLE_VESTIGEKV_PERLAYER_SCAN`) and stays off; the
+cadence constraint is met at the pool-close level, not per layer.
 
 **W = 512 says nothing yet.** The fetch distribution makes 512 and 2048
 fence the same lanes; the needle "misses" at 512 were the probe's 300-token
