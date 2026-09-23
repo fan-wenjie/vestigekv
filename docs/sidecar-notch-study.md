@@ -63,3 +63,25 @@ layer is ~1-2 us, amortized to well under 0.01 us per decode step) and expose
 it. It tells an operator when tier 1's signal is degenerate without changing
 what the server attends, and it is the distribution any future threshold would
 have to be set from. Acting on it stays out of the deployment.
+
+## Built: telemetry only (engine c9a9a7a480)
+
+`SGLANG_DEBUG_VESTIGEKV_SPECTRUM=<blocks between reports>` (0 = off) adds one
+rFFT per closing block per layer, off the per-step path, and logs per layer:
+
+    VKSPECTRUM layer=19 blocks=14 peak_bins=128:8,17:2,16:2 peakiness_mean=59012
+      above_cutoff_share_mean=0.9xx (telemetry only; a peak far above the
+      cutoff means tier 1 is ranking a standing component)
+
+Nothing reads it back. Live check on Kimi, two 24k requests through one
+server: the repeated filler reports bin 128 -- its own 32-token cadence, not
+RULER's 57-token one, which is the point: the detector reports whatever
+repeats -- on 8 of 14 blocks at peakiness 1e4 to 6e4, and real prose (gov_report
+text) reports bins 16/17, the shoulder, on the rest. The needle probe passes
+with the telemetry on. `mexp/kimi/spectrum_notch_study.py` is the offline
+counterpart over dumps.
+
+The accumulator pools a layer's blocks across requests on purpose: an operator
+wants the traffic's distribution, not one request's. A per-request view would
+be the first change if this ever fed a decision, which on this evidence it
+should not.
