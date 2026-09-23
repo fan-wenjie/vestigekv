@@ -6,7 +6,7 @@ logs/
 qdir/
 queue.jsonl
 .health_highwater.json
-tmp_output_gsm8k.txt
+tmp_output_gsm8k*.txt
 # latex build artifacts
 docs/whitepaper/*.aux
 docs/whitepaper/*.log
