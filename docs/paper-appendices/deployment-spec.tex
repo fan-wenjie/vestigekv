@@ -1,0 +1,105 @@
+
+\begin{enumerate}
+\item \textbf{Below the activation threshold} ($<32\,768$ tokens, eight
+  close blocks): the request is served dense --- nothing is closed, nothing
+  is archived, no index is built, and the attended set is the whole
+  sequence, byte-identical to stock MLA decode. The threshold is a
+  serving-economics cut, not a quality parameter: it sits at the measured
+  dense/vestigekv serving crossover (\serveCrossover{};
+  Fig.~\ref{fig:curve}). The residual it declines to pay is a flat
+  $\approx$1\% per step at these lengths --- and it is \emph{graph-binding}
+  cost, not compression cost (nothing is closed, scanned, or fetched below
+  the threshold): the decode CUDA graph binds the packed CSR layout
+  unconditionally so its shape never depends on context length, so a short
+  request still pays (i) the index repack into that layout --- which
+  \emph{displaces} the stock \texttt{create\_flashinfer\_kv\_indices} pass
+  the baseline itself pays per step --- (ii) one per-layer query recording
+  into the fixed-address buffer that feeds the stale-by-one scan, and
+  (iii) the scan/prologue launches, which exit on an empty-archive check.
+  A dual-trace kernel diff (vestigekv vs.\ dense, 300 steps at 30k,
+  TP rank 0) puts the GPU-busy delta at ${\approx}116\,\mu$s/step gross,
+  ${\approx}37\,\mu$s/step net of the displaced baseline pass and absorbed
+  launch bubbles --- the measured ${\approx}$1\%. On the crossing step the
+  close loop (next item) catches up every outstanding block in one pass;
+  per-block $\sigma$ is immutable once computed and the global top-$m$
+  rebalance commutes with closing order, so the kept set is identical to
+  having compressed from token 0. [M]
+\item \textbf{Block close} (every 4096 closed rows): $\sigma$ from the
+  64-dim branch, global top-$m$ rebalance with
+  $m=\max(1,\mathrm{round}(\rho\cdot n_{\mathrm{closed}}))$, sinks and the
+  unclosed tail always
+  attended. [M: trial-exact vs one-shot]
+\item \textbf{Index build} (first decode step $+$ adaptive window): prefill
+  queries reach the backend un-absorbed and are unusable (absorbing them
+  needs the model's $W_{UK}$), and chunked prefill gives the backend no
+  ``prefill end'' signal --- so the index builds in two stages. A
+  \emph{provisional} index (identity sketch basis, gate fully open,
+  $z=Z_{\max}=8$) is built synchronously on the first decode step: it
+  over-fetches, never under-recalls. The request's first 8--64 decode
+  queries are then collected, and the \emph{calibrated} build --- 64-dim
+  exact summand, rank-$r$ sketch from the covariance of those centered
+  queries, per-row certificate, conformal $z$, entropy gate --- runs on a
+  side stream and is atomically installed; the gate disables itself where it
+  cannot calibrate. [M]
+\item \textbf{Per decode step} (Figure~\ref{fig:method} shows what is read):
+  attended-tier attention; index scan; fetch
+  the full fired set, into a buffer of a \emph{designed} width. The admission
+  rule is uncapped --- a row fires iff its certified score beats its own head's
+  kept maximum, and no top-$k$ ranks the survivors --- but an unbounded fetch is
+  not implementable on this path and would not be wanted if it were: CUDA graphs
+  require a static shape, and a step is only as fast as its worst fetch. So the
+  fetch is capped, at \texttt{--vestigekv-recall-capacity} rows, 4096 by
+  default, chosen above the largest fire observed on the reference stack.
+  Overflow then has somewhere exact to go, because the cap sits behind the
+  admission rule rather than inside it: the default attends the request's full
+  row set, which is dense. The cap is therefore spent in throughput and never in
+  recall, which is the property that makes a fixed width acceptable at all, and
+  the one that separates it from a page quota.
+  \texttt{--disable-vestigekv-recall-overflow-fallback} truncates instead and
+  gives that property up for a bounded per-step cost.
+  \emph{This is not a rare path, and the paper already measures it}: the overflow
+  rate is what is reported as the fallback rate --- \statsRulerSixtyFourFallback{}
+  of scans at 64k RULER against \statsStreamOneTwoEightFallback{} on a long
+  decode, the difference being how much of each request runs before the index
+  calibrates. The per-head top-$j$ cap of earlier versions is removed. A row fires when any head's
+  certified score beats that head's kept maximum; the fetched set is the
+  union over heads. [M: recovery 1.00 at $128\times$
+  and $512\times$/8k, $256\times$/32k in the serving loop]
+\item \textbf{Optional per-layer cascade}: stage-1 sidecar shortlist enabled
+  per layer iff calibration hard-target recall $\ge 0.90$
+  (holdout-verified); scan $\times 0.65$ (8k) / $\times 0.79$ (32k); the
+  uniform variant is refuted and must not ship. Measured in the harness
+  only; the cascade is not ported to the released serving backend. [M, harness]
+\end{enumerate}
+
+\paragraph{Placement and knobs.} Ratio $\rho=1/32$ on a proportional kept
+set, $m=\max(1,\mathrm{round}(\rho\cdot n_{\mathrm{closed}}))$ rebalanced at
+every close (the only ratio measured flat in length) [M];
+sketch rank $r{=}64$: tier-2 is GPU-resident (fetches free), so $r$
+minimizes scan bytes [M]; tier-2 is mandatory --- the partition deletes
+nothing [M]. Cache rows are never quantized (the controlled-variable rule);
+the scan's index metadata is stored 16-bit with fp32-ieee arithmetic and
+post-rounding calibration [M].
+
+\paragraph{Asynchrony contract.} All block-close work ($\sigma$, rebalance,
+compaction, pre-threshold precomputation) may run off the critical path:
+inputs are immutable rows, early/late computation is equivalent by
+Corollary~\ref{cor:stationary}, and a lagging update only enlarges the
+attended set by one block --- the conservative direction. Sync points: a
+per-block write event, a barrier before the index build, an atomic swap of
+the attended set. [D, licensed by [M] equalities]
+
+\paragraph{Kernel mapping.} The recall path is six fused Triton kernels baked
+into the decode CUDA graph: a two-kernel online-softmax prologue over the kept
+rows (which itself yields the per-head maxima and the entropy-gate statistic;
+the gate does not consume the stock kernel's LSE), one archive scan, a
+two-kernel deterministic compaction, and one all-layer prefix pass that writes
+each lane's attended row count. Stage~1 of the MLA decode is a fork of the
+stock kernel differing only in where a row id comes from: the kept table then
+the fetch buffer, or the request's page table when the trigger overflows its
+budget. Reading the rows where they already are removes the pass that used to
+copy them into one contiguous array every step, and a lane whose page table is
+one contiguous run computes its row ids arithmetically, which makes the address
+affine in the loop variable and lets the loop pipeline its loads
+asynchronously. Row sets are identical either way. [M]
+

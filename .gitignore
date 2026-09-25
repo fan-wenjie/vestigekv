@@ -1,0 +1,69 @@
+__pycache__/
+*.pyc
+*.pt
+out/
+logs/
+qdir/
+queue.jsonl
+.health_highwater.json
+tmp_output_gsm8k*.txt
+# latex build artifacts
+docs/whitepaper/*.aux
+docs/whitepaper/*.log
+docs/whitepaper/*.out
+docs/whitepaper/*.toc
+# regenerable token caches (fineweb/sanguo fillers; rebuilt on first run)
+results/needle_filler_*.json
+results/quality_cont64k_contexts_tokens.json
+results/quality_mauve64k*_ctx.json
+# GLM-5.3 line: raw server logs, prompt dumps and allocator/calibration snapshots stay local
+results/glm53/server_*.log
+results/glm53/ruler/samples_*.json
+results/glm53/memtrace/
+results/glm53/caldump/
+results/glm53/dsadump/
+results/glm53/needle_*.log
+results/glm53/replay_*.log
+results/glm53/stream_*.log
+results/glm53/ruler_*.log
+results/glm53/gsm8k_*.log
+results/glm53/queue_runner.log
+results/*/runner_*.log
+results/kimi/server_*.log
+# any line: raw generations run to hundreds of MB
+results/*/ruler/samples_*.json
+results/kimi/*_*.log
+results/kimi/queue_runner.log
+results/kimi/debug/
+results/kimi/bisect/
+results/kimi_queue_runner.log
+
+# Figure 2's left panel IS these server logs: the macros are reduced from
+# them and the paper says they ship. The blanket server-log ignores above
+# are exactly what deleted their predecessors, so the latency pair is
+# excepted by name.
+!results/kimi/server_*paired512k*.log
+
+# Operational logs, not results: the health monitor and the queue runner write
+# these continuously, and results/ is meant to hold the figures and results.zip.
+results/*/health.log
+results/*_queue_runner.log
+results/*/queue_state.jsonl
+
+# The queue and its state ARE the audit trail: which experiment ran, under
+# which knobs, in which order, and what came back. Ignoring them left the
+# record of every run on the floor.
+#
+# Excepted per line rather than by pattern once, and the GLM line then started
+# without anyone noticing it was invisible: fourteen skip decisions and the
+# whole v0.5.20 re-run order existed only on disk. Written as a glob so the
+# next line is covered by existing it, not by someone remembering this.
+!mexp/*/queue.jsonl
+!results/*/queue_state.jsonl
+
+# Study inputs, not records: whole 576-dim pool rows at 0.5 GB a run. The
+# analysis that reads them ships; the tensors do not.
+results/kimi/sidecardump/
+results/kimi/sidecardump_prose/
+results/kimi/sidecardump5/
+results/kimi/sidecardump_prose5/

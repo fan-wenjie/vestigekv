@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Audit the branch-vs-full-row selector grid before anything cites it.
+
+The paper's thesis is that the 64-dim decoupled branch carries the salience
+signal, so selection can read it instead of the whole 576-dim latent. The
+control is `full-row eviction`, and numbers.tex holds nine (length, ratio)
+points for each arm. Counted naively the branch ties at six, wins at three and
+never loses -- which looks like nine points of support for the thesis.
+
+**It is not, and this script exists to say why rather than to emit the count.**
+
+Three problems, all readable in numbers.tex's own provenance comments:
+
+1. *The pairs are not matched.* Only four of nine take both arms from the same
+   record: the three 8k points (both "pooled") and 65k at 32x/128x (both
+   sidecar_65536.json). The rest cross record files -- 32k pairs a "pooled" vk
+   against sidecar/gapfix full-row numbers, and 65k at 64x pairs floor64
+   against gapfix64.
+
+2. *The arms mix detector bandwidths.* `dig_r64` takes `_invbranch`'s default
+   k=16; `digk64` and `sel_k64` set k=64. The paper's shipped constant is
+   kappa=16. So the grid is not at one bandwidth, and not uniformly at the
+   deployed one. Note that the `k64` in both op names is the low-pass
+   BANDWIDTH, not a read width: sel_k64 scores all 576 dims, digk64 scores 64.
+   Reading those names as "both 64-dim" makes two arms that differ by 512
+   dimensions look identical.
+
+3. *The records are gone.* sidecar_*.json, gapfix64_*.json, floor64_*.json and
+   digestwidth_8192.json are in no surviving tree, so none of this can be
+   re-derived -- the comments are the whole evidence.
+
+The verifiable claim left standing is narrow: at 65k, from one file and one
+bandwidth, branch-only scoring equals full-row scoring at 32x and at 128x
+(0.92/0.92 and 0.58/0.58). Two matched points, not nine.
+
+    python mexp/kimi/make_selector_numbers.py            # print the audit
+    python mexp/kimi/make_selector_numbers.py --emit ... # only if all pairs match
+
+`--emit` writes macros for the counts, and refuses when any pair is
+cross-record. It refuses today. That is the intended behaviour: the tool is
+here so a future re-run that DOES produce a matched grid can be cited, not so
+this one can.
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import sys
+
+GRID = [("EightKxThirtyTwo", "8k", "32x"),
+        ("EightKxSixtyFour", "8k", "64x"),
+        ("EightKxOTE", "8k", "128x"),
+        ("ThirtyTwoKxThirtyTwo", "32k", "32x"),
+        ("ThirtyTwoKxSixtyFour", "32k", "64x"),
+        ("ThirtyTwoKxOTE", "32k", "128x"),
+        ("SixtyFiveKxThirtyTwo", "65k", "32x"),
+        ("SixtyFiveKxSixtyFour", "65k", "64x"),
+        ("SixtyFiveKxOTE", "65k", "128x")]
+
+
+def record(comment):
+    """The record a value came from, as its provenance comment names it.
+
+    Comments are either a filename plus an op ("sidecar_65536.json digk64") or
+    a pooling note ("pooled 25/36 seeds 11+12"). The first token identifies the
+    record in both forms."""
+    return comment.strip().split()[0] if comment.strip() else "?"
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--numbers", default=os.path.expanduser(
+        "~/vestigekv_paper/numbers.tex"))
+    ap.add_argument("--emit", default="",
+                    help="write count macros here; refuses on any unmatched pair")
+    args = ap.parse_args()
+
+    src = open(args.numbers).read()
+    d = {n: (v, c) for n, v, c in re.findall(
+        r"\\newcommand\{\\((?:vk|full)[A-Z]\w*)\}\{([^}]*)\}[^\n%]*%\s*(.*)", src)}
+
+    same = branch = full = 0
+    unmatched = []
+    print(f"{'point':>10}   {'branch':<7}{'record':<26}{'full':<7}{'record':<26}pair")
+    for suf, L, R in GRID:
+        a, b = d.get("vk" + suf), d.get("full" + suf)
+        if not a or not b:
+            print(f"{L:>4} {R:>5}   missing pair")
+            unmatched.append((L, R, "missing"))
+            continue
+        ra, rb = record(a[1]), record(b[1])
+        ok = ra == rb
+        if not ok:
+            unmatched.append((L, R, f"{ra} vs {rb}"))
+        av, bv = float(a[0]), float(b[0])
+        same += av == bv
+        branch += av > bv
+        full += av < bv
+        print(f"{L:>4} {R:>5}   {a[0]:<7}{ra:<26}{b[0]:<7}{rb:<26}"
+              f"{'matched' if ok else 'CROSS-RECORD'}")
+
+    print(f"\nnaive count: tie {same}, branch ahead {branch}, full ahead {full}")
+    print(f"matched pairs: {len(GRID) - len(unmatched)} of {len(GRID)}")
+    for L, R, why in unmatched:
+        print(f"  unmatched {L} {R}: {why}")
+
+    if args.emit:
+        if unmatched:
+            print("\nrefusing to emit: a count over a mixed-provenance grid would "
+                  "read as one experiment. See this script's docstring.",
+                  file=sys.stderr)
+            return 1
+        open(args.emit, "w").write(
+            "% Generated by mexp/kimi/make_selector_numbers.py. Do not edit by hand.\n"
+            f"\\newcommand{{\\selPoints}}{{{len(GRID)}}}\n"
+            f"\\newcommand{{\\selSame}}{{{same}}}\n"
+            f"\\newcommand{{\\selBranchBetter}}{{{branch}}}\n"
+            f"\\newcommand{{\\selFullBetter}}{{{full}}}\n")
+        print(f"wrote {args.emit}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

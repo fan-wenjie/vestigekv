@@ -1,0 +1,15 @@
+# Harness (harness/) pins.
+#
+# transformers below is STALE and kept only as the record of what the harness
+# was built against. The plain-dir checkpoints the harness loads carry a
+# modeling_kimi.py patched for transformers 5.12 (create_causal_mask renamed
+# input_embeds to inputs_embeds and dropped cache_position), so installing
+# 4.57.1 into an isolated target dir and putting it on PYTHONPATH now raises
+# on the first forward. Run the harness in the serving env instead; the plain
+# dir and that env match. See README, "Algorithm claims".
+accelerate==1.14.0
+fla-core==0.4.0
+flash-linear-attention==0.4.0
+torch==2.13.0+cu130
+transformers==4.57.1
+triton==3.7.1

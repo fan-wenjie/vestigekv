@@ -1,0 +1,27 @@
+/home/user/vestigekv/vestigekv/engine/python/sglang/launch_server.py:63: UserWarning: 'python -m sglang.launch_server' is still supported, but 'sglang serve' is the recommended entrypoint.
+  Example: sglang serve --model-path <model> [options]
+  warnings.warn(
+[1;33m'--cuda-graph-max-bs' is deprecated and will be removed in a future release. Use '--cuda-graph-max-bs-decode' instead.[0m
+[2026-09-11 13:10:08] kill_process_tree called: parent_pid=22487, include_parent=False, pid=22487
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/user/vestigekv/vestigekv/engine/python/sglang/launch_server.py", line 76, in <module>
+    run_server(server_args)
+  File "/home/user/vestigekv/vestigekv/engine/python/sglang/launch_server.py", line 21, in run_server
+    server_args.resolve_once()
+  File "/home/user/vestigekv/vestigekv/engine/python/sglang/srt/server_args.py", line 3745, in resolve_once
+    run_resolution_pipeline(self)
+  File "/home/user/vestigekv/vestigekv/engine/python/sglang/srt/arg_groups/pipeline.py", line 137, in run_resolution_pipeline
+    from sglang.srt.arg_groups.expert_pack_hook import handle_expert_pack
+  File "/home/user/vestigekv/vestigekv/engine/python/sglang/srt/arg_groups/expert_pack_hook.py", line 23, in <module>
+    from sglang.srt.model_loader.expert_pack_config import (
+  File "/home/user/vestigekv/vestigekv/engine/python/sglang/srt/model_loader/__init__.py", line 11, in <module>
+    from sglang.srt.model_loader.loader import BaseModelLoader, get_model_loader
+  File "/home/user/vestigekv/vestigekv/engine/python/sglang/srt/model_loader/loader.py", line 90, in <module>
+    from sglang.srt.layers.quantization.base_config import QuantizationConfig
+  File "/home/user/vestigekv/vestigekv/engine/python/sglang/srt/layers/quantization/__init__.py", line 18, in <module>
+    from sglang.srt.layers.quantization.compressed_tensors.compressed_tensors import (
+  File "/home/user/vestigekv/vestigekv/engine/python/sglang/srt/layers/quantization/compressed_tensors/compressed_tensors.py", line 21, in <module>
+    from compressed_tensors.config import (
+ModuleNotFoundError: No module named 'compressed_tensors'

@@ -1,0 +1,30 @@
+\section{Interval estimates for the primary rates}\label{app:wilson}
+
+Needle intact rates are exact fractions over small trial counts; Wilson
+95\% intervals make the resolution explicit. Neighboring ratios at one
+length are often not separated at these $n$; the separations the paper
+leans on hold (tier-1 vs.\ the recent-window arm, 0 successes in every
+cell; tier-2 recovery vs.\ its eviction arm), and the flatness of $1/32$
+across lengths is a consistency observation, not a separation claim.
+
+\begin{table}[H]
+\centering\small
+\caption{Wilson 95\% intervals, count/trials [lower, upper]. Tier-1 ablation
+rows above the rule; deployment-loop rows below.}
+\begin{tabular}{lccc}
+\toprule
+ & $32\times$ & $64\times$ & $128\times$\\
+\midrule
+$L{=}8192$ & \wciEightKxThirtyTwo & \wciEightKxSixtyFour & \wciEightKxOTE\\
+$L{=}32768$ & \wciThirtyTwoKxThirtyTwo & \wciThirtyTwoKxSixtyFour & \wciThirtyTwoKxOTE\\
+$L{=}65536$ & \wciSixtyFiveKxThirtyTwo & \wciSixtyFiveKxSixtyFour & \wciSixtyFiveKxOTE\\
+\midrule
+recall tier, $128\times$, 8k & \multicolumn{3}{c}{\wciTT}\\
+deployment loop, tier-1, $32\times$ & \multicolumn{3}{c}{\wciMFour}\\
+deployment tier-2, $512\times$@8k, $256\times$@32k & \multicolumn{3}{c}{\wciMFiveTier, \wciMFiveTK}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+

@@ -1,0 +1,168 @@
+% ---------------------------------------------------------------------------
+% Rule, not a boundary: the submission never cites its own preprint.
+%
+% A version of this work is public as a named arXiv preprint. ICLR permits a
+% concurrent preprint, so its existence is not a problem -- but citing it from
+% the submission would be self-identification under double-blind review, whatever
+% the phrasing. So: no entry for it in refs.bib, no arXiv link anywhere in the
+% tex, and nothing in the rendered PDF. Verified across main.tex and both files
+% it inputs; re-check after any bibliography edit, because the natural instinct
+% when adding related work is to include one's own.
+% ---------------------------------------------------------------------------
+
+% ---------------------------------------------------------------------------
+% Not written into the paper, recorded here in case it is asked.
+%
+% Why the real-prose speedup stops at 256k, and why there is no long-novel
+% streaming run.
+%
+% 1. The corpus cannot go further. continue_text.py filters on input_len * 8
+%    characters; 512k tokens needs 4,194,304 and the longest document in the
+%    Literary and Detective sub-domains is 3,596,979. NO document qualifies, so
+%    a 512k single-document context cannot be built at all. (256k needs
+%    2,097,152 and four documents clear it; 128k, six; 64k, nineteen.)
+%
+% 2. A long streaming decode would not measure what its name suggests. In a
+%    4k -> 512k stream the seed is about 1% of the final context and the rest is
+%    the model's own continuation, so a novel-seeded stream converges on the
+%    synthetic one within a few thousand tokens. Pre-registration 6 measured the
+%    axis directly: at 4096 decode steps fallback is 0.0032 on a real novel
+%    against 0.0023 on random tokens, while decode length moves the same rate
+%    151x -- and self-continuation, which is what fills a long stream, is the
+%    most favourable text of all at 0.003.
+%
+% The litspeed design avoids that dilution on purpose: it pins the context at
+% 64k/128k/256k of real prose and decodes 4096, so the cache is real prose
+% throughout. That is the right form of the question and it is answered.
+% Above 256k the curve is synthetic, and the paper claims only that the curve is
+% not an artefact of synthetic input over the range where both exist.
+% ---------------------------------------------------------------------------
+
+% ---------------------------------------------------------------------------
+% Not written into the paper, recorded here in case it is asked.
+%
+% Why no LongBench v1. Its English split averages about 6.7k words, roughly 9k
+% tokens, and its longest tasks stay well under 32k. The serving crossover
+% measured here is ~28k (numbers.tex \serveCrossover, from the server-side
+% gen-throughput logs: the ratio crosses 1.0 between the 20k-28k bucket at 0.999
+% and the 28k-36k bucket at 1.005), so nearly every v1 sample sits in the regime
+% the paper itself calls parity. A null result there supports nothing and a
+% negative one is hard to read, because compression has barely engaged: a 9k
+% prompt closes two 4096-token blocks.
+%
+% What v1 would have added -- generative and extractive scoring on real text,
+% which LongBench v2's four-way task lacks -- the paper already has at a length
+% it controls: RULER's qa_squad and qa_hotpot embed real questions in real
+% paragraphs from their own corpora and are answered extractively over 4k-64k,
+% and MAUVE at 64k prefill generates 256 tokens at temperature 1.0. The
+% diffuse-dependence case that summarization would probe is covered
+% synthetically by cwe/fwe.
+%
+% This is deliberately not in the paper. A 'why not X' note is an unbounded
+% list: explaining one absent benchmark makes the absence of the next one
+% conspicuous, and the complement cannot be enumerated. The scope table states
+% coverage positively instead, by what was measured.
+% ---------------------------------------------------------------------------
+
+\section{Scope boundaries: full table}\label{app:limits}
+
+\paragraph{What RULER measures here: synthetic answers AND short decodes.}
+RULER is adverse to this method in two independent ways, and they damage
+different quantities.
+
+\emph{Where the accuracy goes, classified by what the generator varies.}
+Table~\ref{tab:rulerclass} sorts the thirteen tasks by the parameters RULER's
+own generator sets. The loss is not spread across ``multi-key'' tasks and is
+not a property of needle retrieval: it sits in the \emph{two} cells whose
+haystack is itself made of key--value pairs, and it more than doubles again
+when those pairs are UUIDs. Every other task --- including
+\texttt{niah\_multikey\_1}, which plants four needles, and
+\texttt{niah\_multiquery} and \texttt{niah\_multivalue}, which ask for four
+answers --- is within noise. Multiplicity alone costs nothing.
+
+
+
+The mechanism follows from the classification. Tier~1 selects on a residual: it
+\emph{seeks} outliers, and it keeps the needle in every one of these tasks.
+Tier~2 orders archived rows by a rank-$r$ projection fitted to the archive's own
+content, and that is the step the two losing cells break. When the haystack is
+prose, the planted pair is an outlier against it and the fitted basis separates
+them. When the haystack \emph{is} key--value pairs, the bulk the basis is fitted
+to and the row it must find are the same distribution, so there is no direction
+left in which the target stands out; when the pairs are UUIDs, there is no
+linguistic structure for either tier to use. The measurement agrees: at answer
+steps the sketch omits the context's top-scoring row on a fifth of
+\texttt{multikey\_3} records, mis-ordered by seven scaled logits --- a bias in
+the order the sketch induces, not a threshold narrowly missed.
+
+\emph{So the honest scope of the accuracy claim} is not ``multi-key retrieval
+degrades''. It is: where a rank-$r$ sketch must separate rows drawn from the
+same distribution as the bulk it was fitted to, it cannot, and the more those
+rows are stripped of natural-language structure the worse it gets. That is a
+real limitation of this design and it would recur outside RULER wherever a
+context is composed of near-identical records --- a log file of UUIDs, a key
+store, a table of hashes.
+
+\emph{Short decodes cost speed, and this is the method's shape rather than an
+accident of RULER.} The recall tier fits $z_p$ on the request's own decode
+queries, so until it has enough of them it serves a \emph{provisional} index:
+identity basis, gate fully open, $z=Z_{\max}$. That is the most conservative
+rung available, not a guess --- it over-fetches and falls back to dense --- so
+the warm-up spends throughput and never recall. A RULER answer is about
+fourteen steps and never amortises it: 81\% of its scans run provisional, and
+it falls back on $0.305$ of scans against $0.002$ for a long decode at the same
+64k context. A fallen-back lane attends densely and is exactly correct, so what
+the short decode loses is speed, not answers.
+
+The price of a warm-up that returns nothing is measurable, and LongBench~v2
+measures it on real documents: those questions are scored with
+\texttt{max\_tokens}${=}1$, one prefill and one token, so the request pays the
+setup in full and has no decode to recover it in. Dense takes \lbKDWall{}
+minutes over the \lbKDN{} questions and vestigekv \lbKVWall{}, a cost of
+\lbKCost{}\% against a \lbKVSpread{}\% spread between two vestigekv runs. That
+is the floor: a one-token answer is the worst case this design has, and it
+costs about one percent.
+
+\emph{One corpus, two protocols, and they are not one experiment.} LongBench~v2
+enters this paper twice and the two numbers must not be read as one. As a
+\emph{benchmark} it supplies \lbKDN{} multiple-choice questions, each scored
+with \texttt{max\_tokens}${=}1$: that is the quality result above, and the
+warm-up floor beside it. As a \emph{corpus} it supplies novels --- the Literary
+and Detective sub-domains, the most natural text in the set, each truncated to
+an exact context length --- which the timing runs continue for 4096 tokens with
+\texttt{ignore\_eos}. Different protocol, different arms, different quantity:
+one prices the warm-up where nothing amortises it, the other prices the steady
+state where a long decode does. Choosing novels is the conservative choice
+rather than the flattering one, because at matched context and decode length
+prose falls back \emph{more} than random tokens ($0.483$ against $0.407$), so a
+speedup that survives there is not an artefact of synthetic input.
+
+\emph{The three factors stack, but not on the same quantity.} Three adverse
+factors meet in RULER: content planted so as not to belong to its context, a
+context composed of competing near-tied records, and a fourteen-token answer.
+The first two cost \emph{accuracy} and compound --- \texttt{multikey\_3} is the
+one cell where both are extreme and is the worst result in the paper at
+\rulerKDeltaNiahMKc{}. The third costs \emph{throughput} and, said plainly,
+slightly \emph{helps} the accuracy: a short answer keeps the index on the
+$Z_{\max}$ clamp, which over-fetches and loses the top archived row on 16.0\%
+of answer-step records against the fitted certificate's 22.85\%, so a
+longer-decoding RULER would have shown a marginally wider gap. Drop any one
+factor and its cost goes: real documents (LongBench~v2, the same answer to
+every one of \lbKDN{} questions), prose instead of a haystack of key--value
+pairs (the other eleven tasks, within $2\sigma$), or a long decode (fallback
+$0.483\to0.0032$ on the same 64k of real text). What the paper cannot show is a
+case where all three hold and the method is unaffected: RULER \emph{is} that
+case, and it is \rulerKDelta{} behind.
+
+That this warm-up is paid in throughput rather than in answers is what
+separates it from the families it will be compared against, where the
+least-informed window is the one in which what to discard is decided
+irreversibly; Table~\ref{tab:related} sorts them on that axis.
+
+None of this is an excuse, and the obvious excuse is false as measured: the
+ordering above is not by how natural the text is --- prose is the worst case,
+not the easiest --- but by decode length, which moves the rate $151\times$ where
+text type moves it $1.6\times$ and in the wrong direction. The honest scope is
+narrow: the accuracy gap is real, its mechanism is identified, it is bounded on
+real documents by the LongBench~v2 result, and it is unclosed.
+

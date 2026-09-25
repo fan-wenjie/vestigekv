@@ -1,0 +1,12 @@
+S = 64k
+  prologue S=64k: eager 0.261  single-CTA 0.247  split-NK 0.042 ms
+  scan(single-pair) S=64k: 0.016 ms  (17MB -> 1032 GB/s)
+  compact S=64k: torch-chain 0.119  triton 0.026 ms
+S = 128k
+  prologue S=128k: eager 0.271  single-CTA 0.354  split-NK 0.046 ms
+  scan(single-pair) S=128k: 0.016 ms  (33MB -> 2094 GB/s)
+  compact S=128k: torch-chain 0.201  triton 0.025 ms
+S = 256k
+  prologue S=256k: eager 0.260  single-CTA 0.570  split-NK 0.054 ms
+  scan(single-pair) S=256k: 0.016 ms  (66MB -> 4204 GB/s)
+  compact S=256k: torch-chain 0.350  triton 0.026 ms
