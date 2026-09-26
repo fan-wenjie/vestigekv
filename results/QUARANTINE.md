@@ -63,3 +63,24 @@ No macro in the paper cited any file below; deleting them changes no number.
 Also removed from results/results.zip on rebuild: 35 entries matching
 `latency_stream_*` (5.6 MB of 31.6 MB uncompressed).
 
+# Lost, not quarantined: harness_merge_8192.json (2026-09-26)
+
+The lossy-merge baseline record (24 trials per cell at one seed, k-means in
+key space at k equal to the budget, run alongside the floor and the
+matched-budget eviction arm as its own controls) was never archived: it
+existed only on the experiment machine, which failed on 2026-09-26 with data
+loss, one day after the run. It is not in this tree, not in
+results/results.tar.xz, and not in any commit.
+
+The paper's rule is that every printed number regenerates from an archived
+record, so the merge row is WITHDRAWN from Table tab:kvzip and its paragraph
+removed, rather than printed from memory. The five \kvzMerge* macros last
+read 0.79 / 0.33 / 0.00 / 0.00 / 0.00 at 2x/4x/8x/32x/128x; they are kept
+only in the paper repository's git history (commit 705c8aa), not in the
+printed draft. make_kvzip_numbers.py no longer lists the record, so a
+hand-kept macro cannot outlive it.
+
+If the machine is recovered, restore the record to results/, re-add the
+RUNS/OPS entries, and revert the paper edit; the row's prose is in the same
+commit.
+

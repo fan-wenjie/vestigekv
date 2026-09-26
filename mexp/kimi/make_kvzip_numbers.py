@@ -24,18 +24,18 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Each record declares WHICH ops it is the source for, because a record may
-# carry more than the row it was run for. The merge record below also holds
-# dig_r64 and imp_random, run alongside as its own controls; pooling those with
-# the published rows would silently move two numbers already in the paper, and
-# nothing in the output would show it. The four original records happen not to
-# overlap, so this was invisible until a fifth arrived. The check below makes
-# it an error rather than a coincidence.
+# carry more than the row it was run for. The four records happen not to
+# overlap, but the check below makes a silent overlap an error rather than a
+# coincidence.
+# The lossy-merge record (harness_merge_8192.json, op kmeans_m) was lost with
+# the experiment machine on 2026-09-26 before it was archived; see
+# results/QUARANTINE.md. Its row is withdrawn from the paper, and its entry
+# here is removed so a stale hand-kept macro cannot outlive the record.
 RUNS = {
     "results/harness_kvzip_inrange_8192.json": {"kvzip", "twotier"},   # 2x, 4x, 8x
     "results/harness_kvzip_needle_8192.json": {"kvzip", "twotier"},    # 32x, 128x
     "results/harness_selector_k16_8192.json": {"dig_r64"},             # tier-2 deleted
     "results/harness_random_floor_8192.json": {"imp_random"},          # the floor
-    "results/harness_merge_8192.json": {"kmeans_m"},                   # lossy merge (PAT)
 }
 # ratio -> macro suffix; ops -> macro infix.
 #
@@ -50,8 +50,7 @@ RATIO = {2: "Two", 4: "Four", 8: "Eight", 32: "ThirtyTwo", 128: "OTE"}
 # correct one; printing a kappa=64 arm beside it invites a reviewer to argue
 # about a bandwidth nobody deploys, which is a target and not a result. Its
 # rows stay on disk and are ignored here by omission.
-OPS = {"kvzip": "Kvzip", "twotier": "Vk", "dig_r64": "Sel", "imp_random": "Rnd",
-       "kmeans_m": "Merge"}
+OPS = {"kvzip": "Kvzip", "twotier": "Vk", "dig_r64": "Sel", "imp_random": "Rnd"}
 
 
 def wilson(k, n, z=1.96):
