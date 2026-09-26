@@ -368,11 +368,25 @@ def make_op(name, m, frac=0.25):
         keep[imp.to(C.device).topk(min(m - m // 2, T2)).indices] = True
         return C, keep
     table["h2o_recent"] = h2o_recent
-    def twotier(C):
-        mk = STATE.get("mask2d"); assert mk is not None, "ABORT twotier: cascade not computed"
-        return C, mk
-    twotier.m2t = m
-    table["twotier"] = twotier
+    def _mk_twotier(t1name):
+        """Both tiers, with tier 1 named by t1name.
+
+        The deployed selector is sigma. The others exist to answer a question
+        the shipped ablation cannot: deleting tier 2 shows tier 1 alone is not
+        enough, which is not the same as showing sigma is what tier 1 has to
+        be. Tier 2 scans every archived row whatever tier 1 kept, so if
+        certified recall carries the needles over a stride- or norm-selected
+        tier 1 as well, the salience channel is not what the deployed system
+        rests on."""
+        def f(C):
+            mk = STATE.get("mask2d"); assert mk is not None, "ABORT twotier: cascade not computed"
+            return C, mk
+        f.m2t = m
+        f.t1 = t1name
+        return f
+    table["twotier"] = _mk_twotier("sigma")
+    for _t1 in ("stride", "norm", "recent", "random"):
+        table[f"twotier_{_t1}"] = _mk_twotier(_t1)
     for rr in (4, 8, 16, 32, 64):
         def mkr(rr=rr):
             def f(C):
@@ -535,6 +549,116 @@ def patched_forward(self, hidden_states, attention_mask=None, past_key_values=No
         ops = op if isinstance(op, (list, tuple)) else [op] * b
         assert len(ops) == b, f"{len(ops)} ops for batch {b}"
         C = torch.cat([c, k_rot], -1)                        # (b, s, 576)
+        if STATE.get("need_union"):
+            # The rotation ablation the union statistic needs.
+            #
+            # The paper's quantitative support for "winner sets sweep with
+            # position under RoPE" compares Kimi Linear against DeepSeek-V2:
+            # two architectures, widths, corpora and recipes, so it measures
+            # their difference and not rotation's. This is the controlled
+            # version. One checkpoint, one prefill, one set of cached rows,
+            # one set of absorbed queries; the ONLY thing that changes is
+            # whether the decoupled branch is rotated before scoring.
+            #
+            # Under NoPE a row's score is a fixed bilinear form, so the rows a
+            # query ranks highest do not move with the query's position and
+            # the union of per-step winner sets stays near one step's worth.
+            # Under RoPE the branch term becomes q_r . R_{u-t} r_u, which is a
+            # different form at every t, so the union grows toward the whole
+            # context. The ratio of the two unions is the dividend, measured
+            # rather than inferred.
+            import math as _m
+            Tc = STATE["T"]
+            sc_ = getattr(self, "softmax_scale", None) or getattr(self, "scaling")
+            Hh = self.num_heads; dn = self.qk_nope_head_dim
+            Wb_ = self.kv_b_proj.weight.view(Hh, -1, self.kv_lora_rank)[:, :dn, :]
+            qe_all = torch.cat([torch.einsum('hsd,hdc->hsc', q_pass[0].float(), Wb_.float()),
+                                q_rot[0].float()], -1)                 # (H, s, 576)
+            Cf = torch.cat([c, k_rot], -1)[0, :Tc].float()             # (Tc, 576)
+            dr = self.qk_rope_head_dim
+            K = STATE["union_k"]; NQ = STATE["union_steps"]
+            # the last NQ prefix positions stand in for consecutive decode steps
+            ts = list(range(Tc - NQ, Tc))
+            theta = getattr(self.config, "rope_theta", 10000.0) if hasattr(self, "config") else 10000.0
+            j = torch.arange(dr // 2, device=Cf.device, dtype=torch.float32)
+            inv = theta ** (-2.0 * j / dr)                              # (dr/2,)
+            pos = torch.arange(Tc, device=Cf.device, dtype=torch.float32)
+            rot_x = Cf[:, -dr:][:, 0::2]; rot_y = Cf[:, -dr:][:, 1::2]  # (Tc, dr/2)
+            base_nope = qe_all[:, :, :].to(Cf.dtype)
+            uni = {"nope": [], "rope": []}
+            for t in ts:
+                q = base_nope[:, t, :]                                  # (H, 576)
+                s_nope = (q @ Cf[:t].T) * sc_                           # (H, t)
+                # rope counterfactual: rotate each row's branch by (u - t)
+                ang = inv[None, :] * (pos[:t, None] - float(t))         # (t, dr/2)
+                cs, sn = torch.cos(ang), torch.sin(ang)
+                rx = rot_x[:t] * cs - rot_y[:t] * sn
+                ry = rot_x[:t] * sn + rot_y[:t] * cs
+                rr = torch.empty_like(Cf[:t, -dr:])
+                rr[:, 0::2] = rx; rr[:, 1::2] = ry
+                s_rope = ((q[:, :-dr] @ Cf[:t, :-dr].T) + (q[:, -dr:] @ rr.T)) * sc_
+                for nm, sc2 in (("nope", s_nope), ("rope", s_rope)):
+                    uni[nm].append(sc2.topk(min(K, sc2.shape[1]), dim=-1).indices)
+            for nm in ("nope", "rope"):
+                stk = torch.stack(uni[nm], 1)                           # (H, NQ, K)
+                per_head = [len(torch.unique(stk[h])) for h in range(Hh)]
+                STATE.setdefault("union_rows", []).append({
+                    "layer": self.layer_idx, "pe": nm, "T": Tc, "K": K,
+                    "steps": NQ,
+                    "union_frac": float(sum(per_head) / len(per_head)) / Tc,
+                    "union_over_one_step": float(sum(per_head) / len(per_head)) / K,
+                })
+            # The closed form, measured. The proposition says a query-position-
+            # independent rank-r projector must bound the residual of EVERY
+            # rotated version of a row, so the object it can compress is the
+            # offset-averaged second moment M, not the row Gram. M is block
+            # diagonal (the cross block is A^T E[R b] = 0), and its rotated
+            # block is a direct sum of 2x2 scalar blocks, so ITS EIGENVALUES
+            # COME IN PAIRS and the optimal subspace is a union of whole RoPE
+            # planes: chosen by the frequency energies alone, never by the key
+            # directions. Flat frequency energy gives back the trivial 1 - r/d.
+            #
+            # Three numbers per layer, on the same rows:
+            #   nope       the deployed residual, Eckart-Young optimal
+            #   rope_emp   the best rank-r residual over the ACTUAL rotated
+            #              rows at the sampled offsets, which is what a real
+            #              context of this length imposes
+            #   rope_torus the closed form above
+            # rope_emp is the honest one: the low RoPE frequencies barely turn
+            # over a few thousand positions, so equidistribution is a limit the
+            # context may not have reached, and a claim resting on the limit
+            # alone would be claiming more than the run shows.
+            R_ = STATE["union_r"]
+            tot_ = float((Cf * Cf).sum())
+            ev_ = torch.linalg.eigvalsh((Cf.T @ Cf).double()).flip(0)
+            res_nope = float(1.0 - ev_[:R_].sum() / ev_.sum())
+            M_ = torch.zeros(Cf.shape[1], Cf.shape[1], dtype=torch.float64,
+                             device=Cf.device)
+            for t in ts:
+                ang = inv[None, :] * (pos[:, None] - float(t))
+                cs, sn = torch.cos(ang), torch.sin(ang)
+                rr = torch.empty_like(Cf[:, -dr:])
+                rr[:, 0::2] = rot_x * cs - rot_y * sn
+                rr[:, 1::2] = rot_x * sn + rot_y * cs
+                Ct = torch.cat([Cf[:, :-dr], rr], -1).double()
+                M_ += Ct.T @ Ct
+            evm = torch.linalg.eigvalsh(M_).flip(0)
+            res_rope_emp = float(1.0 - evm[:R_].sum() / evm.sum())
+            # closed form: eig(A^T A) union {E_j/2, E_j/2}
+            A_ = Cf[:, :-dr].double()
+            ea = torch.linalg.eigvalsh(A_.T @ A_)
+            Ej = (Cf[:, -dr:].double() ** 2).reshape(Cf.shape[0], dr // 2, 2).sum((0, 2))
+            evt = torch.cat([ea, (Ej / 2).repeat_interleave(2)]).sort(descending=True).values
+            res_rope_torus = float(1.0 - evt[:R_].sum() / evt.sum())
+            STATE.setdefault("spectrum_rows", []).append({
+                "layer": self.layer_idx, "T": Tc, "r": R_, "d": Cf.shape[1],
+                "d_rot": dr, "steps": NQ, "energy": tot_,
+                "res_nope": res_nope, "res_rope_emp": res_rope_emp,
+                "res_rope_torus": res_rope_torus,
+                "res_trivial": 1.0 - R_ / Cf.shape[1],
+            })
+            del qe_all, Cf, uni, M_
+
         if STATE.get("need_twotier") and getattr(
                 (op if not isinstance(op, (list, tuple)) else op[0]), "m2t", None) is not None:
             # PREREG19 Part A: self-calibrated cascade over the archive. All of
@@ -543,18 +667,35 @@ def patched_forward(self, hidden_states, attention_mask=None, past_key_values=No
             # basis from those queries. Nothing references the future.
             assert b == 1
             Tc = STATE["T"]
-            m_ = getattr((op if not isinstance(op, (list, tuple)) else op[0]), "m2t")
+            op_ = op if not isinstance(op, (list, tuple)) else op[0]
+            m_ = getattr(op_, "m2t")
             sc_ = getattr(self, "softmax_scale", None) or getattr(self, "scaling")
             Hh = self.num_heads; dn = self.qk_nope_head_dim
             Wb_ = self.kv_b_proj.weight.view(Hh, -1, self.kv_lora_rank)[:, :dn, :]
             qe_all = torch.cat([torch.einsum('hsd,hdc->hsc', q_pass[0].float(), Wb_.float()),
                                 q_rot[0].float()], -1)               # (H, s, 576)
             Cf = torch.cat([c, k_rot], -1)[0, :Tc].float()
-            rr_ = Cf[:, -64:]
-            Fq = torch.fft.rfft(rr_, dim=0); Fq[16:] = 0
-            sig = (rr_ - torch.fft.irfft(Fq, n=Tc, dim=0)).norm(dim=-1)
+            t1_ = getattr(op_, "t1", "sigma")
+            k_ = min(m_, Tc)
+            if t1_ == "sigma":
+                rr_ = Cf[:, -64:]
+                Fq = torch.fft.rfft(rr_, dim=0); Fq[16:] = 0
+                sig = (rr_ - torch.fft.irfft(Fq, n=Tc, dim=0)).norm(dim=-1)
+                sel_ = sig.topk(k_).indices
+            elif t1_ == "norm":                 # the branch, unfiltered
+                sel_ = Cf[:, -64:].norm(dim=-1).topk(k_).indices
+            elif t1_ == "stride":               # uniform, content-blind
+                sel_ = torch.arange(0, Tc, max(1, Tc // max(k_, 1)),
+                                    device=Cf.device)[:k_]
+            elif t1_ == "recent":               # StreamingLLM's tier 1
+                sel_ = torch.arange(Tc - k_, Tc, device=Cf.device)
+            elif t1_ == "random":
+                g_ = torch.Generator(device=Cf.device); g_.manual_seed(0)
+                sel_ = torch.randperm(Tc, generator=g_, device=Cf.device)[:k_]
+            else:
+                raise AssertionError(f"unknown tier-1 selector {t1_}")
             keep0 = torch.zeros(Tc, dtype=torch.bool, device=Cf.device)
-            keep0[sig.topk(min(m_, Tc)).indices] = True
+            keep0[sel_] = True
             arch = (~keep0).nonzero().flatten()
             qe = qe_all.permute(1, 0, 2).reshape(-1, 576)            # (s*H, 576)
             skept = (qe @ Cf[keep0].T) * sc_
@@ -588,14 +729,33 @@ def patched_forward(self, hidden_states, attention_mask=None, past_key_values=No
                 thr_g = float("-inf")                                 # gate off: scan always
             posc = torch.searchsorted(arch.contiguous(), tgtc)
             zp = 8.0
+            conf_rec_ = None
             for z in (0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0):
                 if int(hardc.sum()) == 0:
                     zp = 2.0; break
                 fire_c = (idxs[calrows][hardc] + z * scale_[calrows][hardc])                     > max1[calrows][hardc][:, None]
                 rec = float(fire_c.gather(1, posc[hardc][:, None]).float().mean())
                 if rec >= 0.90:
-                    zp = z; break
+                    zp = z; conf_rec_ = rec; break
             gate = ent > thr_g
+            # Telemetry must not be able to fail the measurement it annotates:
+            # this allocates one more tensor the size of idxs, and a run that
+            # OOMs here would lose the arm rather than the statistic.
+            # The SOUND constant is not 1. scale_ carries the Cauchy-Schwarz
+            # bound already divided by sqrt(d_c - r) (Eq. 7), so z is measured
+            # in those units and the sound test is z = sqrt(d_c - r), about
+            # 21.2 here. Using z = 1 understates the firing rate by that factor
+            # and would have put 4% in the paper where the sound bound fires on
+            # nearly every row.
+            z_sound_ = (512 - 64) ** 0.5
+            try:
+                sound_fire_ = ((idxs + z_sound_ * scale_) > max1[:, None]).any(1)
+                sound_rate_ = float(sound_fire_.float().mean())
+                del sound_fire_
+            except torch.cuda.OutOfMemoryError:
+                sound_rate_ = None
+            trig_ = {"sound_rate": sound_rate_,
+                     "conf_rec": float(conf_rec_) if conf_rec_ is not None else None}
             score = idxs + zp * scale_
             fire = (score > max1[:, None]) & gate[:, None]
             topj = score.topk(min(16, score.shape[1]), dim=-1).indices
@@ -609,7 +769,10 @@ def patched_forward(self, hidden_states, attention_mask=None, past_key_values=No
             STATE["mask2d"] = mask2d
             STATE["tt_stats"] = {"gate_off": thr_g == float("-inf"), "zp": zp,
                                  "gate_rate": float(gate.float().mean()),
-                                 "fetch_per_q": float(fetch_q.sum(1).float().mean())}
+                                 "fetch_per_q": float(fetch_q.sum(1).float().mean()),
+                                 **trig_}
+            STATE.setdefault("trig_rows", []).append(
+                {"layer": self.layer_idx, "rho": 1.0 / max(1, Tc // max(m_, 1)), **trig_})
             print(f"[tt] layer={self.layer_idx} gate_off={STATE['tt_stats']['gate_off']} "
                   f"zp={zp:.1f} gate_rate={STATE['tt_stats']['gate_rate']:.3f} "
                   f"fetch/q={STATE['tt_stats']['fetch_per_q']:.1f} "
@@ -774,6 +937,13 @@ def main():
     ap.add_argument("--eastats", default="", help="per-layer query mu/sigma")
     ap.add_argument("--pca", default="", help="offline PCA basis per layer")
     ap.add_argument("--tbasis", default="", help="offline temporal span basis")
+    ap.add_argument("--union", action="store_true",
+                    help="rotation ablation: winner-set union with and without "
+                         "rotating the decoupled branch, same rows and queries")
+    ap.add_argument("--union-k", type=int, default=64)
+    ap.add_argument("--union-steps", type=int, default=32)
+    ap.add_argument("--union-r", type=int, default=64,
+                    help="sketch rank the residual is measured at")
     ap.add_argument("--rhos", default="8,32,128",
                     help="comma list of rho DENOMINATORS; used to cost-match "
                          "uniform budgets against per-branch splits")
@@ -959,7 +1129,12 @@ def main():
            ("fft", "fft", 0), ("recent", "recent", 0), ("stride", "stride", 0)]
     if a.ops:
         STATE["need_imp"] = any(o.split("@")[0] in ("h2o", "snapkv", "h2o_recent") for o in a.ops.split(","))
-        STATE["need_twotier"] = any(o.split("@")[0] == "twotier" for o in a.ops.split(","))
+        STATE["need_union"] = a.union
+        STATE["union_k"] = a.union_k
+        STATE["union_steps"] = a.union_steps
+        STATE["union_r"] = a.union_r
+        STATE["need_twotier"] = any(o.split("@")[0].startswith("twotier")
+                                    for o in a.ops.split(","))
         OPS = [(o, o.split("@")[0], float(o.split("@")[1]) if "@" in o else 0)
                for o in a.ops.split(",")]
     res = []
@@ -1057,7 +1232,15 @@ def main():
     json.dump({"arch": a.arch, "L": L, "T": T, "n_docs": a.n_docs,
                "needle_trials": a.needle_trials, "ce_unpatched": ce_unpatched,
                "gate_identity_dCE": ce_id - ce_unpatched,
-               "args": {k: v for k, v in sorted(vars(a).items())}, "rows": res},
+               "args": {k: v for k, v in sorted(vars(a).items())}, "rows": res,
+               # Per (layer, rho) trigger telemetry: the sound Cauchy-Schwarz
+               # firing rate, and the conformal trigger's recall at the z the
+               # calibration chose. The paper quotes both; the script that
+               # produced them is in no surviving tree, and every quantity they
+               # need was already being computed in the cascade.
+               "trigger": STATE.get("trig_rows", []),
+               "union": STATE.get("union_rows", []),
+               "spectrum": STATE.get("spectrum_rows", [])},
               open(a.out, "w"))
     print(f"[done] {len(res)} rows -> {a.out}")
 
