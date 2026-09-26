@@ -5,7 +5,7 @@ This directory holds two figures and one archive:
 | | |
 |---|---|
 | `fig_latency_curve.png`, `fig_throughput.png` | the serving figures, kept outside the archive so they render in the browser |
-| `results.tar.xz` | every run record behind every number in the paper (7.6 MB, tracked with git LFS) |
+| `results.tar.xz` | every run record behind every number in the paper (10.6 MB, tracked with git LFS) |
 
 ## Why the data is reduced, and what that cost
 
@@ -53,7 +53,7 @@ Reproduce that check with:
 
 ```bash
 tar xf results/results.tar.xz -C results/
-python mexp/glm53/stream_curve.py --line kimi --prefill 4096 \
+python mexp/exp/stream_curve.py --line kimi --prefill 4096 \
        --output-len 258048 --arms baseline,vestigekv
 ```
 
@@ -76,31 +76,13 @@ Two categories are not in the archive and are not reducible to summaries:
   tier 1's top-3% set that survives notching it out, per request and per
   condition. That is what the spectral appendix claims; the dumps themselves
   come back from the registered `sidecardump*` jobs.
-- **Raw RULER generations** (`samples_*.json`, 4.8 GB). The reduction removed
-  these on the reasoning that no paper number depended on them —
-  `make_ruler_numbers.py` read only the scored `results_*.json`, 0.2 MB in
-  total and in the archive.
-
-  **That reasoning has since been falsified, and the cost is unrecoverable.**
-  The scored records give a per-cell rate and nothing else, so a comparison
-  built on them can only treat the two arms as independent runs. They are not:
-  both answer the *same* generated items under the same seed, and the paired
-  vector — which lives only in the generations — is the correct object. On the
-  128k/256k line, where both arms' generations survive, the paired band is
-  0.035 against the unpaired 0.059, the difference between resolving that
-  line's gap and calling it noise (`\rulerKLPaired*`, emitted by
-  `make_ruler_numbers.py`).
-
-  The n=50 grid — the paper's primary quality line — cannot be analysed that
-  way, because its generations were in this deletion. Its bands are unpaired
-  and therefore conservative, which flatters this paper: a band too wide lets
-  a task read as "within noise", and the localisation claim is a claim about
-  which tasks do. `ruler_qa_squad` (−0.037 against an unpaired band of 0.078)
-  is the cell that reading most affects.
-
-  **Keep `samples_*.json` for any arm the paper compares.** They are still
-  excluded from `results.tar.xz` for size, but they must survive on disk; the
-  archive is not the retention policy.
+- **Raw RULER generations** (`samples_*.json`, 4.8 GB). No paper number depends
+  on them — `make_ruler_numbers.py` reads only the scored `results_*.json`,
+  which are 0.2 MB in total and *are* in the archive. The generations would only
+  be needed to re-score from raw text. The paired analysis the paper reports
+  does not need them either: the per-item scores both arms produced on the same
+  generated items survive in `kimi/ruler/paired_scores.json`, which is the
+  object the sign-flip band is computed from.
 
 ### One thing was lost, not reduced
 
@@ -113,12 +95,18 @@ regime, and the recall-margin sweep).
 The values themselves are intact -- the generator had already extracted them
 into the committed macro file -- and they now live in
 `kimi/vkstats_extract.json`, which the generator reads when the log is absent,
-so the archive still regenerates all 537 macros byte-for-byte. But the raw logs
+so the archive still regenerates every generated macro byte-for-byte. But the raw logs
 behind those nine numbers are gone and cannot be re-derived from this archive;
 re-running the jobs named in `EXPERIMENTS.md` regenerates them. This is recorded
 here rather than quietly patched over, because the difference between "reduced
 to its exact statistics" and "lost, with the statistics preserved" matters when
 someone is deciding how far to trust a number.
+
+A second record was lost later, after this archive's carrier was frozen:
+`harness_merge_8192.json`, the lossy-merge baseline row of the head-to-head
+table, existed only on the experiment machine that failed on 2026-09-26. Its
+row is withdrawn from the paper rather than printed from memory; see
+`QUARANTINE.md` for the full note and the recovery path.
 
 Diagnostic dumps from closed investigations (`debug/`, `bisect/`, `profile/`,
 `memtrace/`) and runs superseded by a later arm are also gone.
@@ -127,9 +115,10 @@ Diagnostic dumps from closed investigations (`debug/`, `bisect/`, `profile/`,
 
 ```
 kimi/ruler/results_*.json          scored RULER cells, 13 tasks x 5 lengths
+kimi/ruler/paired_scores.json      per-item scores for the paired bands
 kimi/longbench2/                   LongBench v2 records and per-question samples
+kimi/longbench1/                   LongBench v1 summarisation predictions
 kimi/latency_stream_*.jsonl        reduced streaming latency records
-glm53/ruler/results_*.json         the GLM-5.3 line
 throughput_*.jsonl                 reduced throughput records, bs 2-32
 latency_stream_4k-512k_*.jsonl     reduced base-model streaming records
 ```

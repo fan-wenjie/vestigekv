@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # Rebuild the serving engine used for every measurement in the paper:
-# upstream sglang at a pinned commit, plus the VestigeKV patch.
+# upstream sglang at a pinned tag, plus the VestigeKV patch.
 #
 # The archive ships no vendored engine. It ships this script and one patch, so
 # what you build is verifiably upstream code plus a diff you can read
-# (engine/vestigekv.patch, 11105 added lines across 30 files, none deleted:
-# outside its own package the change is a single insertion hunk per file).
+# (engine/vestigekv.patch; its statistics are in engine/README.md).
 #
 #   ./setup_engine.sh [target-dir]     # default: ./sglang
 #
@@ -15,41 +14,33 @@
 
 set -euo pipefail
 
-UPSTREAM_URL="https://github.com/sgl-project/sglang.git"
-UPSTREAM_BASE="94602c9c2b7cbdb8efd5c52802dac6a1c180089e"  # the v0.5.20 tag
+TAG="v0.5.20"
+TARBALL_URL="https://github.com/sgl-project/sglang/archive/refs/tags/${TAG}.tar.gz"
 PATCH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/vestigekv.patch"
 TARGET="${1:-$(pwd)/sglang}"
 
 [ -f "$PATCH" ] || { echo "patch not found: $PATCH" >&2; exit 1; }
 
 if [ -e "$TARGET" ]; then
-  echo "target already exists: $TARGET" >&2
+  echo "target already exists: $TARGET"
   echo "remove it or pass another directory; refusing to patch over unknown state." >&2
   exit 1
 fi
 
-echo "==> fetching sglang $UPSTREAM_BASE from $UPSTREAM_URL"
-# A blobless partial clone: the full history of this repository is large and
-# none of it is needed except one commit's tree.
-git clone --filter=blob:none --no-checkout "$UPSTREAM_URL" "$TARGET"
-git -C "$TARGET" fetch --depth 1 origin "$UPSTREAM_BASE"
-git -C "$TARGET" checkout --detach "$UPSTREAM_BASE"
-
-echo "==> verifying the base commit"
-have="$(git -C "$TARGET" rev-parse HEAD)"
-[ "$have" = "$UPSTREAM_BASE" ] || { echo "base mismatch: $have" >&2; exit 1; }
-echo "    $have  $(git -C "$TARGET" log -1 --format=%s)"
+echo "==> fetching sglang $TAG source tarball"
+# A release tarball, not a clone: no history is needed, and this works where
+# git access to github.com is proxied but plain HTTPS is not.
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+curl -fL "$TARBALL_URL" -o "$TMP/sglang.tar.gz"
+tar -xzf "$TMP/sglang.tar.gz" -C "$TMP"
+mv "$TMP/sglang-${TAG#v}" "$TARGET"
 
 echo "==> checking the patch applies cleanly"
-git -C "$TARGET" apply --check --whitespace=nowarn "$PATCH"
+patch -d "$TARGET" -p1 --dry-run < "$PATCH"
 
 echo "==> applying"
-git -C "$TARGET" apply --whitespace=nowarn "$PATCH"
-
-echo "==> result"
-git -C "$TARGET" -c core.fileMode=false status --porcelain | awk '{print "    " $0}' | head -40
-n=$(git -C "$TARGET" status --porcelain | wc -l)
-echo "    $n files changed"
+patch -d "$TARGET" -p1 < "$PATCH"
 
 cat <<EOF
 

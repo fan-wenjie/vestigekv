@@ -39,7 +39,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Upstream base the patch applies to.
 UPSTREAM_URL = "https://github.com/sgl-project/sglang.git"
 UPSTREAM_BASE = "94602c9c2b7cbdb8efd5c52802dac6a1c180089e"  # v0.5.20
-ENGINE_BRANCH = "vestigekv"
+ENGINE_BRANCH = "origin/vestigekv"
 
 # --- what goes in -----------------------------------------------------------
 # Directory or file -> why it is here. Anything not listed is left out, so a new

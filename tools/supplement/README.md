@@ -1,7 +1,7 @@
 # VestigeKV — supplementary archive
 
-Code, run records and pre-registrations for *VestigeKV: The NoPE-MLA KV Cache
-Carries Its Own Eviction Signal in a Vestigial Branch*.
+Code, run records and pre-registrations for *VestigeKV: Query-Independent
+Sparse Attention with Certified Recall for NoPE-MLA Caches*.
 
 The claim this archive supports is narrow and checkable: on a NoPE-MLA model the
 cache already contains a query-independent eviction signal, so a serving-path KV
@@ -17,7 +17,7 @@ cd engine && ./setup_engine.sh ~/sglang && cd ..
 export PYTHONPATH="$HOME/sglang/python:$PYTHONPATH"
 
 # 2. Unpack the run records.
-unzip -o results/results.zip -d results/
+tar xJf results/results.tar.xz -C results/
 
 # 3. Regenerate every numeric macro in the paper from those records.
 python mexp/kimi/make_ruler_numbers.py
@@ -32,12 +32,12 @@ Every figure in the text is a macro generated from a run record that is in here.
 
 | path | what it is |
 |---|---|
-| `engine/setup_engine.sh` | fetches sglang at the pinned upstream commit and applies the patch |
-| `engine/vestigekv.patch` | the whole method: 30 files, 11105 lines added, none deleted |
+| `engine/setup_engine.sh` | downloads the sglang v0.5.20 source tarball and applies the patch |
+| `engine/vestigekv.patch` | the whole method: 40 files, 13342 lines added against 42 removed |
 | `EXPERIMENTS.md` | every experiment command, registered before the run that produced it |
 | `mexp/` | experiment drivers, the pre-registrations, and the macro generators |
 | `harness/` | the measurement harness and the gates it refuses to run without |
-| `results/results.zip` | every run record behind every number (see `results/README.md`) |
+| `results/results.tar.xz` | every run record behind every number (see `results/README.md`) |
 | `results/fig_*.png` | the serving figures |
 | `tools/` | utilities, including the stream reducer and this archive's build script |
 | `docs/` | technical notes the paper points to |
@@ -46,11 +46,13 @@ Every figure in the text is a macro generated from a run record that is in here.
 ## The engine is a patch, not a fork
 
 The archive ships no vendored engine. `engine/vestigekv.patch` is a plain `git
-diff` against sglang commit `94602c9c2b7cbdb8efd5c52802dac6a1c180089e` (v0.5.20), fetched
-by `setup_engine.sh` from the official repository. So what you build is upstream
-code plus a diff you can read end to end, and the diff removes nothing: outside
-its own package the method is one insertion hunk per file, no existing line
-deleted anywhere in the tree.
+diff` against the sglang v0.5.20 release tag, which `setup_engine.sh` downloads
+as a source tarball from the official repository. So what you build is upstream
+code plus a diff you can read end to end. Outside its own package the change
+touches five shared files — the backend registration branch, the server
+arguments block, a `view`→`reshape` fix the MLA KV writer needs at long
+prefill, a GSM8K test's accounting, and a spelling-checker word list — and
+every one of those hunks is a modification, not a removal.
 
 Do **not** `pip install` the resulting tree. The harness runs it from source via
 `PYTHONPATH`; an installed copy shadows the tree you just patched, and every

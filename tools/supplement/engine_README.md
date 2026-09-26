@@ -5,8 +5,8 @@ reconstruct one exactly:
 
 | file | |
 |---|---|
-| `setup_engine.sh` | fetches upstream sglang at the pinned commit and applies the patch |
-| `vestigekv.patch` | the VestigeKV change: 30 files, 11105 lines added, none deleted |
+| `setup_engine.sh` | downloads the upstream sglang v0.5.20 source tarball and applies the patch |
+| `vestigekv.patch` | the VestigeKV change: 40 files, 13342 lines added against 42 removed |
 
 ```bash
 ./setup_engine.sh ~/sglang
@@ -21,10 +21,9 @@ a named upstream commit answers that in one file: everything VestigeKV adds is
 in `vestigekv.patch`, and everything else is upstream code you fetch yourself
 from `github.com/sgl-project/sglang`.
 
-The pinned base is `94602c9c2b7cbdb8efd5c52802dac6a1c180089e`, the v0.5.20 tag. `setup_engine.sh`
-verifies it fetched that exact commit and runs `git apply --check` before
-touching anything, so a patch that no longer applies fails loudly instead of
-half-applying.
+The pinned base is the v0.5.20 release tag. `setup_engine.sh` downloads the
+official source tarball and runs `patch --dry-run` before touching anything, so
+a patch that no longer applies fails loudly instead of half-applying.
 
 ## What the patch contains
 
@@ -43,10 +42,13 @@ test/manual/test_vestigekv_equiv.py                  equivalence against dense
 benchmark/kernels/vestigekv/                         kernel benchmarks
 ```
 
-The patch deletes nothing. The attention-backend registration the new backend
-slots into is reached by one added branch rather than by rewriting the existing
-one, so with `--attention-backend` left alone the patched tree behaves as
-upstream, which is what the equivalence test pins.
+Outside its own package the change touches five shared files: the
+attention-backend registration branch, the server-arguments block, a
+`view`→`reshape` fix in the MLA KV writer that long prefill requires, a GSM8K
+test's accounting, and a spelling-checker word list. Every hunk there is a
+modification; no upstream feature is removed, so with `--attention-backend`
+left alone the patched tree behaves as upstream, which is what the equivalence
+test pins.
 
 ## Do not install it
 
