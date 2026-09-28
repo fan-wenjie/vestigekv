@@ -1274,6 +1274,8 @@ maintained beside it --- two hand-kept copies is how they diverge:
 {"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"baseline","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"noise-dense-b","probe":false}
 {"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"noise-vk-a","probe":false}
 {"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"noise-vk-b","probe":false}
+{"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","VK_JOB":"noise-vk-cd"},"id":"noise-vk-c","probe":false}
+{"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","VK_JOB":"noise-vk-cd"},"id":"noise-vk-d","probe":false}
 ```
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl

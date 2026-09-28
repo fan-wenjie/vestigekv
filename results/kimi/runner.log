@@ -13,3 +13,27 @@
 [11:34:31] bfk-mrcr-8k-rep done rc=0 wall=79s
 [11:34:31] pack: 0 packed, 55 skipped  |  0.0 MB -> 0.0 MB (0x)
 [11:34:32] client ruler2 for bfk-r2-32k: /home/user/nemo-skills-venv/bin/ns eval --cluster=vklocal --expname=r2-bfk-r2-32k --data_dir=/home/user/ruler2-data --output_dir=/home/user/vestigekv/results/kimi/ruler2/vestigekv-bfk-r2-32k --benchmarks=ruler2.kimi-32768 --server_type=openai --server_address=http://127.0.0.1:30000/v1 --model=moonshotai/Kimi-Linear-48B-A3B-Instruct ++inference.temperature=0.0 ++skip_filled=True -> /home/user/vestigekv/results/kimi/ruler2_vestigekv_bfk-r2-32k.log
+[12:18:13] bfk-r2-32k done rc=0 wall=2622s
+[12:18:13] pack: 0 packed, 67 skipped  |  0.0 MB -> 0.0 MB (0x)
+[12:18:22] server baseline env={'CHUNK': '4096', 'CTX': '73728', 'GRAPH_BS': '1', 'MAMBA_SLOTS': '1', 'MAX_REQS': '1'} args=[] launching -> /home/user/vestigekv/results/kimi/server_baseline_noise-dense-a.log
+[12:19:22] server baseline ready: ['[2026-09-28 12:19:12 TP0] max_total_num_tokens=5103875, chunked_prefill_size=4096, max_prefill_tokens=16384, max_running_requests=1, context_len=73728, available_gpu_mem=9.47 GB'] []
+[12:19:23] prewarm: 11264-token prefill ok in 0.7s
+[12:19:23] client mrcr for noise-dense-a: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv/mexp/exp/run_mrcr.py --arm baseline --port 30000 --model moonshotai/Kimi-Linear-48B-A3B-Instruct --needles 2 --lengths 8192_16384 --n 24 --out /home/user/vestigekv/results/kimi/mrcr --tag noise-dense-a -> /home/user/vestigekv/results/kimi/mrcr_baseline_noise-dense-a.log
+[12:20:24] noise-dense-a done rc=0 wall=131s
+[12:20:24] pack: 0 packed, 67 skipped  |  0.0 MB -> 0.0 MB (0x)
+[12:20:24] client mrcr for noise-dense-b: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv/mexp/exp/run_mrcr.py --arm baseline --port 30000 --model moonshotai/Kimi-Linear-48B-A3B-Instruct --needles 2 --lengths 8192_16384 --n 24 --out /home/user/vestigekv/results/kimi/mrcr --tag noise-dense-b -> /home/user/vestigekv/results/kimi/mrcr_baseline_noise-dense-b.log
+[12:21:26] noise-dense-b done rc=0 wall=61s
+[12:21:26] pack: 0 packed, 67 skipped  |  0.0 MB -> 0.0 MB (0x)
+[12:21:33] server vestigekv env={'CHUNK': '4096', 'CTX': '73728', 'GRAPH_BS': '1', 'MAMBA_SLOTS': '1', 'MAX_REQS': '1'} args=[] launching -> /home/user/vestigekv/results/kimi/server_vestigekv_noise-vk-a.log
+[12:22:38] server vestigekv ready: ['[2026-09-28 12:22:26 TP0] max_total_num_tokens=5103875, chunked_prefill_size=4096, max_prefill_tokens=16384, max_running_requests=1, context_len=73728, available_gpu_mem=9.45 GB'] ['[2026-09-28 12:22:24 TP0] VestigeKV: recall_capacity=4096 overflow_fallback=True activation_min_tokens=0 index_rank=64 recall_margin=0.0 recall_threshold=max prefill_calibration=False rebuild_overflow_fraction=0.0 attended_splits=False entropy_margin_gain=0.0 multikey_fence_rows=0 min_hard_factor=1.0 cert_gaussian_target=0.0']
+[12:22:39] prewarm: 11264-token prefill ok in 0.9s
+[12:22:39] client mrcr for noise-vk-a: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv/mexp/exp/run_mrcr.py --arm vestigekv --port 30000 --model moonshotai/Kimi-Linear-48B-A3B-Instruct --needles 2 --lengths 8192_16384 --n 24 --out /home/user/vestigekv/results/kimi/mrcr --tag noise-vk-a -> /home/user/vestigekv/results/kimi/mrcr_vestigekv_noise-vk-a.log
+[12:23:43] noise-vk-a done rc=0 wall=137s
+[12:23:43] pack: 0 packed, 67 skipped  |  0.0 MB -> 0.0 MB (0x)
+[12:23:43] client mrcr for noise-vk-b: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv/mexp/exp/run_mrcr.py --arm vestigekv --port 30000 --model moonshotai/Kimi-Linear-48B-A3B-Instruct --needles 2 --lengths 8192_16384 --n 24 --out /home/user/vestigekv/results/kimi/mrcr --tag noise-vk-b -> /home/user/vestigekv/results/kimi/mrcr_vestigekv_noise-vk-b.log
+[12:24:50] noise-vk-b done rc=0 wall=66s
+[12:24:50] pack: 0 packed, 67 skipped  |  0.0 MB -> 0.0 MB (0x)
+[12:24:57] server vestigekv env={'CHUNK': '4096', 'CTX': '270336', 'GRAPH_BS': '1', 'MAMBA_SLOTS': '1', 'MAX_REQS': '1', 'SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY': '1', 'SGLANG_DEBUG_VESTIGEKV_STATS': '1'} args=[] launching -> /home/user/vestigekv/results/kimi/server_vestigekv_bfk-mrcr-long.log
+[12:25:52] server vestigekv ready: ['[2026-09-28 12:25:44 TP0] max_total_num_tokens=5103875, chunked_prefill_size=4096, max_prefill_tokens=16384, max_running_requests=1, context_len=270336, available_gpu_mem=9.37 GB'] ['[2026-09-28 12:25:42 TP0] VestigeKV: recall_capacity=4096 overflow_fallback=True activation_min_tokens=0 index_rank=64 recall_margin=0.0 recall_threshold=max prefill_calibration=False rebuild_overflow_fraction=0.0 attended_splits=False entropy_margin_gain=0.0 multikey_fence_rows=0 min_hard_factor=1.0 cert_gaussian_target=0.0']
+[12:25:53] prewarm: 11264-token prefill ok in 1.4s
+[12:25:53] client mrcr for bfk-mrcr-long: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv/mexp/exp/run_mrcr.py --arm vestigekv --port 30000 --model moonshotai/Kimi-Linear-48B-A3B-Instruct --needles 2 --lengths 131072_262144 --n 6 --out /home/user/vestigekv/results/kimi/mrcr --tag bfk-mrcr-long -> /home/user/vestigekv/results/kimi/mrcr_vestigekv_bfk-mrcr-long.log
