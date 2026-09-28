@@ -1309,6 +1309,10 @@ maintained beside it --- two hand-kept copies is how they diverge:
 {"args":{"concurrency":1,"input_len":131072,"num_prompts":5,"output_len":8192,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"bfk2-stream-bs1","probe":false}
 {"args":{"lengths":"8192_16384","n":8,"needles":2,"repeat":true},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"det-async","probe":false}
 {"args":{"lengths":"8192_16384","n":8,"needles":2,"repeat":true},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_SYNC_BUILD":"1"},"id":"det-sync","probe":false}
+{"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_CAL_DTYPE":"bf16"},"id":"caldt-bf16-mrcr","probe":false}
+{"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_CAL_DTYPE":"fp16"},"id":"caldt-fp16-mrcr","probe":false}
+{"args":{"lengths":"65536","n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","SGLANG_DEBUG_VESTIGEKV_CAL_DTYPE":"bf16","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"caldt-bf16-ruler","probe":false}
+{"args":{"lengths":"65536","n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","SGLANG_DEBUG_VESTIGEKV_CAL_DTYPE":"fp16","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"caldt-fp16-ruler","probe":false}
 ```
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl
