@@ -143,6 +143,9 @@ def main():
     ap.add_argument("--n", type=int, default=24, help="samples per bin")
     ap.add_argument("--out", required=True)
     ap.add_argument("--tag", default="")
+    ap.add_argument("--repeat", action="store_true",
+                    help="issue each request twice and record whether the two "
+                         "responses agree, to locate nondeterminism")
     ap.add_argument("--timeout", type=int, default=1800)
     a = ap.parse_args()
 
@@ -184,6 +187,17 @@ def main():
             except (urllib.error.URLError, OSError) as e:
                 raise SystemExit(f"ABORT: request failed on {b} sample {i}: {e}")
             text = clean(text)
+            # Same prompt, same server, back to back. Two runs of this client
+            # disagree on 20+ of 24 responses; that says nothing about WHERE
+            # the disagreement comes from, because the two runs differ in
+            # server instance, in what ran before, and in every step's timing
+            # at once. Issuing the request twice in place holds all three
+            # fixed, so a disagreement here is inside one request and a match
+            # here puts the source between requests.
+            self_same = None
+            if a.repeat:
+                again, _ = complete(a.port, prompt, r["max_new_tokens"], a.timeout)
+                self_same = clean(again) == text
             s = grade(text, ans, prefix)
             has_prefix = text.startswith(prefix)
             om = ORDINAL.search(q)
@@ -197,7 +211,8 @@ def main():
             rows_out.append({"bin": b, "i": i, "score": s, "prefix_ok": has_prefix,
                              "ratio": ratio, "asked": asked,
                              "prompt_tokens": usage.get("prompt_tokens"),
-                             "completion_tokens": usage.get("completion_tokens")})
+                             "completion_tokens": usage.get("completion_tokens"),
+                             "self_same": self_same})
             samples.append({"bin": b, "i": i, "prefix": prefix,
                             "response": text, "answer": ans})
             if (i + 1) % 8 == 0:
@@ -214,6 +229,9 @@ def main():
             "n": len(v),
             "score": statistics.mean(x["score"] for x in v),
             "prefix_rate": statistics.mean(1.0 if x["prefix_ok"] else 0.0 for x in v),
+            "self_repeat_rate": (
+                statistics.mean(1.0 if x["self_same"] else 0.0 for x in v)
+                if any(x["self_same"] is not None for x in v) else None),
             "ratio_given_prefix": (
                 statistics.mean(x["ratio"] for x in v if x["prefix_ok"])
                 if any(x["prefix_ok"] for x in v) else None),
@@ -226,9 +244,11 @@ def main():
     print(f"\nwrote {rec_path}")
     for b, v in by_bin.items():
         rg = v["ratio_given_prefix"]
+        sr = v["self_repeat_rate"]
         print(f"  {b:>16}  n={v['n']:<3} score={v['score']:.3f}  "
               f"prefix={v['prefix_rate']:.2f}  "
-              f"ratio|prefix={'n/a' if rg is None else f'{rg:.3f}'}")
+              f"ratio|prefix={'n/a' if rg is None else f'{rg:.3f}'}"
+              + ("" if sr is None else f"  self_repeat={sr:.3f}"))
     return 0
 
 

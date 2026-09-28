@@ -314,6 +314,8 @@ def run_client(job, port):
         # same results_<arm>_<n>needle.json and the second silently replaces
         # the first. The ruler client earned that lesson on 2026-09-21.
         cmd += ["--tag", job["id"]]
+        if args.get("repeat"):
+            cmd += ["--repeat"]
         out = os.path.join(RESULTS, f"mrcr_{arm}_{job['id']}.log")
     elif client == "needle":
         cmd = [PY, os.path.join(ROOT, "mexp", "exp", "needle.py"), str(args.get("reps", 330)), port]
