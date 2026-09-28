@@ -63,24 +63,30 @@ No macro in the paper cited any file below; deleting them changes no number.
 Also removed from results/results.zip on rebuild: 35 entries matching
 `latency_stream_*` (5.6 MB of 31.6 MB uncompressed).
 
-# Lost, not quarantined: harness_merge_8192.json (2026-09-26)
+# Reported lost, found archived: harness_merge_8192.json (2026-09-26)
 
 The lossy-merge baseline record (24 trials per cell at one seed, k-means in
 key space at k equal to the budget, run alongside the floor and the
-matched-budget eviction arm as its own controls) was never archived: it
-existed only on the experiment machine, which failed on 2026-09-26 with data
-loss, one day after the run. It is not in this tree, not in
-results/results.tar.xz, and not in any commit.
+matched-budget eviction arm as its own controls) was withdrawn on 2026-09-26
+as lost: the experiment machine failed that day, one day after the run, and
+the record was believed never to have been archived.
 
-The paper's rule is that every printed number regenerates from an archived
-record, so the merge row is WITHDRAWN from Table tab:kvzip and its paragraph
-removed, rather than printed from memory. The five \kvzMerge* macros last
-read 0.79 / 0.33 / 0.00 / 0.00 / 0.00 at 2x/4x/8x/32x/128x; they are kept
-only in the paper repository's git history (commit 705c8aa), not in the
-printed draft. make_kvzip_numbers.py no longer lists the record, so a
-hand-kept macro cannot outlive it.
+**It had been archived.** results/results.tar.xz was packed at 02:07 that
+morning, before the failure, and the record is inside it. Extracted on
+2026-09-28 it is intact -- kimi_instruct, L=8192, seed 0, ops
+kmeans_m/dig_r64/imp_random, 24 needle trials in each of five ratios -- and
+restoring it to results/ reproduces kvzip_numbers.tex byte for byte, 29 macros
+over 25 cells, with the generator's control check passing on all five records.
+The five \kvzMerge* macros read 0.79 / 0.33 / 0.00 / 0.00 / 0.00 at
+2x/4x/8x/32x/128x, the same values this file recorded when it withdrew them,
+which confirms the identity of the run independently of the byte comparison.
 
-If the machine is recovered, restore the record to results/, re-add the
-RUNS/OPS entries, and revert the paper edit; the row's prose is in the same
-commit.
+The row is restored to Table tab:kvzip with its paragraph, the RUNS/OPS
+entries are back in make_kvzip_numbers.py, and the five records live in
+results/ rather than only in the tarball.
+
+What went wrong was the check, not the data. "Lost" was concluded from the
+machine's failure without opening the archive that had been written before it.
+An archive is only evidence of loss once it has been searched: before
+recording anything as lost here, list the tarball.
 
