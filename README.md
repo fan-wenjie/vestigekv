@@ -1269,6 +1269,11 @@ maintained beside it --- two hand-kept copies is how they diverge:
 {"args":{"lengths":"32768_65536","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"bfk-mrcr-mid","probe":false}
 {"args":{"n":1209,"shots":64},"arm":"vestigekv","client":"gsm8k","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"bfk-gsm8k","probe":false}
 {"args":{"arch":"kimi_instruct","gpu_expert_layers":18,"n_docs":0,"needle_trials":1,"ops":"twotier","rhos":"32","seed":0,"seq_len":8192,"union":true,"union_k":64,"union_r":64,"union_steps":8},"arm":"vestigekv","client":"harness","env":{},"id":"branchfilter-8k-r2","probe":false}
+{"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"bfk-mrcr-8k-rep","probe":false}
+{"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"baseline","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"noise-dense-a","probe":false}
+{"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"baseline","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"noise-dense-b","probe":false}
+{"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"noise-vk-a","probe":false}
+{"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"noise-vk-b","probe":false}
 ```
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl

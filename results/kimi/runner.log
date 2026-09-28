@@ -7,3 +7,9 @@
 [11:13:13] bfk-mrcr-8k done rc=0 wall=140s
 [11:13:13] pack: 0 packed, 55 skipped  |  0.0 MB -> 0.0 MB (0x)
 [11:13:13] client ruler for bfk-ruler-64k: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv/mexp/exp/run_ruler.py --arm vestigekv --port 30000 --model moonshotai/Kimi-Linear-48B-A3B-Instruct --n 10 --out /home/user/vestigekv/results/kimi/ruler --lengths 65536 --seed 0 --tag bfk-ruler-64k -> /home/user/vestigekv/results/kimi/ruler_vestigekv_bfk-ruler-64k.log
+[11:33:12] bfk-ruler-64k done rc=0 wall=1199s
+[11:33:12] pack: 0 packed, 55 skipped  |  0.0 MB -> 0.0 MB (0x)
+[11:33:12] client mrcr for bfk-mrcr-8k-rep: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv/mexp/exp/run_mrcr.py --arm vestigekv --port 30000 --model moonshotai/Kimi-Linear-48B-A3B-Instruct --needles 2 --lengths 8192_16384 --n 24 --out /home/user/vestigekv/results/kimi/mrcr --tag bfk-mrcr-8k-rep -> /home/user/vestigekv/results/kimi/mrcr_vestigekv_bfk-mrcr-8k-rep.log
+[11:34:31] bfk-mrcr-8k-rep done rc=0 wall=79s
+[11:34:31] pack: 0 packed, 55 skipped  |  0.0 MB -> 0.0 MB (0x)
+[11:34:32] client ruler2 for bfk-r2-32k: /home/user/nemo-skills-venv/bin/ns eval --cluster=vklocal --expname=r2-bfk-r2-32k --data_dir=/home/user/ruler2-data --output_dir=/home/user/vestigekv/results/kimi/ruler2/vestigekv-bfk-r2-32k --benchmarks=ruler2.kimi-32768 --server_type=openai --server_address=http://127.0.0.1:30000/v1 --model=moonshotai/Kimi-Linear-48B-A3B-Instruct ++inference.temperature=0.0 ++skip_filled=True -> /home/user/vestigekv/results/kimi/ruler2_vestigekv_bfk-r2-32k.log
