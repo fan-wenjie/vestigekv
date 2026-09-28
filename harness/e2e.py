@@ -641,6 +641,8 @@ def patched_forward(self, hidden_states, attention_mask=None, past_key_values=No
             # the deployed index (branch + rank-r content sketch), whose depth
             # is what the scan pays for today.
             Hh_ = qe_all.shape[0]
+            R_ = STATE["union_r"]      # read here: this block precedes the
+                                       # spectral block that also binds it
             sel_rows = []
             for t in ts:
                 q = qe_all[:, t, :].to(Cf.dtype)
