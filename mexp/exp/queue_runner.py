@@ -253,6 +253,23 @@ def run_client(job, port):
         if "sub_domains" in args:
             cmd += ["--sub-domains", args["sub_domains"]]
         out = os.path.join(RESULTS, f"continue_{arm}_{job['id']}.log")
+    elif client == "mrcr":
+        # MRCR v2: the adversarial case for tier 2, since the distractors are
+        # the same request answered earlier rather than merely similar rows.
+        # Named like the ruler records so the auditor and the reducers find
+        # them by arm and tag rather than by guessing.
+        cmd = [PY, os.path.join(ROOT, "mexp", "exp", "run_mrcr.py"),
+               "--arm", arm, "--port", port, "--model", MODEL,
+               "--needles", str(args.get("needles", 2)),
+               "--lengths", args.get("lengths", "8192_16384"),
+               "--n", str(args.get("n", 24)),
+               "--out", os.path.join(RESULTS, "mrcr")]
+        # Always tag. Two mrcr jobs on one arm with the same needle count --
+        # a smoke and the real run, or two bin sets -- otherwise write the
+        # same results_<arm>_<n>needle.json and the second silently replaces
+        # the first. The ruler client earned that lesson on 2026-09-21.
+        cmd += ["--tag", job["id"]]
+        out = os.path.join(RESULTS, f"mrcr_{arm}_{job['id']}.log")
     elif client == "needle":
         cmd = [PY, os.path.join(ROOT, "mexp", "exp", "needle.py"), str(args.get("reps", 330)), port]
         out = os.path.join(RESULTS, f"needle_{arm}_{job['id']}.log")

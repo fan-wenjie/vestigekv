@@ -1208,6 +1208,9 @@ This block is the experiment set: the launches this paper needs run, written
 exactly as they run. `mexp/<line>/queue.jsonl` is derived from it, not
 maintained beside it --- two hand-kept copies is how they diverge:
 
+{"args":{"lengths":"8192_16384","n":2,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"mrcrsmoke-vestigekv","probe":false}
+{"args":{"lengths":"8192_16384,32768_65536","n":24,"needles":2},"arm":"baseline","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"mrcr2-dense","probe":false}
+{"args":{"lengths":"8192_16384,32768_65536","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"mrcr2-vestigekv","probe":false}
 ```
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl
