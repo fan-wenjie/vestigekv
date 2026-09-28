@@ -1221,6 +1221,9 @@ maintained beside it --- two hand-kept copies is how they diverge:
 {"args":{"lengths":"8192_16384,32768_65536","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"mrcr2-vk-mh32","probe":false,"server_args":["--vestigekv-min-hard-factor","32.0"]}
 {"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mrcrcost-vk-m0","probe":false}
 {"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mrcrcost-vk-m42","probe":false,"server_args":["--vestigekv-recall-margin","4.2"]}
+{"args":{"lengths":"8192_16384,32768_65536","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"mrcr2-vk-eg4","probe":false,"server_args":["--vestigekv-entropy-margin-gain","4.0"]}
+{"args":{"lengths":"8192_16384,32768_65536","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"mrcr2-vk-mderiv","probe":false,"server_args":["--vestigekv-recall-margin","12.01"]}
+{"args":{"lengths":"8192_16384,32768_65536","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"mrcr2-vk-r128","probe":false,"server_args":["--vestigekv-index-rank","128"]}
 ```
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl
