@@ -70,6 +70,21 @@ def ratio(a, b):
     return float(SequenceMatcher(None, a, b).ratio())
 
 
+def lcp(a, b):
+    """Characters of verbatim agreement from the start.
+
+    The graded ratio mixes "found the right passage" with "kept copying it".
+    A response that opens correctly and then diverges has done the first and
+    failed the second, which is neither a selection error nor uniform noise,
+    and only this separates it from both.
+    """
+    n = min(len(a), len(b))
+    i = 0
+    while i < n and a[i] == b[i]:
+        i += 1
+    return i
+
+
 def classify(rec, samples, needles):
     """Per sample: prefix_ok, target ratio, best sibling ratio."""
     out = []
@@ -103,8 +118,11 @@ def classify(rec, samples, needles):
             if rr > best_r:
                 best_r, best_sib = rr, r["question"]
         om = ORD.search(src["question"])
+        full = ans.removeprefix(s["prefix"])
         out.append({"bin": s["bin"], "i": s["i"], "prefix_ok": has,
                     "target": tgt, "sibling": best_r,
+                    "copy_frac": lcp(body, full) / max(len(full), 1),
+                    "len_ratio": len(body) / max(len(full), 1),
                     "asked": om.group(1).lower() if om else None,
                     "n_siblings": len(sibs),
                     "sibling_q": best_sib})
@@ -115,7 +133,7 @@ def summarize(name, rec, cls):
     print(f"\n=== {name}  ({rec['arm']}, {rec['needles']}needle, "
           f"n={rec['n_per_bin']}/bin, {rec['wall_s']:.0f}s)")
     print(f"{'bin':>16} {'score':>7} {'prefix':>7} {'target':>7} {'sibling':>8} "
-          f"{'wrong-inst':>11} {'fidelity':>9}")
+          f"{'wrong-inst':>11} {'fidelity':>9} {'copy':>6} {'full':>7} {'len':>5}")
     for b in rec["bins"]:
         v = [c for c in cls if c["bin"] == b]
         if not v:
@@ -130,7 +148,10 @@ def summarize(name, rec, cls):
               f"{statistics.mean(c['target'] for c in v):>7.3f} "
               f"{statistics.mean(c['sibling'] for c in v):>8.3f} "
               f"{len(wrong)}/{len(v):<9} "
-              f"{statistics.mean(c['target'] for c in fid) if fid else float('nan'):>9.3f}")
+              f"{statistics.mean(c['target'] for c in fid) if fid else float('nan'):>9.3f} "
+              f"{statistics.median(c['copy_frac'] for c in v):>6.3f} "
+              f"{sum(1 for c in v if c['copy_frac'] >= 0.999)}/{len(v):<5} "
+              f"{statistics.median(c['len_ratio'] for c in v):>5.2f}")
 
 
 def main():
