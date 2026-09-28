@@ -689,10 +689,28 @@ def patched_forward(self, hidden_states, attention_mask=None, past_key_values=No
                 bt = bt - bt.mean(-1, keepdim=True); ct = ct - ct.mean(-1, keepdim=True)
                 rhos_.append(float(((bt * ct).sum(-1) /
                                     (bt.norm(dim=-1) * ct.norm(dim=-1) + 1e-30)).median()))
+            # Is there a shared linear subspace, as opposed to diffuse
+            # correlation? R2 pools all directions and would hide a few
+            # exactly-shared ones. The canonical correlations between the
+            # branch and the content answer it directly: a spectrum near 1 at
+            # the top means those directions of the content ARE linearly
+            # determined by the branch, and only the rest need a sketch.
+            def _white(X):
+                Xc = X - X.mean(0)
+                U, S, _ = torch.linalg.svd(Xc, full_matrices=False)
+                k = int((S > S[0] * 1e-6).sum())
+                return U[:, :k]
+            Ub = _white(Cf[:, -dr:].double())
+            Uc = _white(Cf[:, :-dr].double())
+            cc = torch.linalg.svdvals(Ub.T @ Uc).clamp(max=1.0)
+            cca = [float(x) for x in cc[:8]]
             STATE.setdefault("assoc_rows", []).append(
                 {"layer": self.layer_idx, "r": R_, "r2_sketch": r2,
                  "score_rho_med": float(torch.tensor(rhos_).median()),
-                 "score_rho_absmax": float(torch.tensor(rhos_).abs().max())})
+                 "score_rho_absmax": float(torch.tensor(rhos_).abs().max()),
+                 "cca_top8": cca,
+                 "cca_above_0p9": int((cc > 0.9).sum()),
+                 "cca_above_0p99": int((cc > 0.99).sum())})
             del B, S, Bc, Sc, W, resid, Vd_
 
             R_ = STATE["union_r"]
