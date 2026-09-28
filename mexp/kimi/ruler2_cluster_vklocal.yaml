@@ -1,0 +1,23 @@
+# Copy to ~/nemo-skills/cluster_configs/vklocal.yaml. See the RULER v2 section
+# of README.md for why each field is here.
+# executor: none -- execute directly, no container and no scheduler. NeMo-Skills acts only as a CLIENT: the sglang server
+# is started by mexp/kimi's own scripts on the vestigekv branch with the pinned
+# arm arguments, and ns reaches it through --server_address. Letting ns launch
+# its own server would bypass the arm's configuration and unpair it from the
+# dense baseline.
+#
+# The mounts are identity mappings because nothing runs in a container here;
+# check_mounts still requires every data and output path to be declared.
+executor: none
+containers:
+  # executor: none never starts a container; eval still reads this key by
+  # name, so it is a placeholder, not an image that gets pulled.
+  nemo-skills: local
+  sglang: local
+mounts:
+  - /home/user/.cache/huggingface:/home/user/.cache/huggingface
+  - /home/user/ruler2-data:/home/user/ruler2-data
+  - /home/user/vestigekv/results:/home/user/vestigekv/results
+  - /tmp/claude-1001:/tmp/claude-1001
+env_vars:
+  - HF_HOME=/home/user/.cache/huggingface

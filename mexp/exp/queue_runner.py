@@ -253,6 +253,29 @@ def run_client(job, port):
         if "sub_domains" in args:
             cmd += ["--sub-domains", args["sub_domains"]]
         out = os.path.join(RESULTS, f"continue_{arm}_{job['id']}.log")
+    elif client == "ruler2":
+        # RULER v2 through NeMo-Skills, which is a CLIENT only: the server is
+        # this repository's own arm script, exactly as every other Kimi arm.
+        # Procedure and every pitfall are in README.md, "RULER v2 (Kimi line)";
+        # the two that bite silently are --server_address needing the scheme
+        # AND /v1 (a bare host:port fails every request while the job exits 0)
+        # and PATH carrying the venv's bin (inner steps shell out to a bare
+        # `python`). v2 numbers never merge into a v1 table.
+        setup = args.get("setup", "kimi-32768")
+        od = os.path.join(RESULTS, "ruler2", f"{arm}-{job['id']}")
+        ns = os.path.expanduser("~/nemo-skills-venv/bin/ns")
+        env["PATH"] = os.path.expanduser("~/nemo-skills-venv/bin") + ":" + env["PATH"]
+        env["VIRTUAL_ENV"] = os.path.expanduser("~/nemo-skills-venv")
+        cmd = [ns, "eval", "--cluster=vklocal",
+               f"--expname=r2-{job['id']}",
+               "--data_dir=" + os.path.expanduser("~/ruler2-data"),
+               "--output_dir=" + od,
+               f"--benchmarks=ruler2.{setup}",
+               "--server_type=openai",
+               f"--server_address=http://127.0.0.1:{port}/v1",
+               "--model=" + MODEL,
+               "++inference.temperature=0.0", "++skip_filled=True"]
+        out = os.path.join(RESULTS, f"ruler2_{arm}_{job['id']}.log")
     elif client == "mrcr":
         # MRCR v2: the adversarial case for tier 2, since the distractors are
         # the same request answered earlier rather than merely similar rows.
