@@ -704,6 +704,27 @@ def patched_forward(self, hidden_states, attention_mask=None, past_key_values=No
             Uc = _white(Cf[:, :-dr].double())
             cc = torch.linalg.svdvals(Ub.T @ Uc).clamp(max=1.0)
             cca = [float(x) for x in cc[:8]]
+            # Sketch the RESIDUAL after the branch predicts the content,
+            # instead of the content itself. Coordinate-orthogonal is not
+            # statistically independent -- the branch explains R2 of the
+            # content -- so e = c - W r carries less energy than c and a
+            # SMALLER rank may reach the same certificate tightness. W folds
+            # into the query (one 64-dim dot, merged with the branch term), so
+            # the only per-row cost is ||e_u||, the same scalar ||c_u|| would
+            # have been.
+            Cc = Cf[:, :-dr].double(); Bb = Cf[:, -dr:].double()
+            Cm = Cc - Cc.mean(0); Bm = Bb - Bb.mean(0)
+            Wp = torch.linalg.lstsq(Bm, Cm).solution
+            E = Cm - Bm @ Wp
+            def _tail(X, r):
+                ev = torch.linalg.eigvalsh(X.T @ X).flip(0)
+                return float(1.0 - ev[:r].sum() / ev.sum())
+            res_tbl = {f"c_r{r}": _tail(Cm, r) for r in (16, 32, 64, 128)}
+            res_tbl.update({f"e_r{r}": _tail(E, r) for r in (16, 32, 64, 128)})
+            res_tbl["e_energy_frac"] = float((E * E).sum() / (Cm * Cm).sum())
+            STATE.setdefault("resid_rows", []).append(
+                {"layer": self.layer_idx, **res_tbl})
+            del Cc, Bb, Cm, Bm, Wp, E
             STATE.setdefault("assoc_rows", []).append(
                 {"layer": self.layer_idx, "r": R_, "r2_sketch": r2,
                  "score_rho_med": float(torch.tensor(rhos_).median()),
@@ -1327,7 +1348,8 @@ def main():
                "union": STATE.get("union_rows", []),
                "spectrum": STATE.get("spectrum_rows", []),
                "filter": STATE.get("filter_rows", []),
-               "assoc": STATE.get("assoc_rows", [])},
+               "assoc": STATE.get("assoc_rows", []),
+               "resid": STATE.get("resid_rows", [])},
               open(a.out, "w"))
     print(f"[done] {len(res)} rows -> {a.out}")
 

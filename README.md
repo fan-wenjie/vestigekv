@@ -1254,6 +1254,7 @@ maintained beside it --- two hand-kept copies is how they diverge:
 {"args":{"setup":"kimi-32768"},"arm":"vestigekv","client":"ruler2","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"r2-32k-branch","probe":false}
 {"args":{"lengths":"131072_262144","n":6,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mrcrlong-branch","probe":false}
 {"args":{"arch":"kimi_instruct","gpu_expert_layers":18,"n_docs":0,"needle_trials":1,"ops":"twotier","rhos":"32","seed":0,"seq_len":8192,"union":true,"union_k":64,"union_r":64,"union_steps":4},"arm":"vestigekv","client":"harness","env":{},"id":"branchcca-8k","probe":false}
+{"args":{"arch":"kimi_instruct","gpu_expert_layers":18,"n_docs":0,"needle_trials":1,"ops":"twotier","rhos":"32","seed":0,"seq_len":8192,"union":true,"union_k":64,"union_r":64,"union_steps":4},"arm":"vestigekv","client":"harness","env":{},"id":"residsketch-8k","probe":false}
 ```
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl
