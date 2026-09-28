@@ -1238,6 +1238,8 @@ maintained beside it --- two hand-kept copies is how they diverge:
 {"args":{"lengths":"8192_16384","n":12,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_RHO":"0.125","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mrcr2-vk-rho8","probe":false}
 {"args":{"lengths":"8192_16384","n":12,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"regime-mrcr-probe","probe":false}
 {"args":{"lengths":"65536","n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"regime-ruler-probe","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"egcost-vk-eg4","probe":false,"server_args":["--vestigekv-entropy-margin-gain","4.0"]}
+{"args":{"lengths":"131072_262144","n":6,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mrcrlong-vk-eg4","probe":false,"server_args":["--vestigekv-entropy-margin-gain","4.0"]}
 ```
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl
