@@ -663,6 +663,38 @@ def patched_forward(self, hidden_states, attention_mask=None, past_key_values=No
                 del full, br, idx, cs, Vd
             STATE.setdefault("filter_rows", []).extend(sel_rows)
 
+            # Does the branch carry information about the CONTENT across rows?
+            # Coordinate-disjoint does not mean statistically independent: both
+            # blocks are linear maps of the same token state, so they may well
+            # covary, and if they do a branch-only filter beats its worst-case
+            # Cauchy-Schwarz bound by however much they do.
+            #   r2_sketch : variance of the rank-r content sketch explained by
+            #               a linear predictor built from the 64-dim branch
+            #   score_rho : per query, Pearson correlation across archived rows
+            #               between the branch score term and the content score
+            #               term -- the operational form of the same question
+            B = Cf[:, -dr:].double()
+            Vd_ = torch.linalg.svd(
+                Cf[:, :-dr] - Cf[:, :-dr].mean(0), full_matrices=False)[2][:R_]
+            S = (Cf[:, :-dr] @ Vd_.T).double()
+            Bc = B - B.mean(0); Sc = S - S.mean(0)
+            W = torch.linalg.lstsq(Bc, Sc).solution
+            resid = Sc - Bc @ W
+            r2 = float(1.0 - (resid * resid).sum() / (Sc * Sc).sum())
+            rhos_ = []
+            for t in ts:
+                q = qe_all[:, t, :].to(Cf.dtype)
+                bt = (q[:, -dr:] @ Cf[:t, -dr:].T).double()
+                ct = (q[:, :-dr] @ Cf[:t, :-dr].T).double()
+                bt = bt - bt.mean(-1, keepdim=True); ct = ct - ct.mean(-1, keepdim=True)
+                rhos_.append(float(((bt * ct).sum(-1) /
+                                    (bt.norm(dim=-1) * ct.norm(dim=-1) + 1e-30)).median()))
+            STATE.setdefault("assoc_rows", []).append(
+                {"layer": self.layer_idx, "r": R_, "r2_sketch": r2,
+                 "score_rho_med": float(torch.tensor(rhos_).median()),
+                 "score_rho_absmax": float(torch.tensor(rhos_).abs().max())})
+            del B, S, Bc, Sc, W, resid, Vd_
+
             R_ = STATE["union_r"]
             tot_ = float((Cf * Cf).sum())
             ev_ = torch.linalg.eigvalsh((Cf.T @ Cf).double()).flip(0)
@@ -1276,7 +1308,8 @@ def main():
                "trigger": STATE.get("trig_rows", []),
                "union": STATE.get("union_rows", []),
                "spectrum": STATE.get("spectrum_rows", []),
-               "filter": STATE.get("filter_rows", [])},
+               "filter": STATE.get("filter_rows", []),
+               "assoc": STATE.get("assoc_rows", [])},
               open(a.out, "w"))
     print(f"[done] {len(res)} rows -> {a.out}")
 
