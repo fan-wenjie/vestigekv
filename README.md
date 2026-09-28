@@ -1234,6 +1234,8 @@ maintained beside it --- two hand-kept copies is how they diverge:
 {"args":{"lengths":"131072_262144","n":6,"needles":2},"arm":"baseline","client":"mrcr","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"mrcrlong-dense","probe":false}
 {"args":{"lengths":"8192_16384,32768_65536","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mrcr2-vk-prefillcal","probe":false,"server_args":["--enable-vestigekv-prefill-calibration"]}
 {"args":{"lengths":"8192_16384,32768_65536","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mrcr2-vk-pcal-m42","probe":false,"server_args":["--enable-vestigekv-prefill-calibration","--vestigekv-recall-margin","4.2"]}
+{"args":{"lengths":"8192_16384","n":12,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_RHO":"0.0078125","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mrcr2-vk-rho128","probe":false}
+{"args":{"lengths":"8192_16384","n":12,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_RHO":"0.125","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mrcr2-vk-rho8","probe":false}
 ```
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl
