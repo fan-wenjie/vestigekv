@@ -1,0 +1,10 @@
+{
+  "ruler2.kimi-32768.qa_easy": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 433,
+      "gen_seconds": 2022,
+      "accuracy": 60.0
+    }
+  }
+}
