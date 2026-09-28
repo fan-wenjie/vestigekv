@@ -253,6 +253,28 @@ def run_client(job, port):
         if "sub_domains" in args:
             cmd += ["--sub-domains", args["sub_domains"]]
         out = os.path.join(RESULTS, f"continue_{arm}_{job['id']}.log")
+    elif client == "harness":
+        # Offline analysis on the model directly: no server, no HTTP. The GPU
+        # is exclusive, which is why main() stops the standing server first.
+        env["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0,1")
+        cmd = [PY, os.path.join(ROOT, "harness", "e2e.py"),
+               "--arch", args.get("arch", "kimi_instruct"),
+               "--seq-len", str(args.get("seq_len", 8192)),
+               "--n-docs", str(args.get("n_docs", 0)),
+               "--seed", str(args.get("seed", 0)),
+               "--needle-trials", str(args.get("needle_trials", 1)),
+               "--rhos", args.get("rhos", "32"),
+               "--ops", args.get("ops", "twotier"),
+               "--gpu-expert-layers", str(args.get("gpu_expert_layers", 18)),
+               "--out", os.path.join(RESULTS, "harness", f"{job['id']}.json")]
+        for flag in ("union", ):
+            if args.get(flag):
+                cmd.append("--" + flag)
+        for k in ("union_k", "union_steps", "union_r"):
+            if k in args:
+                cmd += ["--" + k.replace("_", "-"), str(args[k])]
+        os.makedirs(os.path.join(RESULTS, "harness"), exist_ok=True)
+        out = os.path.join(RESULTS, f"harness_{arm}_{job['id']}.log")
     elif client == "ruler2":
         # RULER v2 through NeMo-Skills, which is a CLIENT only: the server is
         # this repository's own arm script, exactly as every other Kimi arm.
@@ -429,6 +451,21 @@ def main():
             job = jobs[0]
             t0 = time.time()
             append_state({"id": job["id"], "status": "running", "start": time.strftime("%F %T")})
+            # The harness loads the model itself and owns the GPU, so a
+            # server alongside it would take the memory it needs. Stop the
+            # standing one first, and skip the launch for this job.
+            if job.get("client") == "harness":
+                server.stop()
+                try:
+                    rc, out, tail = run_client(job, 0)
+                except (Exception, SystemExit) as e:
+                    rc, out, tail = 1, "", [f"{type(e).__name__}: {e}"]
+                append_state({"id": job["id"],
+                              "status": "done" if rc == 0 else "failed", "rc": rc,
+                              "log": out, "wall_s": round(time.time() - t0),
+                              "end": time.strftime("%F %T"), "tail": tail[-3:]})
+                log(f"{job['id']} rc={rc} in {round(time.time() - t0)}s")
+                continue
             if not server.ensure(job["arm"], job.get("env", {}), job["id"], job.get("server_args", ())):
                 append_state({"id": job["id"], "status": "failed", "note": "server did not start",
                               "end": time.strftime("%F %T")})
