@@ -628,6 +628,39 @@ def patched_forward(self, hidden_states, attention_mask=None, past_key_values=No
             # over a few thousand positions, so equidistribution is a limit the
             # context may not have reached, and a claim resting on the limit
             # alone would be claiming more than the run shows.
+            # Two-stage question: is the 64-dim branch alone a good enough
+            # FILTER, with the full row scored exactly once it is fetched?
+            # That is a different question from whether the branch can replace
+            # the content in the score -- it cannot, the two are disjoint
+            # coordinate blocks -- and it is the one that decides whether the
+            # scan can read 128 B/row instead of ~260.
+            #
+            # Measured as the filter's own job: rank archived rows by the
+            # branch term alone, and ask how deep you must go to contain the
+            # row the FULL exact score puts first. Compared against ranking by
+            # the deployed index (branch + rank-r content sketch), whose depth
+            # is what the scan pays for today.
+            Hh_ = qe_all.shape[0]
+            sel_rows = []
+            for t in ts:
+                q = qe_all[:, t, :].to(Cf.dtype)
+                full = (q @ Cf[:t].T) * sc_                  # exact, [H, t]
+                br = (q[:, -dr:] @ Cf[:t, -dr:].T) * sc_     # branch only
+                Vd = torch.linalg.svd(
+                    (Cf[:t, :-dr] - Cf[:t, :-dr].mean(0)), full_matrices=False
+                )[2][:R_]
+                cs = Cf[:t, :-dr] @ Vd.T
+                idx = br + ((q[:, :-dr] @ Vd.T) @ cs.T) * sc_   # deployed index
+                tgt = full.argmax(-1)                           # the true top row
+                for nm, sco in (("branch", br), ("index", idx)):
+                    rank = (sco > sco.gather(1, tgt[:, None])).sum(1)  # 0-based depth
+                    sel_rows.append({"layer": self.layer_idx, "rank_by": nm,
+                                     "T": t, "depth_med": float(rank.float().median()),
+                                     "depth_p90": float(rank.float().quantile(0.9)),
+                                     "top1": float((rank == 0).float().mean())})
+                del full, br, idx, cs, Vd
+            STATE.setdefault("filter_rows", []).extend(sel_rows)
+
             R_ = STATE["union_r"]
             tot_ = float((Cf * Cf).sum())
             ev_ = torch.linalg.eigvalsh((Cf.T @ Cf).double()).flip(0)
@@ -1240,7 +1273,8 @@ def main():
                # need was already being computed in the cascade.
                "trigger": STATE.get("trig_rows", []),
                "union": STATE.get("union_rows", []),
-               "spectrum": STATE.get("spectrum_rows", [])},
+               "spectrum": STATE.get("spectrum_rows", []),
+               "filter": STATE.get("filter_rows", [])},
               open(a.out, "w"))
     print(f"[done] {len(res)} rows -> {a.out}")
 
