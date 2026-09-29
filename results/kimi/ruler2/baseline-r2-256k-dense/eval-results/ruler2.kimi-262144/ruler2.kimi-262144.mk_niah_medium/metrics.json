@@ -1,0 +1,11 @@
+{
+  "ruler2.kimi-262144.mk_niah_medium": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 99,
+      "gen_seconds": 13162,
+      "symbolic_correct": 40.0,
+      "no_answer": 25.0
+    }
+  }
+}
