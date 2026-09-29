@@ -1316,6 +1316,7 @@ maintained beside it --- two hand-kept copies is how they diverge:
 {"args":{"ctxs":"32768,131072","steps":200},"arm":"vestigekv","client":"profile","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"prof-vk-bs1","probe":false}
 {"args":{"ctxs":"32768,131072","steps":200},"arm":"vestigekv","client":"profile","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1"},"id":"prof-branch-bs1","probe":false}
 {"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"fbstream-branch","probe":false}
+{"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"bfk3-mrcr-8k","probe":false}
 ```
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl

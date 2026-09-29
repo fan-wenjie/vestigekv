@@ -166,3 +166,12 @@
 [01:07:11] tputBbr-bs24 done rc=0 wall=952s
 [01:07:11] pack: 1 packed, 93 skipped  |  5.1 MB -> 0.4 MB (14x)
 [01:07:11] client stream for tputBbr-bs32: /home/user/.conda/envs/sglang-dev/bin/python -m sglang.benchmark.serving --backend sglang --model moonshotai/Kimi-Linear-48B-A3B-Instruct --port 30000 --num-prompts 32 --dataset-name random --random-input-len 131072 --random-output-len 8192 --random-range-ratio 1 --max-concurrency 32 --warmup-requests 0 --output-details --output-file /home/user/vestigekv/results/kimi/latency_stream_128k-8192-x32-c32_vestigekv_tputBbr-bs32.jsonl --seed 0 -> /home/user/vestigekv/results/kimi/stream_vestigekv_tputBbr-bs32.log
+[01:28:49] tputBbr-bs32 done rc=0 wall=1297s
+[01:28:50] pack: 1 packed, 95 skipped  |  6.7 MB -> 0.5 MB (15x)
+[01:28:54] server vestigekv env={'CHUNK': '4096', 'CTX': '73728', 'GRAPH_BS': '1', 'MAMBA_SLOTS': '1', 'MAX_REQS': '1', 'SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY': '1', 'SGLANG_DEBUG_VESTIGEKV_STATS': '1'} args=[] launching -> /home/user/vestigekv/results/kimi/server_vestigekv_bfk2-mrcr-8k.log
+[01:29:54] server vestigekv ready: ['[2026-09-29 01:29:43 TP0] max_total_num_tokens=5103875, chunked_prefill_size=4096, max_prefill_tokens=16384, max_running_requests=1, context_len=73728, available_gpu_mem=9.45 GB'] ['[2026-09-29 01:29:41 TP0] VestigeKV: recall_capacity=4096 overflow_fallback=True activation_min_tokens=0 index_rank=64 recall_margin=0.0 recall_threshold=max prefill_calibration=False rebuild_overflow_fraction=0.0 attended_splits=False entropy_margin_gain=0.0 multikey_fence_rows=0 min_hard_factor=1.0 cert_gaussian_target=0.0']
+[01:29:55] prewarm: 11264-token prefill ok in 0.8s
+[01:29:55] client mrcr for bfk2-mrcr-8k: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv/mexp/exp/run_mrcr.py --arm vestigekv --port 30000 --model moonshotai/Kimi-Linear-48B-A3B-Instruct --needles 2 --lengths 8192_16384 --n 24 --out /home/user/vestigekv/results/kimi/mrcr --tag bfk2-mrcr-8k -> /home/user/vestigekv/results/kimi/mrcr_vestigekv_bfk2-mrcr-8k.log
+[01:31:14] bfk2-mrcr-8k done rc=0 wall=144s
+[01:31:14] pack: 0 packed, 96 skipped  |  0.0 MB -> 0.0 MB (0x)
+[01:31:14] client ruler for bfk2-ruler-64k: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv/mexp/exp/run_ruler.py --arm vestigekv --port 30000 --model moonshotai/Kimi-Linear-48B-A3B-Instruct --n 10 --out /home/user/vestigekv/results/kimi/ruler --lengths 65536 --seed 0 --tag bfk2-ruler-64k -> /home/user/vestigekv/results/kimi/ruler_vestigekv_bfk2-ruler-64k.log
