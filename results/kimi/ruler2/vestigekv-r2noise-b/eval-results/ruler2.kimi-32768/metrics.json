@@ -1,0 +1,105 @@
+{
+  "ruler2.kimi-32768.mk_niah_basic": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 20,
+      "gen_seconds": 2393,
+      "accuracy": 100.0
+    }
+  },
+  "ruler2.kimi-32768.mk_niah_easy": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 74,
+      "gen_seconds": 1828,
+      "accuracy": 95.28597256487043
+    }
+  },
+  "ruler2.kimi-32768.mk_niah_medium": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 121,
+      "gen_seconds": 1891,
+      "symbolic_correct": 65.0,
+      "no_answer": 0.0
+    }
+  },
+  "ruler2.kimi-32768.mk_niah_hard": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 41,
+      "gen_seconds": 200,
+      "symbolic_correct": 60.0,
+      "no_answer": 0.0
+    }
+  },
+  "ruler2.kimi-32768.mv_niah_basic": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 38,
+      "gen_seconds": 1949,
+      "accuracy": 98.75
+    }
+  },
+  "ruler2.kimi-32768.mv_niah_easy": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 13528,
+      "gen_seconds": 1769,
+      "accuracy": 9.010688561669301
+    }
+  },
+  "ruler2.kimi-32768.mv_niah_medium": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 324,
+      "gen_seconds": 2336,
+      "accuracy": 28.78707715717553
+    }
+  },
+  "ruler2.kimi-32768.mv_niah_hard": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 184,
+      "gen_seconds": 145,
+      "accuracy": 45.66225886770968
+    }
+  },
+  "ruler2.kimi-32768.qa_basic": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 14,
+      "gen_seconds": 2446,
+      "accuracy": 75.0
+    }
+  },
+  "ruler2.kimi-32768.qa_easy": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 2203,
+      "gen_seconds": 2250,
+      "accuracy": 45.0
+    }
+  },
+  "ruler2.kimi-32768.qa_medium": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 197,
+      "gen_seconds": 75,
+      "accuracy": 65.0
+    }
+  },
+  "ruler2.kimi-32768.qa_hard": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 201,
+      "gen_seconds": 2520,
+      "accuracy": 75.0
+    }
+  },
+  "ruler2.kimi-32768": {
+    "pass@1": {
+      "accuracy": 63.541333095952076
+    }
+  }
+}

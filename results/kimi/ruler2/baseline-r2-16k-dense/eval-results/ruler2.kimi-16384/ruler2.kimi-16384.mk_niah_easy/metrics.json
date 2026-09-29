@@ -1,0 +1,10 @@
+{
+  "ruler2.kimi-16384.mk_niah_easy": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 121,
+      "gen_seconds": 1697,
+      "accuracy": 99.70110461338531
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "ruler2.kimi-16384.mv_niah_medium": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 420,
+      "gen_seconds": 1670,
+      "accuracy": 40.230781247986314
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "ruler2.kimi-32768.mk_niah_hard": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 41,
+      "gen_seconds": 2478,
+      "symbolic_correct": 60.0,
+      "no_answer": 0.0
+    }
+  }
+}
