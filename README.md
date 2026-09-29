@@ -1313,6 +1313,9 @@ maintained beside it --- two hand-kept copies is how they diverge:
 {"args":{"lengths":"8192_16384","n":24,"needles":2},"arm":"vestigekv","client":"mrcr","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_CAL_DTYPE":"fp16"},"id":"caldt-fp16-mrcr","probe":false}
 {"args":{"lengths":"65536","n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","SGLANG_DEBUG_VESTIGEKV_CAL_DTYPE":"bf16","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"caldt-bf16-ruler","probe":false}
 {"args":{"lengths":"65536","n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","SGLANG_DEBUG_VESTIGEKV_CAL_DTYPE":"fp16","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"caldt-fp16-ruler","probe":false}
+{"args":{"ctxs":"32768,131072","steps":200},"arm":"vestigekv","client":"profile","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"prof-vk-bs1","probe":false}
+{"args":{"ctxs":"32768,131072","steps":200},"arm":"vestigekv","client":"profile","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1"},"id":"prof-branch-bs1","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"fbstream-branch","probe":false}
 ```
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl
