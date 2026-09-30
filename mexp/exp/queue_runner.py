@@ -392,6 +392,32 @@ def run_client(job, port):
                os.path.join(qdir, f"mauve_ctx_T{T}_n{N}.json"),
                os.path.join(qdir, f"mauve_gen_T{T}_n{N}_{arm}.json")]
         out = os.path.join(RESULTS, f"mauve_{arm}_{job['id']}.log")
+    elif client == "agreement":
+        # Greedy continuation agreement (mexp/quality/continuation_agreement.py):
+        # the decode-path fidelity gate on NATURAL text, which is what a change
+        # to the recall threshold has to be judged on -- MRCR and RULER are
+        # synthetic. Generation half only; `compare` runs off the queue once two
+        # arms exist, like the MAUVE gate.
+        #
+        # The gate's own docstring calls each arm deterministic, and for dense it
+        # is. For a vestigekv arm it is NOT: four identical MRCR runs read
+        # 0.414-0.436 and RULER v2 spans 1.6 points, so an arm-vs-arm
+        # divergence here carries that floor. Queue a same-config repeat to
+        # measure it before reading any margin effect off this gate.
+        qdir = os.path.join(RESULTS, "quality")
+        os.makedirs(qdir, exist_ok=True)
+        cmd = [PY, os.path.join(ROOT, "mexp", "quality", "continuation_agreement.py"),
+               "gen",
+               os.path.join(qdir, "cont64k_contexts.json"),
+               os.path.join(qdir, f"cont_{job['id']}.json")]
+        # The script hardcodes localhost:30000 and takes only positional args.
+        # This line serves on 30000, so nothing to pass; a PORT override in a
+        # job's env would silently miss the server rather than fail, so refuse.
+        if str(port) != "30000":
+            raise ValueError(
+                f"agreement client talks to localhost:30000 and this job asks "
+                f"for {port}; it would generate against nothing and exit 0")
+        out = os.path.join(RESULTS, f"agreement_{arm}_{job['id']}.log")
     else:
         raise ValueError(f"unknown client {client!r}")
     log(f"client {client} for {job['id']}: {' '.join(cmd)} -> {out}")

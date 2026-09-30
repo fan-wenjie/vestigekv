@@ -1333,6 +1333,11 @@ maintained beside it --- two hand-kept copies is how they diverge:
 {"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_MARGIN_DELTA":"-2","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mneg-branch-d2","probe":false}
 {"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_MARGIN_DELTA":"-5","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mneg-branch-d5","probe":false}
 {"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"135168","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_MARGIN_DELTA":"-1","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"mneg-served-d1","probe":false}
+{"args":{},"arm":"baseline","client":"agreement","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"agr-dense","probe":false}
+{"args":{},"arm":"vestigekv","client":"agreement","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1"},"id":"agrbr-base","probe":false}
+{"args":{},"arm":"vestigekv","client":"agreement","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","VK_JOB":"agr-rep"},"id":"agrbr-rep","probe":false}
+{"args":{},"arm":"vestigekv","client":"agreement","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_MARGIN_DELTA":"-2"},"id":"agrbr-d2","probe":false}
+{"args":{},"arm":"vestigekv","client":"agreement","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_MARGIN_DELTA":"-5"},"id":"agrbr-d5","probe":false}
 ```
 python mexp/exp/init_queue.py --line kimi            # show the difference
 python mexp/exp/init_queue.py --line kimi --write    # write queue.jsonl
