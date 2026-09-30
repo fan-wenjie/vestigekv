@@ -8,3 +8,12 @@
 [03:04:15] server vestigekv ready: ['[2026-09-30 03:04:06 TP0] max_total_num_tokens=5103875, chunked_prefill_size=4096, max_prefill_tokens=16384, max_running_requests=1, context_len=73728, available_gpu_mem=9.45 GB'] ['[2026-09-30 03:04:04 TP0] VestigeKV: recall_capacity=4096 overflow_fallback=True activation_min_tokens=0 index_rank=64 recall_margin=0.0 recall_threshold=max prefill_calibration=False rebuild_overflow_fraction=0.0 attended_splits=False entropy_margin_gain=0.0 multikey_fence_rows=0 min_hard_factor=1.0 cert_gaussian_target=0.0']
 [03:04:16] prewarm: 11264-token prefill ok in 0.8s
 [03:04:16] client agreement for skip2b-agr: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv/mexp/quality/continuation_agreement.py gen /home/user/vestigekv/results/kimi/quality/cont64k_contexts.json /home/user/vestigekv/results/kimi/quality/cont_skip2b-agr.json -> /home/user/vestigekv/results/kimi/agreement_vestigekv_skip2b-agr.log
+[03:07:08] skip2b-agr done rc=0 wall=234s
+[03:07:09] pack: 0 packed, 214 skipped  |  0.0 MB -> 0.0 MB (0x)
+[03:07:18] server vestigekv env={'CHUNK': '4096', 'CTX': '73728', 'GRAPH_BS': '1', 'MAMBA_SLOTS': '1', 'MAX_REQS': '1', 'SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY': '1', 'SGLANG_DEBUG_VESTIGEKV_SKIP_TIER2_HARD': '0.0', 'SGLANG_DEBUG_VESTIGEKV_STATS': '1'} args=[] launching -> /home/user/vestigekv/results/kimi/server_vestigekv_skip2b-mrcr.log
+[03:08:13] server vestigekv ready: ['[2026-09-30 03:08:05 TP0] max_total_num_tokens=5103875, chunked_prefill_size=4096, max_prefill_tokens=16384, max_running_requests=1, context_len=73728, available_gpu_mem=9.45 GB'] ['[2026-09-30 03:08:03 TP0] VestigeKV: recall_capacity=4096 overflow_fallback=True activation_min_tokens=0 index_rank=64 recall_margin=0.0 recall_threshold=max prefill_calibration=False rebuild_overflow_fraction=0.0 attended_splits=False entropy_margin_gain=0.0 multikey_fence_rows=0 min_hard_factor=1.0 cert_gaussian_target=0.0']
+[03:08:13] prewarm: 11264-token prefill ok in 0.8s
+[03:08:13] client mrcr for skip2b-mrcr: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv/mexp/exp/run_mrcr.py --arm vestigekv --port 30000 --model moonshotai/Kimi-Linear-48B-A3B-Instruct --needles 2 --lengths 8192_16384 --n 24 --out /home/user/vestigekv/results/kimi/mrcr --tag skip2b-mrcr -> /home/user/vestigekv/results/kimi/mrcr_vestigekv_skip2b-mrcr.log
+[03:09:31] skip2b-mrcr done rc=0 wall=142s
+[03:09:32] pack: 0 packed, 214 skipped  |  0.0 MB -> 0.0 MB (0x)
+[03:09:32] queue empty; exiting

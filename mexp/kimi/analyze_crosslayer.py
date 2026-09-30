@@ -119,6 +119,33 @@ def main():
             print(f"    lid {p} -> {c}   n={len(keys):<6} "
                   f"phi={'n/a' if r is None else f'{r:+.3f}'}")
 
+        # 2b. the calibration's own regime reading against what the layer
+        #     needed, per layer. This is the number two vacuous ablations were
+        #     missing: a skip threshold is only safe where a LOW hard_rate
+        #     coincides with a low need-rate in the same layer.
+        if any("hard_rate" in r for r in rows):
+            hr = collections.defaultdict(list)
+            for r in rows:
+                if r.get("hard_rate") is None or r.get("leak_cert_p50") is None:
+                    continue
+                hr[r["lid"]].append(
+                    (r["hard_rate"], 1 if r.get("n_beat_max1", 0) > 0 else 0))
+            print("\n  calibration hard_rate vs what the layer needed:")
+            print("    lid   hard_rate (min..max)   need-rate   safe to skip?")
+            for lid in sorted(hr):
+                v = hr[lid]
+                hs = [x[0] for x in v]
+                need = sum(x[1] for x in v) / len(v)
+                lo, hi = min(hs), max(hs)
+                # Safe means the build said "nothing archived matters" AND the
+                # answer steps agreed. Either half alone is what makes the
+                # threshold unsound.
+                mark = "yes" if hi <= 0.01 and need <= 0.01 else (
+                    "NO -- build says easy, steps disagree" if hi <= 0.01
+                    else "no")
+                print(f"    {lid:<5} {lo:.4f}..{hi:.4f}{'':>8} "
+                      f"{100 * need:>6.1f}%     {mark}")
+
         # 3. previous layer's signal against this layer's label, next to this
         #    layer's own signal on the same rows -- the ceiling
         print("\n  predicting layer L's label:   from L-1's signal   from L's own")
