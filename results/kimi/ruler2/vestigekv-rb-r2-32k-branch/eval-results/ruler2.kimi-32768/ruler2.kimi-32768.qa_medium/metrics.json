@@ -1,0 +1,10 @@
+{
+  "ruler2.kimi-32768.qa_medium": {
+    "pass@1": {
+      "num_entries": 20,
+      "avg_tokens": 203,
+      "gen_seconds": 1790,
+      "accuracy": 65.0
+    }
+  }
+}
