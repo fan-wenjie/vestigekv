@@ -102,12 +102,20 @@ def main():
             beat = true_a > max1[:, None]
             for w in caps:
                 for h in range(qq.shape[0]):
-                    fi = fired[h].nonzero(as_tuple=True)[0]
-                    if fi.numel() <= w:
-                        continue                 # no truncation, nothing to compare
                     b = beat[h]
                     n_beat = int(b.sum())
                     if n_beat == 0:
+                        continue
+                    fi = fired[h].nonzero(as_tuple=True)[0]
+                    if fi.numel() <= w:
+                        # No truncation: every fired row survives under every
+                        # ordering. Counting these keeps the denominator the
+                        # same across W, without which each row of the table
+                        # conditions on a different subset and they cannot be
+                        # compared to each other.
+                        tot[w][0] += n_beat
+                        k = int(b[fi].sum())
+                        tot[w][1] += k; tot[w][2] += k; tot[w][3] += k
                         continue
                     pos_keep = fi[:w]                               # first W
                     last_keep = fi[-w:]                             # last W
@@ -120,7 +128,7 @@ def main():
         pass
         del rows, ar, kr
     print("\n  TOTAL over all dumps and heads that actually overflowed:")
-    print(f"    {'W':<6} {'beat':>5} {'first W':>9} {'last W':>9} {'top W by bound':>15}")
+    print(f"    {'W':<6} {'beat':>5} {'first W':>9} {'last W':>9} {'top W by bound':>15}   (recall over ALL heads)")
     for w in caps:
         tb, sp, sb, sl = tot[w]
         if not tb:
