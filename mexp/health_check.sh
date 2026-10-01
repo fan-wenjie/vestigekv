@@ -64,7 +64,20 @@ while true; do
   job=$(tail -1 "$R/queue_state.jsonl" 2>/dev/null | python3 -c 'import sys,json; l=sys.stdin.read().strip(); r=json.loads(l) if l else {}; print(r.get("id","-") if r.get("status")=="running" else "-")')
   done_n=$(grep -ac '"status": "done"' "$R/queue_state.jsonl" 2>/dev/null); fail_n=$(grep -ac '"status": "failed"' "$R/queue_state.jsonl" 2>/dev/null)
   slog=$(ls -t "$R"/server_*.log 2>/dev/null | head -1)
-  clog=$(ls -t "$R"/ruler_*_*.log "$R"/stream_*_*.log "$R"/replay_*_*.log "$R"/longbench2_*_*.log "$R"/continue_*_*.log 2>/dev/null | head -1)
+  # Scoped to the RUNNING job, not "newest client log of some type". The old
+  # glob listed ruler/stream/replay/longbench2/continue and omitted mrcr_*, so
+  # an mrcr job was monitored through a stale log from an unrelated earlier
+  # job. That stale log was a stream_* one, which then tripped the stream
+  # special-case below and took progress from the server decode token count --
+  # ~260k and near-constant at 131k-262k, so it compared equal to the previous
+  # check and reported STALL on a job that was running correctly.
+  # The runner names every client log <client>_<arm>_<job>.log, so the job id
+  # identifies it exactly; server_*.log is the one same-suffix file to exclude.
+  if [ "$job" != "-" ]; then
+    clog=$(ls -t "$R"/*_"$job".log 2>/dev/null | grep -v "/server_" | head -1)
+  else
+    clog=""
+  fi
   # a bare tqdm bar counts as progress too: run_longbench2.py writes one with no
   # description, and matching only the labelled clients reported stale progress
   # and a STALL on every check while it ran.
