@@ -63,7 +63,11 @@ while true; do
   # tail is a dead runner, which RUNNER_DEAD below then says.
   job=$(tail -1 "$R/queue_state.jsonl" 2>/dev/null | python3 -c 'import sys,json; l=sys.stdin.read().strip(); r=json.loads(l) if l else {}; print(r.get("id","-") if r.get("status")=="running" else "-")')
   done_n=$(grep -ac '"status": "done"' "$R/queue_state.jsonl" 2>/dev/null); fail_n=$(grep -ac '"status": "failed"' "$R/queue_state.jsonl" 2>/dev/null)
-  slog=$(ls -t "$R"/server_*.log 2>/dev/null | head -1)
+  if [ "$job" != "-" ] && [ -f "$R/server_vestigekv_$job.log" ]; then
+    slog="$R/server_vestigekv_$job.log"
+  else
+    slog=$(ls -t "$R"/server_*.log 2>/dev/null | head -1)
+  fi
   # Scoped to the RUNNING job, not "newest client log of some type". The old
   # glob listed ruler/stream/replay/longbench2/continue and omitted mrcr_*, so
   # an mrcr job was monitored through a stale log from an unrelated earlier
@@ -88,6 +92,12 @@ while true; do
   # a stream job's bar reads 0/1 for its whole run (one request), so the decode
   # token count in the server log is its only progress signal
   case "$clog" in *"/stream_"*) prog=$(grep -a "Decode batch" "$slog" 2>/dev/null | tail -1 | grep -oE "#(full )?token: [0-9]+" | head -1);; esac
+  # An mrcr client prints nothing per request, so the pattern above finds
+  # nothing and prog is empty -- which silences the false STALL but also
+  # leaves the job with no progress signal at all. The server log's prefill
+  # count is monotonic per job and answers for any client the pattern misses.
+  [ -z "$prog" ] && [ "$job" != "-" ] && \
+    prog="prefills=$(grep -ac "Prefill batch" "$slog" 2>/dev/null || echo 0)"
   stall=""; [ -n "$prog" ] && [ "$prog" = "$prev_prog" ] && [ "$job" != "-" ] && stall=" STALL(no client progress since last check)"
   prev_prog=$prog
   # tracebacks in the newest server log, counted per file: a switch to a new log restarts
