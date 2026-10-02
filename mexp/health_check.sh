@@ -98,7 +98,7 @@ while true; do
   # count is monotonic per job and answers for any client the pattern misses.
   if [ -z "$prog" ] && [ "$job" != "-" ]; then
     npf=$(grep -ac "Prefill batch" "$slog" 2>/dev/null || true)
-    prog="prefills=${npf:-0}"
+    [ "${npf:-0}" -gt 0 ] && prog="prefills=${npf}"
   fi
   stall=""; [ -n "$prog" ] && [ "$prog" = "$prev_prog" ] && [ "$job" != "-" ] && stall=" STALL(no client progress since last check)"
   prev_prog=$prog
