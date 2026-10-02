@@ -1,0 +1,22 @@
+{
+  "results": {
+    "niah_multikey_3": {
+      "name": "niah_multikey_3",
+      "alias": "niah_multikey_3",
+      "sample_len": 50,
+      "4096,none": -1,
+      "4096_stderr,none": "N/A",
+      "262144,none": 0.9,
+      "262144_stderr,none": 0.04285714285714286
+    }
+  },
+  "wall_s": 6844.0825548172,
+  "n_per_cell": 50,
+  "lengths": [
+    262144
+  ],
+  "tasks": [
+    "niah_multikey_3"
+  ],
+  "seed": 0
+}
