@@ -47,7 +47,8 @@ def load(job, min_arch=4096):
                     continue
                 if d.get("n_arch", 0) < min_arch:
                     continue
-                rec = {"r": int(d["n_fired"]) / int(d["n_arch"])}
+                rec = {"r": int(d["n_fired"]) / int(d["n_arch"]),
+                       "lid": d["lid"]}
                 for k in FIELDS:
                     v = d.get(k)
                     rec[k] = float(v) if (v is not None and v == v) else None
@@ -67,11 +68,68 @@ def auc(a_sorted, b):
     return s / (n * len(b))
 
 
+def fit(xs, ys):
+    """Least squares slope, R^2 and Spearman rho. Enough to kill a fit, which
+    is all this is used for."""
+    n = len(xs)
+    mx, my = sum(xs) / n, sum(ys) / n
+    sxx = sum((x - mx) ** 2 for x in xs)
+    sxy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    syy = sum((y - my) ** 2 for y in ys)
+    if sxx == 0 or syy == 0:
+        return 0.0, 0.0, 0.0
+    rx = {v: i for i, v in enumerate(sorted(range(n), key=lambda i: xs[i]))}
+    ry = {v: i for i, v in enumerate(sorted(range(n), key=lambda i: ys[i]))}
+    dr = sum((rx[i] - ry[i]) ** 2 for i in range(n))
+    return sxy / sxx, (sxy * sxy) / (sxx * syy), 1 - 6 * dr / (n * (n * n - 1))
+
+
+def regression(A, B, lids):
+    """Can entropy PREDICT the admission count, i.e. drive a continuous knob?
+
+    It cannot, and that is the point of printing this. Fitting r = n_fired/n_arch
+    on entropy per layer gives R^2 <= 0.25 everywhere and <= 0.11 on seven of
+    fourteen cells, with Spearman rho going NEGATIVE on two (lid 15 and 19 on
+    needle traffic). The per-layer slopes differ between the two workloads by
+    10x to 33x and not even consistently in sign, so there is no single relation
+    with a per-workload intercept either.
+
+    The mechanism makes it unsurprising after the fact: entropy is the flatness
+    of attention over the KEPT window, while t counts rows in the ARCHIVE whose
+    bound beats max1. Different sets. Entropy carries the LEVEL that separates
+    the workloads (lid 3 reaches AUC 1.00) but not the COVARIATION with t that a
+    regression needs.
+
+    Consequence for the design: a text signal may select tau by CLASSIFICATION
+    into a lookup table, never by regression onto a continuous value, and the
+    table's entries still have to be measured by sweeping tau on each class.
+    The useful side effect is that entropy and the cost loop are then orthogonal
+    -- cost closes on t and the overflow count, entropy only labels the traffic.
+    """
+    print("\nregression: can entropy predict the admission fraction?")
+    print(f"  {'lid':>4} | {'A slope':>10} {'R2':>6} {'rho':>6} |"
+          f" {'B slope':>10} {'R2':>6} {'rho':>6} | {'slope B/A':>10}")
+    for lid in lids:
+        a = [(x["entropy"], x["r"]) for x in A if x["lid"] == lid and x["entropy"] is not None]
+        b = [(x["entropy"], x["r"]) for x in B if x["lid"] == lid and x["entropy"] is not None]
+        if len(a) < 100 or len(b) < 100:
+            continue
+        ba, r2a, ra = fit([x[0] for x in a], [x[1] for x in a])
+        bb, r2b, rb = fit([x[0] for x in b], [x[1] for x in b])
+        ratio = bb / ba if abs(ba) > 1e-12 else float("nan")
+        print(f"  {lid:>4} | {ba:>10.5f} {r2a:>6.3f} {ra:>6.3f} |"
+              f" {bb:>10.5f} {r2b:>6.3f} {rb:>6.3f} | {ratio:>10.2f}")
+    print("  A pooled-fit check is deliberately omitted: with per-workload R^2")
+    print("  near zero, 'pooling did not make it worse' carries no information.")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--a", default="rcf-base", help="dump for workload A (prose/copy)")
     ap.add_argument("--b", default="mk131-dump", help="dump for workload B (needle)")
     ap.add_argument("--windows", default="1,10,50,200")
+    ap.add_argument("--per-layer", action="store_true",
+                    help="AUC per layer, plus the entropy->admission regression")
     args = ap.parse_args()
 
     A, B = load(args.a), load(args.b)
@@ -101,6 +159,33 @@ def main():
             wa = sorted(sum(a[i:i + K]) / K for i in range(0, len(a) - K + 1, K))
             wb = [sum(b[i:i + K]) / K for i in range(0, len(b) - K + 1, K)]
             print(f"  {K:>5} {auc(wa, wb):>7.3f} {f'{len(wa)}/{len(wb)}':>14}")
+
+    if args.per_layer:
+        lids = sorted({x["lid"] for x in A})
+        # Both classes carry the SAME layer proportions, so layer identity is
+        # independent of class: the 86% of entropy variance that is between
+        # layers is nuisance, and removing it makes the per-layer AUC HIGHER
+        # than pooled, not lower. Measured: entropy on lid 3 separates perfectly
+        # (AUC 0.000, i.e. 1.00 reversed) at K=1, where pooled entropy is 0.365.
+        print("\nper-layer separability (|2*(AUC-0.5)| in parentheses)")
+        print(f"  {'lid':>4} " + " ".join(f"{s_[:12]:>16}" for s_ in ("r",) + FIELDS))
+        for lid in lids:
+            row = f"  {lid:>4} "
+            for nm in ("r",) + FIELDS:
+                a = sorted(x[nm] for x in A if x["lid"] == lid and x.get(nm) is not None)
+                b = [x[nm] for x in B if x["lid"] == lid and x.get(nm) is not None]
+                if len(a) < 50 or len(b) < 50:
+                    row += f"{'-':>16}"
+                    continue
+                u = auc(a, b)
+                row += f"{u:>10.3f}({abs(u - 0.5) * 2:.2f})"
+            print(row)
+        print("  A perfectly separating cell is a WARNING, not a win: AUC exactly")
+        print("  0.000 on two samples most likely means a deterministic fork (lid 3")
+        print("  is the near-tight, diffuse layer) and such a signal fails abruptly")
+        print("  at the boundary rather than degrading. Prefer lid 23, where three")
+        print("  independent signals agree at ~0.74.")
+        regression(A, B, lids)
 
     print("\n  Caveats that bound every number above:")
     print("  - two workloads only. This is a line fitted to two points; a third")
