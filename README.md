@@ -1626,6 +1626,8 @@ change an experiment, change it here first.
 {"args":{"lengths":"131072","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_RECALL_TARGET":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","VK_JOB":"tau95-mk131b"},"id":"tau95-mk131b","probe":false}
 {"args":{"lengths":"131072","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_RECALL_TARGET":"0.98","SGLANG_DEBUG_VESTIGEKV_STATS":"1","VK_JOB":"tau98-mk131"},"id":"tau98-mk131","probe":false}
 {"args":{"lengths":"131072","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_RECALL_TARGET":"0.98","SGLANG_DEBUG_VESTIGEKV_STATS":"1","VK_JOB":"tau98-mk131b"},"id":"tau98-mk131b","probe":false}
+{"args":{"lengths":"262144","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1","VK_JOB":"mk262-ctl"},"id":"mk262-ctl","probe":false}
+{"args":{"lengths":"262144","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"baseline","client":"ruler","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2"},"id":"mkd262-dense","probe":false}
 ```
 
 ```bash
