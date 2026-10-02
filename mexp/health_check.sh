@@ -96,8 +96,10 @@ while true; do
   # nothing and prog is empty -- which silences the false STALL but also
   # leaves the job with no progress signal at all. The server log's prefill
   # count is monotonic per job and answers for any client the pattern misses.
-  [ -z "$prog" ] && [ "$job" != "-" ] && \
-    prog="prefills=$(grep -ac "Prefill batch" "$slog" 2>/dev/null || echo 0)"
+  if [ -z "$prog" ] && [ "$job" != "-" ]; then
+    npf=$(grep -ac "Prefill batch" "$slog" 2>/dev/null || true)
+    prog="prefills=${npf:-0}"
+  fi
   stall=""; [ -n "$prog" ] && [ "$prog" = "$prev_prog" ] && [ "$job" != "-" ] && stall=" STALL(no client progress since last check)"
   prev_prog=$prog
   # tracebacks in the newest server log, counted per file: a switch to a new log restarts
