@@ -1628,7 +1628,19 @@ change an experiment, change it here first.
 {"args":{"lengths":"131072","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_RECALL_TARGET":"0.98","SGLANG_DEBUG_VESTIGEKV_STATS":"1","VK_JOB":"tau98-mk131b"},"id":"tau98-mk131b","probe":false}
 {"args":{"lengths":"262144","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","SGLANG_DEBUG_VESTIGEKV_STATS":"1","VK_JOB":"mk262-ctl"},"id":"mk262-ctl","probe":false}
 {"args":{"lengths":"262144","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"baseline","client":"ruler","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2"},"id":"mkd262-dense","probe":false}
+{"args":{"lengths":"131072","n":150,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","VK_JOB":"mk131big-nostats"},"id":"mk131big-nostats","probe":false}
+{"args":{"lengths":"262144","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"4096","CTX":"270336","GRAPH_BS":"2","MAMBA_SLOTS":"2","MAX_REQS":"2","SGLANG_DEBUG_VESTIGEKV_BRANCH_ONLY":"1","VK_JOB":"mk262-nostats"},"id":"mk262-nostats","probe":false}
 ```
+
+The two `-nostats` rows above are the quality arms of that pair. Every
+VestigeKV row on this line carries `SGLANG_DEBUG_VESTIGEKV_STATS=1` and no
+dense row can, because dense runs no VestigeKV code -- so a branch-against-
+dense score difference is read across a flag worth -0.19 on MRCR 8k-16k
+(`stats-costs-mrcr-score`), which is larger than the effect being measured.
+The flag is not balanceable, so the quality claim has to come from the
+shipped default, STATS off; the STATS twins stay because fetch and fallback
+counts require them, and a table pairing a score with a fetch count must
+take both from the same run.
 
 ```bash
 # needle + observed-attention baselines at 8k (Table: baselines / tab:main)
