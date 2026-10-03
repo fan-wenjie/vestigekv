@@ -164,3 +164,49 @@ with tier 1's top-Delta). That is the value proposition, the instrument
 exists, and its tier-1 arm is only trustworthy as of today's group fix.
 
 One prompt, one workload, 8 queries per snapshot.
+
+## Tier 1 is complementary to DSA's channel, most where the channel is worst
+
+The measurement the design hinges on: a budget-matched union, far region only,
+following far_region_stats' discipline (both selectors force the tail, so a
+whole-sequence number measures an agreement never in question; and tier 1 keeps
+far more rows than the channel's budget, so the supplement's size must be
+stated).
+
+22 snapshots, 8 matched-step queries each, channel budget 2048 rows:
+
+    supplement        count   mass
+    channel alone     0.229   0.304
+    + tier-1 top-64   0.240   0.348
+    + top-128         0.248   0.362
+    + top-256         0.260   0.378
+    + top-512         0.285   0.406
+
+**The marginal return is in the mass and it is steep at small Delta.** 64 extra
+rows -- 3% on top of the channel's 2048 -- buy +0.044 mass. 512 rows buy
++0.102. Count moves far less (+0.011 and +0.056), which says tier 1 is adding
+HEAVY rows rather than many rows, and that is the only kind worth paying for.
+
+**It is concentrated exactly where the channel fails.** Layer 7 is the
+channel's worst (count 0.058 / mass 0.062 on tp0, 0.007 / 0.043 on tp1) and
+64 supplement rows take its mass to 0.293 and 0.341 -- a 4.7x and 8x move.
+Layer 11 tp0 goes 0.069 to 0.194 at d64 and 0.368 at d512. Where the channel
+is already decent the supplement adds little: layer 15 does not move at all
+until d512. So the two selectors are complementary rather than redundant, which
+is the property the whole split depends on and was not previously measured on a
+correctly-read salience channel.
+
+**Caveats, in order of how much they could move this.**
+
+Tier 1's sigma is group-granular and repeated to its positions, so
+`sigma.topk(64)` picks 64 positions out of tied groups rather than 16 whole
+groups. A group-aligned supplement would cover whole groups and should do at
+least as well, so this understates it -- but by an unmeasured amount.
+
+The channel is scored best-over-heads because the dump's head gate is None;
+DSA's real rule weights heads by its trained gate and sums. That moves the
+`chan` column, hence every delta.
+
+One prompt, one workload, 8 queries per snapshot. The per-layer spread here is
+much wider than the mean, and layers 7 and 11 are carrying the result -- three
+more workloads before this is a finding rather than a direction.
