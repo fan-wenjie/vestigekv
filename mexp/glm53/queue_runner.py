@@ -190,7 +190,16 @@ def run_client(job, port):
     # same one or it asks a Base server for Instruct and the record is
     # labelled with a checkpoint it did not run.
     MODEL = job.get("env", {}).get("MODEL", MODELS[LINE])
-    env = dict(os.environ, OPENAI_API_KEY="dummy", PYTHONPATH=os.path.join(ROOT, "engine", "python"))
+    # ENGINE picks the server's tree (common.sh) and must pick the CLIENT's too.
+    # This was hard-coded to ROOT/engine/python, which in this worktree does not
+    # exist at all -- so every stream job died with ModuleNotFoundError: No
+    # module named 'sglang', and exporting PYTHONPATH outside could not help
+    # because this line replaces it. Worse than the crash would have been the
+    # silent case: a client importing a DIFFERENT sglang than the server it is
+    # measuring.
+    engine = job.get("env", {}).get("ENGINE") or os.path.join(ROOT, "engine")
+    env = dict(os.environ, OPENAI_API_KEY="dummy",
+               PYTHONPATH=os.path.join(engine, "python"))
     env.pop("HF_HUB_OFFLINE", None)  # RULER pulls its corpora from the Hub
     env["CUDA_VISIBLE_DEVICES"] = ""  # clients are HTTP only; no CUDA context next to the server
     os.makedirs(RESULTS, exist_ok=True)

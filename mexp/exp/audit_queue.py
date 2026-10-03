@@ -69,6 +69,18 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UNIFIED = os.path.join(ROOT, "engine")
+
+# The one tree, per line. The rule is "every job on a line measured on the
+# same tree", not "every line on the same tree": the GLM line was rebased onto
+# v0.5.21 in its own worktree while the Kimi line's records -- already quoted in
+# the paper -- stay on the tree that produced them. Rebasing that tree to keep
+# one path here would retire every Kimi number. A line absent from this map
+# falls back to UNIFIED, so a new line cannot pin itself to a scratch worktree
+# by saying nothing.
+LINE_TREE = {
+    "kimi": UNIFIED,
+    "glm53": "/home/user/vestigekv-wt/engine-glm521",
+}
 def _runner_clients():
     """The clients the runner implements, read from the runner.
 
@@ -147,6 +159,7 @@ def main():
 
     readme = open(os.path.join(ROOT, "README.md")).read()
     readme_canon = registered(readme)
+    one_tree = LINE_TREE.get(args.line, UNIFIED)
 
     fails = []
 
@@ -158,8 +171,8 @@ def main():
     for j in pending:
         env = j.get("env", {})
         engine = env.get("ENGINE")
-        if engine and os.path.realpath(engine) != os.path.realpath(UNIFIED):
-            bad(j, f"pinned to {engine}, not the one tree ({UNIFIED})")
+        if engine and os.path.realpath(engine) != os.path.realpath(one_tree):
+            bad(j, f"pinned to {engine}, not {args.line}'s one tree ({one_tree})")
         if j.get("client") not in CLIENTS:
             bad(j, f"client {j.get('client')!r} is not one the runner implements")
         launcher = os.path.join(here, f"{j.get('arm')}.sh")

@@ -1345,8 +1345,11 @@ Serving experiments go in `mexp/<line>/queue.jsonl` and are run by
 `mexp/glm53/queue_runner.py --line <line>`, never launched by hand. Before the
 runner starts, `python mexp/exp/audit_queue.py` resolves each pending job to
 the command and output path it will actually produce and refuses on: a job
-pinned to any tree but `engine/` (the unified v0.5.20 one), an output file that
-already exists, paired arms whose env or args differ, an `arm` with no
+pinned to any tree but its line's one tree (`audit_queue.LINE_TREE`: `engine/`,
+the unified v0.5.20 one, for Kimi; the v0.5.21 rebase worktree for GLM, whose
+records are all taken there -- a line that names no tree falls back to
+`engine/`, so a new line cannot pin itself to a scratch worktree by saying
+nothing), an output file that already exists, paired arms whose env or args differ, an `arm` with no
 launcher, a client the runner does not implement, and a seeded client with no
 seed. Every one of those refusals was driven with known-bad input before the
 check was trusted.
@@ -1554,6 +1557,87 @@ change an experiment, change it here first.
 {"args":{"concurrency":32,"input_len":131072,"num_prompts":32,"output_len":8192,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"4096","CTX":"140288","GRAPH_BS":"32","MAMBA_SLOTS":"32","MAX_REQS":"32","MEM_FRAC":"0.87"},"id":"tputB87-bs32-vestigekv","probe":false}
 {"args":{"max_length":65536,"subsets":"gov_report,qmsum,multi_news"},"arm":"baseline","client":"longbench1","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"lb1sum-dense","probe":false}
 {"args":{"max_length":65536,"subsets":"gov_report,qmsum,multi_news"},"arm":"vestigekv","client":"longbench1","env":{"CHUNK":"4096","CTX":"73728","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1"},"id":"lb1sum-vestigekv","probe":false}
+
+GLM-5.3-Flash, same-tree decode cost on the v0.5.21 rebase (engine-glm521).
+Both arms on one tree: the v0.5.20 baseline at 4k/124k was intermittently
+stalling (std ITL 4.9 ms against a 11.3 ms median), so no ratio against it
+survives. GRAPH_BS=MAX_REQS=1 is the line's matched-width convention.
+
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"c521z-32k4k-baseline","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"c521z-32k4k-vestigekv","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"c521z-4k124k-baseline","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"c521z-4k124k-vestigekv","probe":false}
+
+The indexer-only arm: tier 1 alone (the salience record read out of DSA's
+pooled index-k cache), no tier-2 sketch built, no per-step recall, no fetch.
+It separates what selection costs from what the tier-2 chain costs, against
+the c521z pair above as its matched control.
+
+A behavioural smoke for the arm (STATS on, own server): it must show no
+calibration build and no fetched row at all.
+
+{"args":{"input_len":32768,"output_len":256,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","SGLANG_VESTIGEKV_INDEXER_ONLY":"1"},"id":"c521io-smoke","probe":false}
+
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_INDEXER_ONLY":"1"},"id":"c521io-32k4k-indexeronly","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96","SGLANG_VESTIGEKV_INDEXER_ONLY":"1"},"id":"c521io-4k124k-indexeronly","probe":false}
+
+The lean twin of the indexer-only arm. With no tier 2 there is no certificate
+and no overflow, so the lean decode graph (index-k written, DSA's scoring and
+top-k skipped) is taken on every step by construction -- DSA's own selection
+chain, which the vestigekv layers discard, stops running. The smoke must show
+lean at ~100% of steps in VKSTATS.
+
+{"args":{"input_len":32768,"output_len":256,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","SGLANG_ENABLE_VESTIGEKV_LEAN_GRAPH":"1","SGLANG_VESTIGEKV_INDEXER_ONLY":"1"},"id":"c521io-smoke-lean","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_ENABLE_VESTIGEKV_LEAN_GRAPH":"1","SGLANG_VESTIGEKV_INDEXER_ONLY":"1"},"id":"c521io-32k4k-indexeronly-lean","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96","SGLANG_ENABLE_VESTIGEKV_LEAN_GRAPH":"1","SGLANG_VESTIGEKV_INDEXER_ONLY":"1"},"id":"c521io-4k124k-indexeronly-lean","probe":false}
+
+The branch rule (memory glm-branch-only): tier 2 = grouped recall on DSA's own
+pooled index logits above the q0.75 quantile of the kept groups' scores, cap 512
+groups; no sketch, no build, no calibration. q0.75 is the offline cell that
+matches DSA's oracle mass with the tier-1 kept set preserved (branch_kept.py).
+Smoke must show fetch[p50/p90] > 0 and build x0; then the same-tree cost pair
+and multikey_3 n=50 against DSA's 1.000/1.000.
+
+{"args":{"input_len":32768,"output_len":256,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br-smoke","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br-32k4k","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br-4k124k","probe":false}
+{"args":{"lengths":"65536","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br-mk3","probe":false}
+
+v3 of the branch rule (same env): threshold + count, no top-k of ours; a step
+with more than 512 fired groups raises fetch_ovf and the existing fence hands
+that step to DSA's own top-k (kept rows are not attended on a fenced step --
+"fall back to DSA" literally). v1 (c521br-{32k4k,4k124k}) truncated to the
+best 512 groups with a torch topk over ~34k groups per layer-step and cost
+1.21x DSA; those two records are retired to superseded/ once v3's land.
+
+{"args":{"input_len":32768,"output_len":256,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br2-smoke","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br2-32k4k","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br2-4k124k","probe":false}
+
+c521br2-mk3: multikey_3 n=50 under v3's fence semantics (a fenced step is
+DSA's own selection, kept rows not attended), beside c521br-mk3 (v1 truncation).
+The v3 cost pair waits for the fused operator: the torch chain is 85 kernels
+per layer-step and the cost is the node count, not any one op.
+
+{"args":{"lengths":"65536","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br2-mk3","probe":false}
+
+c521br3-*: the same four launches on v5 (the fused operators,
+vestigekv/dsa_branch.py). c521br2-smoke ran on the v1 tree -- the runner
+re-read the queue at a job end before v5 was applied -- and is retired to
+superseded/ with a state annotation. c521br2-mk3 was killed while loading on
+v1 and re-ran on v5 after the apply, so it is the FIRST multikey_3 draw under
+the fused operators and c521br3-mk3 the second (two draws, quoted both).
+
+{"args":{"input_len":32768,"output_len":256,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br3-smoke","probe":false}
+{"args":{"lengths":"65536","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br3-mk3","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br3-32k4k","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br3-4k124k","probe":false}
+
+c521br4-smoke: the v5 smoke again with the VKSTATS byte counter
+(bytes[step dsa ratio per_tok], from the same per-scan sums as attended_frac);
+the bytes-vs-DSA claim is quoted from this field, never from arithmetic.
+
+{"args":{"input_len":32768,"output_len":256,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br4-smoke","probe":false}
 ```
 
 ```bash
