@@ -42,7 +42,13 @@ def stream_out(results, job):
     # claimed latency_stream_4k-126976_vestigekv_stats.jsonl.
     ablating = [k for k in env if k.startswith("SGLANG_DEBUG_VESTIGEKV_")
                 and k != "SGLANG_DEBUG_VESTIGEKV_STATS"]
-    if job.get("server_args") or ablating:
+    # ENGINE pins which checkout serves, which is the largest thing that can
+    # change what the backend does, and it used to leave the record's name
+    # untouched. Four cost jobs on the v0.5.21 tree computed the same names as
+    # the v0.5.20 records already on disk; refuse_existing caught all four, but
+    # the name should differ on its own rather than relying on the last line of
+    # defence to notice.
+    if job.get("server_args") or ablating or env.get("ENGINE"):
         tag += "_" + job["id"]
     return os.path.join(results,
                         f"latency_stream_{stream_shape(args)}_{arm}{_checkpoint(job)}{tag}.jsonl")
