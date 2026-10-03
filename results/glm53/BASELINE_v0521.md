@@ -346,3 +346,33 @@ three workloads. One layer out of eleven, and giving it more did not move the
 total, so it is a lead rather than a lever.
 
 **Direction closed.** A uniform per-layer Delta is what the design should use.
+
+## Quality on the fixed tree: the served arm is 46 points below DSA
+
+`niah_multikey_3` @ 65536, n=50, seed 0, both arms on the index-k-fixed tree:
+
+    DSA baseline   50/50 = 1.000
+    vestigekv      27/50 = 0.540      delta -0.460, Fisher p = 8.7e-9
+
+check_builds clean (0 build failures, 0 tracebacks); the arm resolved as
+vestigekv_dsa decode / dsa prefill, recall_capacity 2048, index_rank 64, STATS
+off, so this is the shipped configuration and not a contaminated run.
+
+**This refutes "GLM is the same quality as DSA".** That conclusion came from
+RULER's four non-saturated tasks averaging +0.006 at sign p=1.000 -- an
+aggregate over tasks that mostly saturate, which is the identical mistake the
+Kimi line's group mean made in Q7. On the task that discriminates the arm loses
+by 46 points.
+
+It also re-frames the cost question. There was never a speed case worth making
+(-2% median ITL, the one win being p90 on long generation), and now there is a
+46-point quality deficit on the same tree. The served GLM arm as it stands is
+dominated.
+
+**And it is the strongest argument for the indexer-only direction so far.** DSA
+reaches 1.000 on this task with the selection VestigeKV is declining to use. An
+arm that serves DSA's own selection and only ADDS rows cannot do worse than
+DSA by construction, so the ceiling for the parasitic design here is 1.000 --
+against 0.540 for what is served today. The recall measurements said the
+channel is strong and our selection is weak; this says the same thing in the
+units that matter.
