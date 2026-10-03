@@ -198,10 +198,14 @@ correctly-read salience channel.
 
 **Caveats, in order of how much they could move this.**
 
-Tier 1's sigma is group-granular and repeated to its positions, so
+~~Tier 1's sigma is group-granular and repeated to its positions, so
 `sigma.topk(64)` picks 64 positions out of tied groups rather than 16 whole
-groups. A group-aligned supplement would cover whole groups and should do at
-least as well, so this understates it -- but by an unmeasured amount.
+groups.~~ **Checked and withdrawn.** sigma is group-repeated, so every group's
+four values are equal and topk returns ties contiguously: the position-wise
+top-64 IS exactly 16 whole groups, verified by set equality and by counting the
+distinct groups touched (16 of 16). A group-aligned supplement was computed
+separately and matches to three decimals at every Delta, because it is the same
+set. The union numbers above are not understated; they are exact.
 
 The channel is scored best-over-heads because the dump's head gate is None;
 DSA's real rule weights heads by its trained gate and sums. That moves the
