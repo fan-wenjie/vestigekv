@@ -214,3 +214,43 @@ DSA's real rule weights heads by its trained gate and sums. That moves the
 One prompt, one workload, 8 queries per snapshot. The per-layer spread here is
 much wider than the mean, and layers 7 and 11 are carrying the result -- three
 more workloads before this is a finding rather than a direction.
+
+## With DSA's real gate, the small supplement's value mostly disappears
+
+The head-gate caveat was material and it cut against the previous section.
+`record_index_gate` now captures the RESOLVED gate (after q_scale and the
+softmax scale, which is the one DSA's logits use), row-selected together with
+the query so the two cannot drift. Same 22 snapshots, far region, 2048-row
+channel:
+
+    delta    max-over-heads     DSA gate
+    chan     0.228/0.304        0.266/0.395
+    +64      0.240/0.348        0.267/0.399
+    +512     0.284/0.404        0.307/0.443
+
+Two things, and the second supersedes the previous section's headline.
+
+**The channel is better than reported.** Scoring it with DSA's trained gate
+instead of best-over-heads lifts it from 0.304 to 0.395 mass, +0.091. Reducing
+over heads by max where the model weights and sums was understating DSA's own
+rule by more than the supplement was adding.
+
+**The steep small-Delta return was an artefact of that.** 64 supplement rows
+bought +0.044 mass against the max-reduced channel and buy **+0.004** against
+the gated one. The gate and the supplement were two explanations for the same
+missing mass, and the gate accounts for nearly all of it at small Delta. The
+previous section's "+0.044 for 3% of budget" is withdrawn.
+
+What survives is smaller and needs a real budget: 512 supplement rows, 25% on
+top of the channel, add +0.041 count and +0.048 mass. That is still a gain and
+still in the mass rather than the count, so tier 1 is still contributing heavy
+rows -- but "3% buys a third of the gap" is gone, and with it the case that the
+supplement is nearly free.
+
+The methodological point is worth more than either number: I reported the
+complementarity result WITH the gate caveat attached, and the caveat turned out
+to carry most of the effect. A caveat that could flip the headline is not a
+footnote, and this one should have been closed before the result was written
+down.
+
+Still one prompt, 8 queries per snapshot.
