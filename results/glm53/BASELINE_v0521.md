@@ -65,3 +65,53 @@ With STATS off the model answered the needle in 97 completion tokens
 the STATS hazard already has on MRCR, now visible on GLM, but it is one draw
 on a reasoning model with a long think budget. Do not quote it; re-run it
 paired if it matters.
+
+## Group-of-4 at DSA's 2048-row parity: the ceiling (2026-10-03)
+
+The index channel is 4:1 pooled at the source (`index_kpool = 4`), so both
+tiers work in groups of 4 -- not a choice, see the engine commits. The question
+that decides the design is what that grouping costs.
+
+Measured on one 18k prompt, 11 DSA layers x 2 TP ranks, scoring the groups in
+the ORACLE'S OWN SPACE (pooled latent row against the latent query, best over
+heads). A perfect channel, so this is the **ceiling** for any group selector;
+the real indexer channel can only do worse.
+
+    budget            count   mass
+    2048 rows  (512 groups)   0.511   0.696
+    4096 rows (1024 groups)   0.578   0.741
+
+count is the fraction of the oracle's top-budget positions the selector holds,
+mass the fraction of its score (floor-shifted), the two statistics
+select_recall_telemetry already reports.
+
+Three things follow.
+
+**Grouping by 4 throws away half the oracle's positions at row parity.** The
+unpooled selector in this space recalls 1.000 by construction -- it IS the
+oracle -- so the whole 0.489 gap is the pooling. This lands on top of
+archive_pool.py's independent ranking measurement (0.509 pooled at 2048
+against 0.738 unpooled), from a different method, which is some comfort that
+neither is an artefact.
+
+**It keeps the heavy rows.** mass 0.696 against count 0.511 says the positions
+it drops are mostly light ones. Missing the 2000th row is not missing the 1st.
+
+**DSA has the same ceiling.** DSA selects 512 groups of 4 and expands to 2048
+rows (`expand_pooled_groups_to_topk`), so this is not a respect in which the
+design is worse than the baseline it is matched against -- it is a statement
+that both are far from the oracle, and that the headroom a supplement could
+win is large.
+
+Per layer the spread is wide: layers 3 and 7 recall 0.30 to 0.35 where the rest
+run 0.45 to 0.64. Any per-layer budget rule should start there rather than from
+the mean.
+
+**Not measured yet:** whether the indexer channel reaches this ceiling. The
+dump now carries `index_q`, but it is the latest scoring step's query (a
+prefill chunk) while `qcal` are calibration queries from other steps -- so the
+two are not from the same step and a comparison across them would score one
+selector against another step's oracle. Aligning them is the next change, and
+until then the channel's recall is unknown rather than good or bad.
+
+One prompt, one workload.
