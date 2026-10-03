@@ -115,3 +115,52 @@ selector against another step's oracle. Aligning them is the next change, and
 until then the channel's recall is unknown rather than good or bad.
 
 One prompt, one workload.
+
+## Does the indexer channel reach the grouping ceiling? No (2026-10-03)
+
+Matched steps: the dump now carries one indexer query per calibration query, in
+the same order, so all three of (oracle, channel score, ceiling score) come
+from one step. Before that alignment the only available query was the latest
+scoring step's, and comparing it against another step's oracle is a comparison
+that cannot fail visibly.
+
+22 snapshots (11 DSA layers x 2 TP ranks), 8 calibration queries each,
+budget 2048 rows = 512 groups of 4:
+
+                                  count   mass
+    indexer channel (the design)  0.221   0.309
+    ceiling (oracle's own space)  0.520   0.704
+
+So the grouping costs about half, and the CHANNEL costs more than half of what
+remains: the design reaches 43% of the achievable count and 44% of the
+achievable mass. Per layer the channel is worst at layer 7 (0.004 to 0.052) and
+layer 11 tp0 (0.099); only layer 3 comes near its own ceiling, and that
+ceiling is itself the lowest.
+
+**Two things this does NOT establish, and they matter more than the number.**
+
+First, whether it is worse than DSA. DSA selects on the same channel at the
+same ratio and the same budget -- `group_scores` + `select_groups` over pooled
+index keys IS DSA's rule -- so 0.221 is most likely a property of DSA's
+indexer rather than of this design, and the design is at parity by
+construction. The reason to care is the reverse of a deficit: it says the
+headroom between the channel and the ceiling is large, and
+select_recall_telemetry's own framing is that "a parasitic VestigeKV that only
+ADDS rows to DSA's selection cannot lower quality, so the question is whether
+it has anywhere to go". It has somewhere to go: 0.22 against 0.52.
+
+Second, the head gate. This scored best-over-heads because the dump's
+`index_head_w` came back None -- `precompute_head_gate` is conditional. DSA's
+real rule weights the heads by its trained gate and sums. A gate is a
+weighting, not a tie-break, so it can move this materially in either
+direction, and the channel number should be re-taken with it before anything
+is concluded about the channel itself.
+
+**The measurement that decides the design** is therefore not this one. It is
+whether tier 1's sigma-selected resident set recalls rows the indexer channel
+misses, at a budget-matched union -- which is exactly what
+`far_region_stats` computes (its d64/d128/d256/d512 columns are DSA unioned
+with tier 1's top-Delta). That is the value proposition, the instrument
+exists, and its tier-1 arm is only trustworthy as of today's group fix.
+
+One prompt, one workload, 8 queries per snapshot.
