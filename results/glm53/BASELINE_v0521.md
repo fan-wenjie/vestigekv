@@ -254,3 +254,41 @@ footnote, and this one should have been closed before the result was written
 down.
 
 Still one prompt, 8 queries per snapshot.
+
+## Second workload: the structure replicates, the magnitudes agree
+
+Every number above came from one synthetic-filler needle prompt. Repeated on
+natural prose (40 Paul Graham essays, 15.4k tokens, needle at the midpoint),
+far region, 2048-row channel, DSA gate, count/mass:
+
+    delta   synthetic filler   natural prose
+    chan    0.266/0.395        0.251/0.320
+    +64     0.267/0.399        0.256/0.326
+    +512    0.307/0.443        0.310/0.380
+
+    supplement gain (mass)   +0.049            +0.060
+
+Both halves of the corrected finding hold on a workload that shares nothing
+with the first: 64 supplement rows are worth essentially nothing (+0.004 and
++0.006), and 512 rows are worth about +0.05 mass (+0.049 and +0.060, agreeing
+to 0.011). The count gain also agrees (+0.041 and +0.059).
+
+**The channel is worse on prose** (0.320 against 0.395 mass) **and the
+supplement is worth slightly more there** (+0.060 against +0.049). That
+direction is consistent with tier 1 being a SPECTRAL statistic -- natural text
+develops spectral structure in a NoPE cache where synthetic repetition does
+not -- so sigma having more to say on prose is what the premise predicts. Two
+points is not evidence for a mechanism; it is a coincidence worth testing
+rather than a finding.
+
+Still n=1 per workload (8 queries per snapshot, 22 snapshots), so there is no
+noise floor to quote and the agreement could be luck. What has improved is
+that the claim no longer rests on a single corpus, and the corpus it was most
+likely to be an artefact of -- repeated filler -- is now the one with the
+SMALLER supplement gain.
+
+One thing the prose run flagged and did not answer: the needle was not
+retrieved there (completion hit the 300-token cap mid-reasoning), where the
+synthetic prompt was answered every time. That is a quality observation on a
+single draw with a truncated budget, not a retrieval failure, and it should be
+re-run with a real budget before anything is read into it.
