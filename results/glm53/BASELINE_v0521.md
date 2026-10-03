@@ -351,8 +351,16 @@ total, so it is a lead rather than a lever.
 
 `niah_multikey_3` @ 65536, n=50, seed 0, both arms on the index-k-fixed tree:
 
-    DSA baseline   50/50 = 1.000
-    vestigekv      27/50 = 0.540      delta -0.460, Fisher p = 8.7e-9
+    DSA baseline   50/50 = 1.000   and   50/50 = 1.000
+    vestigekv      27/50 = 0.540   and   33/50 = 0.660
+
+                   delta -0.460 (p = 8.7e-9)  and  -0.340 (p = 3.0e-6)
+
+Both runs of each arm, never a mean: the vestigekv arm's two draws differ by
+12 POINTS (0.540 against 0.660), which is its own replicate spread and is
+consistent with the recorded 48% greedy agreement of this decode path. So the
+gap is -0.34 to -0.46 rather than the -0.46 a single draw suggested. DSA is
+1.000 twice.
 
 check_builds clean (0 build failures, 0 tracebacks); the arm resolved as
 vestigekv_dsa decode / dsa prefill, recall_capacity 2048, index_rank 64, STATS
