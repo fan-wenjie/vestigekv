@@ -292,3 +292,57 @@ retrieved there (completion hit the 300-token cap mid-reasoning), where the
 synthetic prompt was answered every time. That is a quality observation on a
 single draw with a truncated budget, not a retrieval failure, and it should be
 re-run with a real budget before anything is read into it.
+
+## Four workloads, and LongBench v2 is the most discriminating of them
+
+far region, 2048-row channel, DSA gate, count/mass:
+
+    workload                chan          +64           +512        gain(mass)
+    synthetic needle 18k    0.266/0.395   0.267/0.399   0.307/0.443   +0.049
+    natural prose 15k       0.251/0.320   0.256/0.326   0.310/0.380   +0.060
+    LongBench-v2 QA 13k     0.121/0.151   0.128/0.160   0.203/0.250   +0.099
+    multi-needle x4 16k     0.246/0.360   0.250/0.372   0.279/0.410   +0.050
+
+The corrected finding holds on all four: 64 supplement rows are worth nothing
+(+0.004 to +0.012), 512 rows are worth +0.049 to +0.099.
+
+**LongBench v2 cannot distinguish SCORES and is the best discriminator of
+RECALL.** Its score is blind here in the strongest sense -- 600 completion
+tokens and no answer emitted -- and the project already has it putting both
+VestigeKV arms ABOVE dense with no mechanism. But its channel mass is 0.151
+against 0.320 to 0.395 elsewhere, less than half, and its supplement gain is
+double. So DSA's indexer is weakest on a real document with a real question,
+and that is exactly where tier 1 is worth most. The benchmark's text is
+informative even though its score is not, and those are separate properties
+that this line has been conflating.
+
+## Per-layer supplement allocation: a null, and not a stable one
+
+The per-layer channel strength spans 0.06 to 0.43, so a uniform Delta plainly
+spends rows where they buy nothing. Greedy water-filling of the SAME total
+across the 11 DSA layers, evaluated on the data it was fitted to:
+
+    workload            uniform   allocated    delta
+    LongBench-v2 QA     0.2498    0.2407      -0.0091
+    synthetic needle    0.4434    0.4510      +0.0076
+    natural prose       0.3795    0.3860      +0.0065
+
+Plus or minus 0.008 against a supplement worth +0.049 to +0.099 -- that is
+noise on the thing being optimised. The negative on LongBench is a real
+artefact of greedy allocation over a non-concave mass(Delta) curve, which is
+itself informative: the returns are not uniformly diminishing, so a greedy rule
+is not even locally safe.
+
+Worse for the idea, the allocation is workload-dependent. The heaviest layers
+are {3, 31, 15} on LongBench, {3, 43, 39} on synthetic, {3, 15, 31} on prose,
+and the starved sets differ too -- so there is no fixed per-layer budget to
+ship. This is the same shape as the recorded finding that rank-64 capture is
+uniform across layers while fire rate spans 0 to 96% with Spearman +0.04: this
+line keeps finding that per-layer behaviour is a property of the data, not of
+the layer.
+
+One consistent signal survives: layer 3 takes the maximum supplement on all
+three workloads. One layer out of eleven, and giving it more did not move the
+total, so it is a lead rather than a lever.
+
+**Direction closed.** A uniform per-layer Delta is what the design should use.
