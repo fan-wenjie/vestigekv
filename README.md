@@ -1693,3 +1693,146 @@ for SEED in 11 12; do
     --out results/harness_tier_65536_seed${SEED}.json
 done
 ```
+
+
+## Recovered launch register (2026-10-04)
+
+This file was truncated by a bad recovery command of mine --
+`open("README.md","w").write(expr)` evaluates the open before `expr`, so a
+NameError in `expr` left a zero-byte file. The text below is the recovery:
+the committed version is intact above, every queue row is re-registered here
+verbatim from `mexp/glm53/queue.jsonl`, and the per-job notes recovered from
+the session's recorded file diffs follow. The notes for the older done jobs
+(`replay-*`, `dsadump-*`, `rulerv0520-*`, `r521mk-*`, `c521-*`, `c521x-*`,
+`c521y-*`, `sw00`..`sw08`, `c521br5-*`, `c521br6-*`) are NOT recovered -- their
+launches are below but their prose is lost. Their results stand in
+`results/glm53/BASELINE_v0521.md` and in the state record.
+
+### Notes recovered verbatim
+
+GLM-5.3-Flash, same-tree decode cost on the v0.5.21 rebase (engine-glm521).
+Both arms on one tree: the v0.5.20 baseline at 4k/124k was intermittently
+stalling (std ITL 4.9 ms against a 11.3 ms median), so no ratio against it
+survives. GRAPH_BS=MAX_REQS=1 is the line's matched-width convention.
+
+
+The indexer-only arm: tier 1 alone (the salience record read out of DSA's
+pooled index-k cache), no tier-2 sketch built, no per-step recall, no fetch.
+It separates what selection costs from what the tier-2 chain costs, against
+the c521z pair above as its matched control.
+
+pinned to any tree but its line's one tree (`audit_queue.LINE_TREE`: `engine/`,
+the unified v0.5.20 one, for Kimi; the v0.5.21 rebase worktree for GLM, whose
+records are all taken there -- a line that names no tree falls back to
+`engine/`, so a new line cannot pin itself to a scratch worktree by saying
+nothing), an output file that already exists, paired arms whose env or args differ, an `arm` with no
+
+A behavioural smoke for the arm (STATS on, own server): it must show no
+calibration build and no fetched row at all.
+
+The lean twin of the indexer-only arm. With no tier 2 there is no certificate
+and no overflow, so the lean decode graph (index-k written, DSA's scoring and
+top-k skipped) is taken on every step by construction -- DSA's own selection
+chain, which the vestigekv layers discard, stops running. The smoke must show
+lean at ~100% of steps in VKSTATS.
+
+vestigekv/dsa_branch.py). c521br2-smoke ran on the v1 tree -- the runner
+re-read the queue at a job end before v5 was applied -- and is retired to
+superseded/ with a state annotation. c521br2-mk3 was killed while loading on
+v1 and re-ran on v5 after the apply, so it is the FIRST multikey_3 draw under
+the fused operators and c521br3-mk3 the second (two draws, quoted both).
+
+c521br7-*: the branch rule re-measured on the position-table tree (engine
+28a3074: five fused kernels, the kept POSITION instead of a page-table
+inverse). The rule is unchanged, so these are a re-measurement and a fourth
+multikey draw, not a new arm. Microbench: 10.3 us/layer, 113 us/step.
+
+c521b-bs8x8k-* and c521b-bs4x16k-*: the first BATCHED GLM cost points, each
+with its own DSA baseline. At bs=1 the decode attention is schedule-bound --
+16x fewer rows buys 10% of the kernel -- so the arm's 22% row advantage
+cannot convert; at batch the kernel should turn bandwidth-bound. The KV pool
+caps bs*(in+out) at 78784 tokens, which is what sizes these two shapes.
+
+Replicates of the (b) smoke and cost point, same launch, same tree. The byte
+ratio moved 0.845 -> 0.852 -> 0.879 across v5 -> v6 -> (b) and p99 1.030x ->
+1.045x, while kept=1120/call and seq=31750/call are IDENTICAL on all three --
+so the kept set did not move and only the FIRE count did. v5 -> v6 cannot
+change the rule yet moved fetched 451 -> 473 (+4.9%), which is one noise
+sample; the decode trajectory is nondeterministic, so the per-step queries
+and hence the fire counts differ run to run. These replicates give the spread
+that says whether 555 (+17%) is inside it.
+
+c521b-bs8x8k-*-r2/-r3 and c521b-bs16x4k-*: the batched point replicated, and
+one shape wider. The first 8x8k pair is the only GLM measurement where the
+branch arm wins end to end (output throughput 1.047x, median TPOT 0.963x, p99
+TPOT 0.932x, duration 0.955x) while its POOLED median ITL is still 1.044x --
+the win is in the tail and in prefill-interleaved steps, not in the typical
+decode step. n=8 requests in one run is not enough to own that sign, so these
+two replicates run the identical launch, and 16x4k asks whether the win grows
+with batch at a fixed KV budget. Both arms carry the inert BRANCH_Q so only
+`arm` varies.
+
+### Launches (verbatim, re-registered)
+
+{"args":{"samples":"results/glm53/ruler/samples_baseline_n10_4096-8192-16384-32768-65536.json","seed":0},"arm":"vestigekv","client":"replay","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955","SGLANG_DEBUG_VESTIGEKV_DUMP_DIR":"results/glm53/caldump","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"replay-vestigekv-r128","probe":false,"server_args":["--vestigekv-index-rank","128"],"skip":true}
+{"args":{"samples":"results/glm53/ruler/samples_baseline_n10_4096-8192-16384-32768-65536.json","seed":0},"arm":"vestigekv","client":"replay","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"replay-vestigekv-r256","probe":false,"server_args":["--vestigekv-index-rank","256"],"skip":true}
+{"args":{"ignore_eos":true,"length":65536,"max_tokens":64,"n":2,"samples":"results/glm53/ruler/samples_baseline_n10_4096-8192-16384-32768-65536.json","seed":0,"tasks":"niah_single_2,ruler_cwe,ruler_fwe,ruler_qa_squad"},"arm":"vestigekv","client":"replay","env":{"CHUNK":"1024","CTX":"73728","GRAPH":"0","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955","SGLANG_DEBUG_VESTIGEKV_DUMP_DIR":"results/glm53/dsadump","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"dsadump-vestigekv-64k","probe":false,"skip":true}
+{"args":{"ignore_eos":true,"length":8192,"max_tokens":64,"n":2,"samples":"results/glm53/ruler/samples_baseline_n10_4096-8192-16384-32768-65536.json","seed":0,"tasks":"ruler_fwe,ruler_cwe"},"arm":"vestigekv","client":"replay","env":{"CHUNK":"1024","CTX":"73728","GRAPH":"0","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955","SGLANG_DEBUG_VESTIGEKV_DUMP_DIR":"results/glm53/dsadump","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"dsadump-vestigekv-8k","probe":false,"skip":true}
+{"args":{"ignore_eos":true,"length":4096,"max_tokens":64,"n":3,"samples":"results/glm53/ruler/samples_baseline_n10_4096-8192-16384-32768-65536.json","seed":0,"tasks":"ruler_fwe,ruler_cwe,niah_single_2,ruler_qa_squad"},"arm":"vestigekv","client":"replay","env":{"CHUNK":"1024","CTX":"73728","GRAPH":"0","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955","SGLANG_DEBUG_VESTIGEKV_DUMP_DIR":"results/glm53/dsadump","SGLANG_DEBUG_VESTIGEKV_STATS":"1"},"id":"dsadump-vestigekv-4k","probe":false,"skip":true}
+{"args":{"n":10,"seed":0},"arm":"baseline","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955"},"id":"rulerv0520-baseline","probe":true,"skip":true}
+{"args":{"n":10,"seed":0},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955"},"id":"rulerv0520-vestigekv","probe":true,"skip":true}
+{"args":{"lengths":"65536","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955"},"id":"r521mk-vestigekv","probe":false}
+{"args":{"lengths":"65536","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"baseline","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955"},"id":"r521mk-baseline","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"c521-32k4k-baseline","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"c521-32k4k-vestigekv","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"c521-4k124k-baseline","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"c521-4k124k-vestigekv","probe":false}
+{"args":{"lengths":"65536","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"baseline","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955"},"id":"r521mk-baseline2","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"c521x-32k4k-baseline","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"c521x-32k4k-vestigekv","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"c521x-4k124k-baseline","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"c521x-4k124k-vestigekv","probe":false}
+{"args":{"lengths":"65536","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955"},"id":"r521mk-vestigekv2","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"c521y-32k4k-baseline","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"c521y-32k4k-vestigekv","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"c521y-4k124k-baseline","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96"},"id":"c521y-4k124k-vestigekv","probe":false}
+{"args":{"input_len":32768,"output_len":256,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br5-smoke","probe":false}
+{"args":{"lengths":"65536","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br5-mk3","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br5-32k4k","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br5-4k124k","probe":false}
+{"args":{"input_len":32768,"output_len":256,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br6-smoke","probe":false}
+{"args":{"lengths":"65536","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br6-mk3","probe":false,"skip":true,"skip_reason":"c521br5-mk3 ran on the fixed tree; measuring the same arm twice adds no draw"}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br6-32k4k","probe":false,"skip":true,"skip_reason":"c521br5-32k4k ran on the fixed tree; measuring the same arm twice adds no draw"}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br6-4k124k","probe":false,"skip":true,"skip_reason":"c521br5-4k124k ran on the fixed tree; measuring the same arm twice adds no draw"}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"sw00-control","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"sw01-moe-cutlass","probe":false,"server_args":["--moe-runner-backend","cutlass"]}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"sw02-moe-trtllm","probe":false,"server_args":["--moe-runner-backend","flashinfer_trtllm"]}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"sw03-moe-cutedsl","probe":false,"server_args":["--moe-runner-backend","flashinfer_cutedsl"]}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"sw04-moe-triton","probe":false,"server_args":["--moe-runner-backend","triton"]}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"sw05-fp4-cudnn","probe":false,"server_args":["--fp4-gemm-runner-backend","flashinfer_cudnn"]}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"sw06-fp4-trtllm","probe":false,"server_args":["--fp4-gemm-runner-backend","flashinfer_trtllm"]}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"sw07-fp4-cutedsl","probe":false,"server_args":["--fp4-gemm-runner-backend","flashinfer_cutedsl"]}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95"},"id":"sw08-kv-fp8","probe":false,"server_args":["--kv-cache-dtype","fp8_e4m3"]}
+{"args":{"input_len":32768,"output_len":256,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br7-smoke","probe":false}
+{"args":{"lengths":"65536","n":50,"seed":0,"tasks":"niah_multikey_3"},"arm":"vestigekv","client":"ruler","env":{"CHUNK":"1024","CTX":"73728","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.955","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br7-mk3","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br7-32k4k","probe":false}
+{"args":{"input_len":4096,"output_len":126976,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.96","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br7-4k124k","probe":false}
+{"args":{"concurrency":8,"input_len":8192,"num_prompts":8,"output_len":512,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"16384","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"8","MAMBA_SLOTS":"8","MAX_REQS":"8","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521b-bs8x8k-baseline","probe":false}
+{"args":{"concurrency":8,"input_len":8192,"num_prompts":8,"output_len":512,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"16384","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"8","MAMBA_SLOTS":"8","MAX_REQS":"8","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521b-bs8x8k-branch","probe":false}
+{"args":{"concurrency":4,"input_len":16384,"num_prompts":4,"output_len":512,"seed":0},"arm":"baseline","client":"stream","env":{"CHUNK":"512","CTX":"24576","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521b-bs4x16k-baseline","probe":false}
+{"args":{"concurrency":4,"input_len":16384,"num_prompts":4,"output_len":512,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"24576","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"4","MAMBA_SLOTS":"4","MAX_REQS":"4","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521b-bs4x16k-branch","probe":false}
+{"args":{"input_len":32768,"output_len":256,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br7-smoke-r1","probe":false}
+{"args":{"input_len":32768,"output_len":256,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_DEBUG_VESTIGEKV_STATS":"1","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br7-smoke-r2","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br7-32k4k-r1","probe":false}
+{"args":{"input_len":32768,"output_len":4096,"seed":0},"arm":"vestigekv","client":"stream","env":{"CHUNK":"512","CTX":"135168","ENGINE":"/home/user/vestigekv-wt/engine-glm521","GRAPH_BS":"1","MAMBA_SLOTS":"1","MAX_REQS":"1","MEM_FRAC":"0.95","SGLANG_VESTIGEKV_BRANCH_Q":"0.75"},"id":"c521br7-32k4k-r2","probe":false}
+{"args": {"concurrency": 8, "input_len": 8192, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-bs8x8k-baseline-r2", "probe": false}
+{"args": {"concurrency": 8, "input_len": 8192, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-bs8x8k-branch-r2", "probe": false}
+{"args": {"concurrency": 8, "input_len": 8192, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-bs8x8k-baseline-r3", "probe": false}
+{"args": {"concurrency": 8, "input_len": 8192, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-bs8x8k-branch-r3", "probe": false}
+{"args": {"concurrency": 16, "input_len": 4096, "num_prompts": 16, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "16", "MAMBA_SLOTS": "16", "MAX_REQS": "16", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-bs16x4k-baseline", "probe": false}
+{"args": {"concurrency": 16, "input_len": 4096, "num_prompts": 16, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "16", "MAMBA_SLOTS": "16", "MAX_REQS": "16", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-bs16x4k-branch", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-fit8x3k-baseline", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-fit8x3k-branch", "probe": false}
+{"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-fit4x8k-baseline", "probe": false}
+{"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-fit4x8k-branch", "probe": false}
