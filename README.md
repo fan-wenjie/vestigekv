@@ -2013,6 +2013,22 @@ be LARGER here than the 0.889 -> 0.646 the short smoke showed.
 
 {"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521L-A"}, "id": "c521L-A", "probe": false}
 {"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521L-D", "SGLANG_VESTIGEKV_RHO": "0.0078125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521L-D", "probe": false}
+
+c521q-D-mk3-*: quality for the D configuration (rho 1/128, CLOSE_BLOCK 256) on
+niah_multikey_3 at 65536, n=50, seed 0 -- the draw that separated arms on this
+line, where DSA reads 1.000 and the branch arm at rho 1/32 read 1.000 four
+times while the sketch arm read 0.540/0.660. TWO draws, because one is not
+quotable.
+
+rho 1/128 cuts tier 1 to a quarter of its rows, and the offline screen put
+tier-1's own recall of the true top-2048 at 0.086 against 0.137 at rho 1/32.
+The DSA fence is a floor only where it fires, and it fires nowhere here
+(fallback 0.00000 on every grid arm), so this is a real quality question and
+not a formality. At 65536 the prompt is 16*4096, so the tail is zero at both
+close blocks and the only variable is rho.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-D-mk3-r1", "SGLANG_VESTIGEKV_RHO": "0.0078125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521q-D-mk3-r1", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-D-mk3-r2", "SGLANG_VESTIGEKV_RHO": "0.0078125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521q-D-mk3-r2", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
