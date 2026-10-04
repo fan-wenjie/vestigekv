@@ -2109,6 +2109,28 @@ it rewrote the row-source block while the byte counters (which come from the
 backend, not the kernel) kept reproducing.
 
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521q-tree-mk3", "probe": false}
+
+c521b1-revkernel-mk3: quality bisect step 1. c521q-tree-mk3 -- the current tree
+with NO override and an env byte-identical to the 1.000 reference -- scored
+0.000, so the regression is in today commits and every knob number is void.
+Three of them change behaviour: the two-arm attention kernel (eae7c1c319), the
+sketch purge (ef926f61cc) and the restored kept append (b6424893db). This row
+runs with ONLY the kernel reverted to its value-select version, at HEAD, which
+isolates one file instead of checking out a whole tree. The kernel is the prime
+suspect because it rewrote the row-source block while the byte counters that
+kept reproducing come from the backend, not from it: a kernel reading the wrong
+rows gives exactly correct counts and zero score.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b1-revkernel-mk3", "probe": false}
+
+c521b1-revkernel2-mk3: bisect step 1, retried. The first attempt failed with
+"server did not start": the reverted value-select kernel reads `vk.tiers`, and
+the purge dropped that field from VestigeKVRows because it defaulted True and
+the DSA path never set it False -- the read was removed only from the two-arm
+version. One line, and the revert is still a clean isolation of the kernel,
+since the condition was always taken.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b1-revkernel2-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
