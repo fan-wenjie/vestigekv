@@ -284,7 +284,9 @@ def run_client(job, port):
         # greedy, the dataset's own prompt and max_gen; ROUGE-L is scored
         # afterwards by make_lb1_numbers.py in the plotting venv (py-rouge).
         cmd = [PY, os.path.join(ROOT, "mexp", "kimi", "run_longbench1.py"), "--arm", arm,
-               "--port", port, "--model", MODEL, "--out", os.path.join(RESULTS, "longbench1"),
+               "--port", port, "--model", MODEL, "--out", os.path.join(RESULTS, "longbench1", job["id"]),  # per JOB, not per arm: the client names its files pred_{arm}_{task}.jsonl,
+               # so two jobs of one arm silently overwrote each other (it cost a
+               # noise-floor pair and the only copy of an older arm's predictions)
                "--subsets", args.get("subsets", "gov_report,qmsum,multi_news"),
                "--max-length", str(args.get("max_length", 65536))]
         if "limit" in args:

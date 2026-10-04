@@ -27,8 +27,20 @@ def refs_for(task):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tasks", default="gov_report,multi_news,qmsum")
+    ap.add_argument("--pair", default=None,
+                    help="two paths to pred jsonl files; report their mutual ROUGE-L "
+                         "(the same-arm noise floor when both are one arm)")
     a = ap.parse_args()
     sc = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
+    if a.pair:
+        x, y = a.pair.split(",")
+        A = {json.loads(l)["_id"]: json.loads(l)["pred"] for l in open(x)}
+        Bp = {json.loads(l)["_id"]: json.loads(l)["pred"] for l in open(y)}
+        common = [i for i in A if i in Bp]
+        tot = sum(sc.score(A[i], Bp[i])["rougeL"].fmeasure for i in common)
+        print(f"mutual ROUGE-L over {len(common)} shared ids: {tot/max(len(common),1):.4f}")
+        print(f"  {os.path.basename(x)}\n  {os.path.basename(y)}")
+        return
     print(f"{'task':<14}{'arm':<12}{'n':>5}{'rougeL':>9}")
     for task in a.tasks.split(","):
         refs = refs_for(task)

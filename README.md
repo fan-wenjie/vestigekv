@@ -2257,6 +2257,21 @@ a tier-1-only run of it becomes worth the GPU.
 
 {"args": {"max_length": 65536, "subsets": "multi_news"}, "arm": "vestigekv", "client": "longbench1", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521lb-same-r1"}, "id": "c521lb-same-r1", "probe": false, "skip": false}
 {"args": {"max_length": 65536, "subsets": "multi_news"}, "arm": "vestigekv", "client": "longbench1", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521lb-same-r2"}, "id": "c521lb-same-r2", "probe": false, "skip": false}
+
+c521lb-same-r3: the noise-floor run that r2 destroyed. longbench1's client
+names its files pred_{arm}_{task}.jsonl inside the --out directory, and the
+runner passed one arm-keyed directory for every job, so two jobs of the same
+arm silently overwrote each other -- and both overwrote the Sep-22 vestigekv
+predictions that the 0.539 arm-vs-arm figure came from, which is therefore no
+longer reproducible. The audit's existing-output check does not see this
+because the path carries no job id.
+
+The runner now passes results/glm53/longbench1/<job id> as --out, so each job
+is isolated; score_longbench1.py takes --pair to compare two pred files
+directly. r2's output is preserved under a job-keyed name. r3 re-runs the same
+arm so the pair exists again.
+
+{"args": {"max_length": 65536, "subsets": "multi_news"}, "arm": "vestigekv", "client": "longbench1", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521lb-same-r3"}, "id": "c521lb-same-r3", "probe": false, "skip": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
