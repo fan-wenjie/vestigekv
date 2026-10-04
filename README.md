@@ -2061,6 +2061,24 @@ can be attributed to a knob we are allowed to keep, or not at all.
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-rho128-mk3", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521q-rho128-mk3", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-cb256-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521q-cb256-mk3", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-rho64-mk3", "SGLANG_VESTIGEKV_RHO": "0.015625"}, "id": "c521q-rho64-mk3", "probe": false}
+
+c521q-cb2048 / cb1024: where sigma survives a smaller close block. The window
+IS the close block and kappa is fixed at 16, so the low-pass cutoff is
+window/kappa and moves WITH it: 256 tokens at B=4096 (the designed value), 128
+at 2048, 64 at 1024, 16 at 256 -- and the 31-dim basis occupies 3% of the
+window at 4096 against 48% at 256. kappa cannot compensate: a 256-token cutoff
+in a 256-token window needs kappa=1, which collapses the basis to its DC term.
+
+That is a complete mechanism for the 0.000, and it says CLOSE_BLOCK carries two
+roles that should be independent -- the close cadence, which sets the tail, and
+the spectral window, which sets what sigma means. Closing every 256 tokens
+while computing sigma over a trailing 4096-token window is the structural fix;
+blockwise_sigma consuming non-overlapping blocks is why they are tied. These
+two points say how far the cadence can come down before sigma stops working,
+which bounds the tail fix until that refactor exists.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-cb2048-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "2048"}, "id": "c521q-cb2048-mk3", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-cb1024-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024"}, "id": "c521q-cb1024-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
