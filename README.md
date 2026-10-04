@@ -2219,6 +2219,24 @@ earlier 1.280x and 0.526x readings of those two shapes are void.
 {"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-rho128-smoke", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521r-rho128-smoke", "probe": false}
 {"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-rho128-long", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521r-rho128-long", "probe": false}
 {"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-base-long"}, "id": "c521r-base-long", "probe": false}
+
+c521t1q-*: the probe that can give rho a lower bound. The rho ladder read
+1.000 at 1/32, 1/64, 1/128, 1/256 AND 1/512 -- a 16x range with kept going
+2052 -> 132 rows and no movement at all. That is a NON-DISCRIMINATION, not a
+demonstration of equality: niah_multikey_3 at n=50 cannot resolve tier 1's
+size, the same way MRCR cannot resolve admission width. It does catch gross
+failures (it put the sketch arm at 0.540/0.660), so the reading is that tier 2
+does essentially all the retrieving, which matches tier 1's own offline recall
+of the true top-2048 at 0.09-0.14.
+
+So these two turn tier 2 OFF -- BRANCH_Q unset, which makes group_fetch return
+on its first line (actuator traced) -- and ask what kept ALONE retrieves, at
+the served rho and at 1/128. A gap between them is the first evidence that
+could bound rho from below; two 1.000s would say multikey cannot see kept at
+all and a different probe is needed before any rho is chosen.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "VK_JOB": "c521t1q-t1-rho32-mk3", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521t1q-t1-rho32-mk3", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "VK_JOB": "c521t1q-t1-rho128-mk3", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521t1q-t1-rho128-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
