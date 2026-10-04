@@ -2172,6 +2172,18 @@ _refresh_graph_bufs, _pack_csr and _dense_rows' caller are restored unchanged.
 This row must read 1.000.
 
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521fix-mk3", "probe": false}
+
+c521rev-mk3: the purge reverted. SGLANG_ENABLE_VESTIGEKV_INGRAPH_SCAN defaults
+True, so the in-graph pack was built and _ingraph_host_step ran every step --
+the branch arm's production path -- and it called _stage_step, which fills the
+fixed-address staging buffers the captured graph reads. The purge deleted that
+path as sketch machinery; with _ingraph_pack permanently None the staging
+buffers kept their initial contents (slots all trash_slot) and every captured
+step attended the trash slot's kept table. The byte counters never read those
+buffers, which is why they reproduced for ten hours while attention was wrong.
+python/sglang is back at eae7c1c319 whole. This must read 1.000.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521rev-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
