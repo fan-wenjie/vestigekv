@@ -2237,6 +2237,26 @@ all and a different probe is needed before any rho is chosen.
 
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "VK_JOB": "c521t1q-t1-rho32-mk3", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521t1q-t1-rho32-mk3", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "VK_JOB": "c521t1q-t1-rho128-mk3", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521t1q-t1-rho128-mk3", "probe": false}
+
+c521lb-same-r1/r2: the noise floor that makes longbench1 readable. Needle
+retrieval cannot see tier 1 at all -- multikey_3 reads 1.000 for rho 1/32
+through 1/512 and tier 1 ALONE reads 0.000 -- so a probe that could bound kept
+has to need broad context. Long-document summarisation is the shape on hand,
+and scoring the predictions already on disk (mexp/glm53/score_longbench1.py)
+put the two arms' ROUGE-L agreement at 0.395 (gov_report), 0.539 (multi_news)
+and 0.588 (qmsum): the arms write visibly different text, unlike the needle
+draw where every arm is 1.000.
+
+That is not yet evidence, because this line's decode is nondeterministic -- an
+arm re-run identically agrees with itself on 48% of greedy tokens
+([[vestigekv-decode-path-is-nondeterministic]]). These two runs are the SAME
+arm twice on multi_news, so their agreement IS the floor. If it lands near
+0.54, longbench1 is noise here and cannot bound kept any better than multikey.
+If it lands well above, longbench1 is the first probe that can see tier 1, and
+a tier-1-only run of it becomes worth the GPU.
+
+{"args": {"max_length": 65536, "subsets": "multi_news"}, "arm": "vestigekv", "client": "longbench1", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521lb-same-r1"}, "id": "c521lb-same-r1", "probe": false, "skip": false}
+{"args": {"max_length": 65536, "subsets": "multi_news"}, "arm": "vestigekv", "client": "longbench1", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521lb-same-r2"}, "id": "c521lb-same-r2", "probe": false, "skip": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
