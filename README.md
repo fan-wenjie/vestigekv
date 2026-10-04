@@ -2131,6 +2131,23 @@ version. One line, and the revert is still a clean isolation of the kernel,
 since the condition was always taken.
 
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b1-revkernel2-mk3", "probe": false}
+
+c521b2-prepurge-mk3: bisect step 2. Step 1 reverted the two-arm attention
+kernel at HEAD and still read 0.000, so the kernel is not the culprit. This
+step checks out the whole python tree at eae7c1c319 -- the two-arm kernel
+present, the sketch purge NOT yet applied -- so the sketch tier, the MLA
+backend and the deleted modules are all back and the backend is the pre-purge
+one. Env is byte-identical to the 1.000 reference. 1.000 here puts the
+regression in the purge (ef926f61cc) or in what followed it, with the restored
+kept append (b6424893db) next; 0.000 would mean the regression predates the
+kernel commit and the reference itself needs re-examining.
+
+NOTE: the served tree is in a TEMPORARY state for this row -- an old commit
+checked out over python/sglang, uncommitted. It must be restored to HEAD
+afterwards; dsa_rows.py is a harmless leftover since the pre-purge backend
+imports rows_for_layer from tier_decode.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b2-prepurge-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
