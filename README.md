@@ -2092,6 +2092,23 @@ path is, and every rho/close-block number measured so far is void.
 
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-noop-mk3", "SGLANG_VESTIGEKV_RHO": "0.03125"}, "id": "c521q-noop-mk3", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-noopcb-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "4096"}, "id": "c521q-noopcb-mk3", "probe": false}
+
+c521q-tree-mk3: the control I should have run first. The reference 1.000 on
+niah_multikey_3 is c521br7-mk3, which ENDED AT 08:45:09 -- before the sketch
+purge, the dangling-import fix, the restored kept append, the two-arm attention
+kernel and three stats/knob commits. Every 0.000 in the rho/close-block ladder
+is the first multikey draw on the purged tree, so the ladder was attributing to
+a knob what may be a tree regression. done-rows-outlive-rule-changes says
+exactly this and I ignored it.
+
+This row's env is byte-identical to c521br7-mk3's: no override, no VK_JOB. The
+only difference from the 1.000 is the tree. 1.000 means the knobs are the
+story after all; 0.000 means quality broke somewhere in today's commits and
+every knob number is void -- with the two-arm kernel the prime suspect, since
+it rewrote the row-source block while the byte counters (which come from the
+backend, not the kernel) kept reproducing.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521q-tree-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
