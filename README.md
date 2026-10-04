@@ -1970,6 +1970,31 @@ to be quoted as a range.
 
 {"args": {"input_len": 30720, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521tail-30720", "probe": false}
 {"args": {"input_len": 32764, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521tail-32764", "probe": false}
+
+c521g-*: the (rho, CLOSE_BLOCK) grid, one variable at a time, at input_len
+32764 -- chosen because 32764 // 4096 leaves a tail of 4092, near its maximum,
+which is the regime where the byte claim fails (c521tail measured 1.179x DSA
+there). A is today's configuration, B moves rho alone to 1/128, C moves the
+close block alone to 256, D moves both, and c521g-D-32768 repeats D at the
+multiple-of-4096 length so D is comparable with every earlier number.
+
+Theory being tested (kept = sinks + rho*closed + tail, kept's per-token cost
+is exactly rho*1024 plus the tail's): fixed-only ratio vs DSA at 32k should go
+A 1.334, B 1.102, C 0.735, D 0.488. If C and D do not move, the close block
+did not reach the kernel -- the VKKEPT line prints the resolved value and the
+kept count, so that is checkable rather than assumed.
+
+Every row carries a distinct VK_JOB: the runner keys server reuse on
+(arm, env, server_args), so the two c521tail rows shared a server and their
+VKSTATS accumulated across both lengths. Those two are byte/kept measurements
+only, not cost -- STATS is on.
+
+{"args": {"input_len": 32764, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521g-A-32764"}, "id": "c521g-A-32764", "probe": false}
+{"args": {"input_len": 32764, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521g-B-32764", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521g-B-32764", "probe": false}
+{"args": {"input_len": 32764, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521g-C-32764", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521g-C-32764", "probe": false}
+{"args": {"input_len": 32764, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521g-D-32764", "SGLANG_VESTIGEKV_RHO": "0.0078125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521g-D-32764", "probe": false}
+{"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521g-D-32768", "SGLANG_VESTIGEKV_RHO": "0.0078125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521g-D-32768", "probe": false}
+{"args": {"input_len": 32764, "output_len": 256, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521g-dsa-32764"}, "id": "c521g-dsa-32764", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
