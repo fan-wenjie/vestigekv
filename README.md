@@ -2159,6 +2159,19 @@ append; 1.000 puts it in the last three, where only the knob changes behaviour
 and it should be inert with the env unset.
 
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b3-append-mk3", "probe": false}
+
+c521fix-mk3: the regression fixed. The bisect landed on the purge, and the
+mechanism is that an eager decode step takes neither the split path nor the
+router (split_step requires capture mode; the eager branch pops
+router.rows[lid] by design) and reads this layer's packed CSR instead -- a pack
+the purge deleted. After the purge those buffers were written only at capture,
+from the dummy batch. Every byte and kept number reproduced because they were
+all taken at GRAPH_BS=1, where bs is always captured and the fork serves every
+step; RULER runs at GRAPH_BS=4 and the uncaptured sizes go eager.
+_refresh_graph_bufs, _pack_csr and _dense_rows' caller are restored unchanged.
+This row must read 1.000.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521fix-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
