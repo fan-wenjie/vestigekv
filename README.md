@@ -2200,6 +2200,25 @@ re-applied, with its own quality draw, only after rho lands.
 
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-rho64-mk3", "SGLANG_VESTIGEKV_RHO": "0.015625"}, "id": "c521r-rho64-mk3", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-rho128-mk3", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521r-rho128-mk3", "probe": false}
+
+c521r-rho256 / rho512 / rho128-smoke / rho128-long / base-long: rho's byte
+payoff, now that its quality is known. rho 1/64 and 1/128 both read 1.000 on
+niah_multikey_3 at 65536 against the 1.000 anchor, on the restored tree -- so
+the five 0.000 scores earlier today were the purge's hole and said nothing
+about rho. kept's per-token cost is exactly rho*1024 B, so 1/32 -> 1/128 takes
+it from 32 to 8 B/token.
+
+Quality first again: rho256 and rho512 find where it breaks. Then the bytes at
+1/128, measured twice -- a 32k smoke where the prompt is an exact multiple of
+CLOSE_BLOCK and the tail is zero, and a 4k/32k long decode where the tail
+cycles and dominates, with a matching rho 1/32 long decode for the ratio. The
+earlier 1.280x and 0.526x readings of those two shapes are void.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-rho256-mk3", "SGLANG_VESTIGEKV_RHO": "0.00390625"}, "id": "c521r-rho256-mk3", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-rho512-mk3", "SGLANG_VESTIGEKV_RHO": "0.001953125"}, "id": "c521r-rho512-mk3", "probe": false}
+{"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-rho128-smoke", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521r-rho128-smoke", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-rho128-long", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521r-rho128-long", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-base-long"}, "id": "c521r-base-long", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
