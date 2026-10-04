@@ -1836,3 +1836,15 @@ with batch at a fixed KV budget. Both arms carry the inert BRANCH_Q so only
 {"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-fit8x3k-branch", "probe": false}
 {"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-fit4x8k-baseline", "probe": false}
 {"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b-fit4x8k-branch", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521io-fit8x3k-vk", "probe": false}
+{"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521io-fit4x8k-vk", "probe": false}
+
+c521io-fit8x3k-vk and c521io-fit4x8k-vk: the indexer-only arm (tier 1 alone, no
+tier-2 chain) at the two batched shapes that fit the pool. It is a COST
+CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
+(tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
+the question these answer is whether that triple is still half tier-1 and
+half tier-2 -- if it is, both halves grow with the lane count and batching is
+not a lever on the tax. Same launch as the matching -branch row with
+SGLANG_VESTIGEKV_INDEXER_ONLY=1 added, so only that one variable moves.
+
