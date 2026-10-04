@@ -1945,6 +1945,31 @@ the baseline's own median ITL and 1.07 points on the ratio: a split of a
 {"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521t-fit8x3k-baseline-r3", "probe": false}
 {"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521t-fit8x3k-branch-r3", "probe": false}
 {"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521t1-fit8x3k-vk-r3", "probe": false}
+
+c521k-smoke: one smoke with a VKKEPT line that prints the kept set's
+composition. The served kept (1121.3/call at seq 31750, identical on two
+replicates) does not match the formula the code reads -- closed =
+(seq//CLOSE_BLOCK)*CLOSE_BLOCK with CLOSE_BLOCK=4096 and rho=1/32 predicts
+4 + 896 + 3078 = 3978 -- while the same formula reproduces an old dump exactly
+(2194 against 2193 at seq 18062). So the formula is right and its served
+inputs are not what they look like. No reduction plan is worth proposing until
+this reconciles, because the lever is rho if m dominates and CLOSE_BLOCK if the
+tail does.
+
+{"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521k-smoke", "probe": false}
+
+c521tail-*: kept against the prompt length's remainder mod CLOSE_BLOCK. The
+VKKEPT line showed kept = 4 sinks + rho*closed + (seq - closed), and at the
+32768 smoke the tail is exactly 0 because 32768 = 8 * 4096. So every byte
+number on this line was measured at the most favourable prompt length there
+is. 30720 puts the tail at 2048 (its mean over arbitrary lengths) and 32764 at
+4092 (near its maximum). Predicted kept: 1028, ~2944, ~4988. At 32764 the
+attended set would be ~5460 rows against DSA's 2048, i.e. the arm reads 2.7x
+DSA -- if that holds the byte claim is conditional on the prompt length and has
+to be quoted as a range.
+
+{"args": {"input_len": 30720, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521tail-30720", "probe": false}
+{"args": {"input_len": 32764, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521tail-32764", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
