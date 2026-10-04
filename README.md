@@ -2029,6 +2029,23 @@ close blocks and the only variable is rho.
 
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-D-mk3-r1", "SGLANG_VESTIGEKV_RHO": "0.0078125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521q-D-mk3-r1", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-D-mk3-r2", "SGLANG_VESTIGEKV_RHO": "0.0078125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521q-D-mk3-r2", "probe": false}
+
+c521L-r64 / r256 / r512: the rho knee on a long decode, at CLOSE_BLOCK 256.
+Two points are measured so far -- rho 1/32 with B 4096 reads 1.280x DSA (kept
+2622, fetch 138) and rho 1/128 with B 256 reads 0.526x (kept 287, fetch 431) --
+giving an elasticity of 0.126 fetch rows per kept row given up. kept's own
+structure says the knee is near 1/128: with B 256 the mean tail is 128 rows, so
+the tail is 30% of kept at 1/128, 46% at 1/256 and 63% at 1/512, and rho stops
+buying much once the tail dominates. These three bracket it, and they also say
+whether the elasticity stays benign below 1/128 or turns over.
+
+For TIME none of this matters on this box: 2760 -> 718 attended rows is worth
+about 3 us of a 10830 us step at the attention kernel's measured row
+sensitivity, so rho is a byte knob, not a latency knob.
+
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521L-r64", "SGLANG_VESTIGEKV_RHO": "0.015625", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521L-r64", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521L-r256", "SGLANG_VESTIGEKV_RHO": "0.00390625", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521L-r256", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521L-r512", "SGLANG_VESTIGEKV_RHO": "0.001953125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521L-r512", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
