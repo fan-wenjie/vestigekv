@@ -1840,6 +1840,33 @@ with batch at a fixed KV budget. Both arms carry the inert BRANCH_Q so only
 {"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521io-fit4x8k-vk", "probe": false}
 
 c521io-fit8x3k-vk and c521io-fit4x8k-vk: the indexer-only arm (tier 1 alone, no
+
+c521io2-*: the tier-1-only arm done RIGHT. c521io-fit*-vk measured nothing:
+`_indexer_only()` is `INDEXER_ONLY or BRANCH_Q is not None`, and those rows
+inherited BRANCH_Q=0.75 from the branch row, so adding INDEXER_ONLY=1 changed
+no behaviour and the two jobs were a second run of the branch arm. They are
+still useful as a REPLICATE (median ITL 21.455 vs 21.478 at 8x3k, 15.969 vs
+16.043 at 4x8k, so run-to-run noise on this shape is 0.1-0.5%), but the
+tier-1/tier-2 split they appeared to give (+0.257/+0.024 and +0.728/+0.073 ms)
+is VOID. These rows drop BRANCH_Q so the branch recall is actually off.
+
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521io2-fit8x3k-vk", "probe": false}
+{"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521io2-fit4x8k-vk", "probe": false}
+
+c521v8-* and c521v8io-*: the two fitting shapes re-measured on the two-arm
+attention kernel (engine eae7c1c3: the fallback and the recall each get their
+own code inside one kernel, num_stages 3 -> 2; recall 6.07 -> 5.51 us/layer
+and fenced 4.35 -> 3.80 in the microbench, REG 200 STACK 0). The c521b-fit*
+rows were taken on the single value-select loop, so they do not pair with
+anything measured after this commit. c521v8io-* is the tier-1-only control
+with BRANCH_Q REMOVED, which is what c521io-fit*-vk got wrong.
+
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521v8-fit8x3k-baseline", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521v8-fit8x3k-branch", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521v8io-fit8x3k-vk", "probe": false}
+{"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521v8-fit4x8k-baseline", "probe": false}
+{"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521v8-fit4x8k-branch", "probe": false}
+{"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521v8io-fit4x8k-vk", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
