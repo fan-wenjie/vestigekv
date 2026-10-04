@@ -2148,6 +2148,17 @@ afterwards; dsa_rows.py is a harmless leftover since the pre-purge backend
 imports rows_for_layer from tier_decode.
 
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b2-prepurge-mk3", "probe": false}
+
+c521b3-append-mk3: bisect step 3. Step 2 read 1.000 with the tree at
+eae7c1c319 -- two-arm kernel present, purge not applied -- so the kernel is
+innocent, the 1.000 reference reproduces, and the regression entered with the
+purge (ef926f61cc) or one of the four commits after it. This step takes the
+tree at b6424893db: purge, import fix and the restored kept append, WITHOUT the
+two log-only commits or the close-block knob. 0.000 puts it in the purge or the
+append; 1.000 puts it in the last three, where only the knob changes behaviour
+and it should be inert with the env unset.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521b3-append-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
