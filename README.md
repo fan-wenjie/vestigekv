@@ -1905,6 +1905,22 @@ because the counter now charges our arm its own 9 B per group (engine
 {"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p3-smoke", "probe": false}
 {"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p3-fit8x3k-baseline", "probe": false}
 {"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p3-fit8x3k-branch", "probe": false}
+
+c521p4-*: two replicates of the purge check, to settle the two moves c521p3
+left open. fetched read 444/call against a recorded trajectory band of 451-555,
+and the 8x3k median ITL ratio went 1.0040 -> 1.0122 while p99 went 1.0134 ->
+0.9992, both from single runs against a 0.1-0.5% run-to-run spread. The row
+counters now print to 0.1 of a row (engine 06fd36df26), so these also say
+whether kept really moved by a row or only crossed a rounding boundary: the
+restored append is one launch for all layers after the per-layer recall loop,
+where the deleted CSR pack was one per layer inside it.
+
+{"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p4-smoke-r1", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p4-fit8x3k-baseline-r1", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p4-fit8x3k-branch-r1", "probe": false}
+{"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p4-smoke-r2", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p4-fit8x3k-baseline-r2", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p4-fit8x3k-branch-r2", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
