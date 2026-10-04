@@ -2184,6 +2184,22 @@ buffers, which is why they reproduced for ten hours while attention was wrong.
 python/sglang is back at eae7c1c319 whole. This must read 1.000.
 
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521rev-mk3", "probe": false}
+
+c521r-rho64 / rho128: rho's quality, measured for the first time. Every earlier
+rho and CLOSE_BLOCK point was taken on the purged tree, where attention read
+the trash slot's kept table on every captured step, so the five 0.000 scores
+were that hole and said nothing about the knobs. The tree is back at
+5a505b9495 and c521rev-mk3 re-anchored it at 1.000 with the same env.
+
+Quality before bytes, per the standing order, and quality before anything on a
+changed tree, per byte-counters-cannot-see-wrong-rows: the counters gather by
+req_pool_indices and cannot see wrong row ADDRESSES, so only a draw like this
+one detects them. At 65536 = 16*4096 the tail is zero, so rho is the only
+variable. The close-block knob went away with the revert and will be
+re-applied, with its own quality draw, only after rho lands.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-rho64-mk3", "SGLANG_VESTIGEKV_RHO": "0.015625"}, "id": "c521r-rho64-mk3", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521r-rho128-mk3", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521r-rho128-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
