@@ -1921,6 +1921,30 @@ where the deleted CSR pack was one per layer inside it.
 {"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p4-smoke-r2", "probe": false}
 {"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p4-fit8x3k-baseline-r2", "probe": false}
 {"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p4-fit8x3k-branch-r2", "probe": false}
+
+c521t-* and c521t1-*: the tier-1/tier-2 split, measured properly for the first
+time on the branch arm. Every earlier attempt was void -- `_indexer_only()` is
+`INDEXER_ONLY or BRANCH_Q is not None`, so a control that kept BRANCH_Q was the
+branch arm again, and the bs=1 0.114/0.109 split in memory decomposed the
+SKETCH tier, which no longer exists. The actuator is traced this time:
+`group_fetch` returns on its first line when `_branch_q()` is None, so dropping
+BRANCH_Q turns tier 2 off and branch_fire never runs, while INDEXER_ONLY=1
+keeps `_indexer_only()` True exactly as the branch arm has it -- tier 2 is the
+only variable that moves.
+
+THREE runs per arm, because the measured noise floor at this shape is 1.09% on
+the baseline's own median ITL and 1.07 points on the ratio: a split of a
+0.3-ms gap cannot be read from single runs.
+
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521t-fit8x3k-baseline-r1", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521t-fit8x3k-branch-r1", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521t1-fit8x3k-vk-r1", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521t-fit8x3k-baseline-r2", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521t-fit8x3k-branch-r2", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521t1-fit8x3k-vk-r2", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521t-fit8x3k-baseline-r3", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521t-fit8x3k-branch-r3", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521t1-fit8x3k-vk-r3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
