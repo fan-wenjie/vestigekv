@@ -1995,6 +1995,24 @@ only, not cost -- STATS is on.
 {"args": {"input_len": 32764, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521g-D-32764", "SGLANG_VESTIGEKV_RHO": "0.0078125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521g-D-32764", "probe": false}
 {"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521g-D-32768", "SGLANG_VESTIGEKV_RHO": "0.0078125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521g-D-32768", "probe": false}
 {"args": {"input_len": 32764, "output_len": 256, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521g-dsa-32764"}, "id": "c521g-dsa-32764", "probe": false}
+
+c521L-*: the same two configurations over a LONG decode (4k in, 32k out), to
+exercise the term the 256-step smoke cannot see. The grid showed why: a 32764
+prompt leaves closed=28672, so the FIRST decode close fires at step 4, aligns
+closed to 32768 and collapses the tail -- kept goes 4992 -> 1028 and stays
+there, which is why the per-call mean read 1162 against a written 4992, and why
+seq/call read 31750 against a true 32896 (the counter also sums the prefill
+chunks). In that window rho is the only knob that moves anything: B and D both
+read 0.646 and C alone reads 0.930, worse than A, because fewer kept groups
+lower the q0.75 threshold and fetch rose to 658.
+
+Over 32768 decode steps the tail cycles 0..CLOSE_BLOCK-1 eight times at B=4096
+and 128 times at B=256, so its steady-state cost (mean B/2 rows) is exercised.
+Prediction: A degrades as the tail grows, D does not, so D's advantage should
+be LARGER here than the 0.889 -> 0.646 the short smoke showed.
+
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521L-A"}, "id": "c521L-A", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521L-D", "SGLANG_VESTIGEKV_RHO": "0.0078125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521L-D", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
