@@ -1867,6 +1867,19 @@ with BRANCH_Q REMOVED, which is what c521io-fit*-vk got wrong.
 {"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521v8-fit4x8k-baseline", "probe": false}
 {"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521v8-fit4x8k-branch", "probe": false}
 {"args": {"concurrency": 4, "input_len": 8192, "num_prompts": 4, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "16384", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1"}, "id": "c521v8io-fit4x8k-vk", "probe": false}
+
+c521p-*: the branch arm on the PURGED tree (engine ef926f61cc: the sketch tier,
+the MLA line's backend and fork, dsa_unified and the unreached modules deleted;
+17476 lines gone, the backend 3556 -> 2601). Nothing about the rule changed, so
+these are a behavioural re-measurement and they must reproduce what the same
+launches gave before the purge: the smoke's kept/fetched/seq per call and its
+byte ratio, and the 8x3k pair's median ITL ratio (1.0040 on the two-arm kernel,
+c521v8-fit8x3k). A move in either is a deletion that took something live with
+it, not a result.
+
+{"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p-smoke", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p-fit8x3k-baseline", "probe": false}
+{"args": {"concurrency": 8, "input_len": 3072, "num_prompts": 8, "output_len": 512, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "8192", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "8", "MAMBA_SLOTS": "8", "MAX_REQS": "8", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75"}, "id": "c521p-fit8x3k-branch", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
