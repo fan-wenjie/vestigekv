@@ -2046,6 +2046,21 @@ sensitivity, so rho is a byte knob, not a latency knob.
 {"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521L-r64", "SGLANG_VESTIGEKV_RHO": "0.015625", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521L-r64", "probe": false}
 {"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521L-r256", "SGLANG_VESTIGEKV_RHO": "0.00390625", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521L-r256", "probe": false}
 {"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521L-r512", "SGLANG_VESTIGEKV_RHO": "0.001953125", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521L-r512", "probe": false}
+
+c521q-rho128 / cb256 / rho64: which knob destroyed retrieval. The D
+configuration (rho 1/128 + CLOSE_BLOCK 256) scored **0.000 on both draws** of
+niah_multikey_3 at 65536, n=50, against 1.000 for the served rho 1/32 -- same
+harness, same task, no traceback, and both overrides confirmed in the log
+("rho overridden to 0.0078125", "close block overridden to 256"). That is a
+collapse, not a degradation, and D moves two things at once: rho, and the
+window sigma's low-pass basis is built over (31 dims of T, so T=256 is a
+different statistic than T=4096). These three separate them -- rho alone, close
+block alone, and a milder rho -- so the byte result (0.526x on a long decode)
+can be attributed to a knob we are allowed to keep, or not at all.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-rho128-mk3", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521q-rho128-mk3", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-cb256-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "256"}, "id": "c521q-cb256-mk3", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-rho64-mk3", "SGLANG_VESTIGEKV_RHO": "0.015625"}, "id": "c521q-rho64-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
