@@ -2079,6 +2079,19 @@ which bounds the tail fix until that refactor exists.
 
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-cb2048-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "2048"}, "id": "c521q-cb2048-mk3", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-cb1024-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024"}, "id": "c521q-cb1024-mk3", "probe": false}
+
+c521q-noop-mk3 / noopcb-mk3: is the override PATH broken rather than the
+values? rho 1/128 alone and CLOSE_BLOCK 256 alone each scored 0.000 against
+1.000 for the served default -- two different knobs, exactly 0.000, no needle
+found in 50 samples, no traceback, both overrides confirmed in the log. A
+quality gradient does not usually look like that, and method rule 2 says a null
+is not evidence until the actuator is traced. These two set the override to the
+DEFAULT value (rho 0.03125, CLOSE_BLOCK 4096), so the resolution code runs and
+nothing else changes. 1.000 means the values are the story; 0.000 means the
+path is, and every rho/close-block number measured so far is void.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-noop-mk3", "SGLANG_VESTIGEKV_RHO": "0.03125"}, "id": "c521q-noop-mk3", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521q-noopcb-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "4096"}, "id": "c521q-noopcb-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
