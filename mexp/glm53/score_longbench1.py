@@ -32,14 +32,37 @@ def main():
                          "(the same-arm noise floor when both are one arm)")
     a = ap.parse_args()
     sc = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
+    def load(path):
+        """The client writes the gold `answers` into each row, so no dataset
+        access is needed -- real ROUGE-L and mutual agreement come from the
+        same file."""
+        out = {}
+        for l in open(path):
+            r = json.loads(l)
+            ans = r.get("answers") or []
+            if isinstance(ans, str):
+                ans = [ans]
+            out[r["_id"]] = (r["pred"], ans)
+        return out
+
+    def gold_rouge(d):
+        vals = [max(sc.score(g, p)["rougeL"].fmeasure for g in a)
+                for p, a in d.values() if a]
+        return (sum(vals) / len(vals), len(vals)) if vals else (float("nan"), 0)
+
     if a.pair:
-        x, y = a.pair.split(",")
-        A = {json.loads(l)["_id"]: json.loads(l)["pred"] for l in open(x)}
-        Bp = {json.loads(l)["_id"]: json.loads(l)["pred"] for l in open(y)}
-        common = [i for i in A if i in Bp]
-        tot = sum(sc.score(A[i], Bp[i])["rougeL"].fmeasure for i in common)
-        print(f"mutual ROUGE-L over {len(common)} shared ids: {tot/max(len(common),1):.4f}")
-        print(f"  {os.path.basename(x)}\n  {os.path.basename(y)}")
+        paths = a.pair.split(",")
+        ds = [load(x) for x in paths]
+        print(f"{'file':<52}{'n':>5}{'ROUGE-L vs gold':>17}")
+        for x, d in zip(paths, ds):
+            r, n = gold_rouge(d)
+            print(f"  {os.path.basename(os.path.dirname(x)) or '.'}/{os.path.basename(x):<34}"
+                  f"{n:>5}{r:>17.4f}")
+        if len(ds) == 2:
+            common = [i for i in ds[0] if i in ds[1]]
+            tot = sum(sc.score(ds[0][i][0], ds[1][i][0])["rougeL"].fmeasure for i in common)
+            print(f"\n  mutual agreement over {len(common)} shared ids: "
+                  f"{tot/max(len(common),1):.4f}")
         return
     print(f"{'task':<14}{'arm':<12}{'n':>5}{'rougeL':>9}")
     for task in a.tasks.split(","):
