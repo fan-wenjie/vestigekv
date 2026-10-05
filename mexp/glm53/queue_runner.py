@@ -301,6 +301,18 @@ def run_client(job, port):
                # long-running runner has been restarted onto this file.
                "--server-log-glob", os.path.join(RESULTS, f"server_{arm}_*.log")]
         out = os.path.join(RESULTS, f"profile_{arm}_{job['id']}.log")
+    elif client == "copy":
+        # Sustained verbatim copy (mexp/glm53/run_copy.py): the graded probe for
+        # tier 1. --out is per JOB, never per arm -- an arm-keyed path is how two
+        # longbench1 jobs silently overwrote each other.
+        cmd = [PY, os.path.join(ROOT, "mexp", "glm53", "run_copy.py"), "--port", port,
+               "--model", MODEL, "--ctx", str(args.get("ctx", 32768)),
+               "--span-words", str(args.get("span_words", 384)),
+               "--span-pos", str(args.get("span_pos", 0.1)),
+               "--n", str(args.get("n", 20)), "--seed", str(args.get("seed", 0)),
+               "--max-tokens", str(args.get("max_tokens", 4096)),
+               "--out", os.path.join(RESULTS, "copy", job["id"] + ".json")]
+        out = os.path.join(RESULTS, f"copy_{arm}_{job['id']}.log")
     elif client == "gsm8k":
         cmd = [PY, "-m", "sglang.test.few_shot_gsm8k", "--num-shots", str(args.get("shots", 64)),
                "--num-questions", str(args.get("n", 1209)),

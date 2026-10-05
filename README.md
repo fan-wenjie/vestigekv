@@ -2444,3 +2444,69 @@ QUALITY: both draws of the PAIR read 1.000, which was the open question -- each
 knob alone had read 1.000, but rho 1/128 together with a 256 block read 0.000
 twice. The standing caveat is unchanged: tier 1 ALONE reads 0.000 on this task,
 so 1.000 means the metric cannot resolve what these knobs move.
+
+c521cp-* / c521cpref-dsa: the graded probe for tier 1, because no probe on this
+line resolves it. multikey, gsm8k and longbench1 all fail -- tier 1 ALONE reads
+0.000 on multikey at every rho while the served arm reads 1.000 -- so kept has
+no measured lower bound and rho is being chosen on bytes alone.
+
+A needle needs ONE archived row and tier 2 can always fetch it. Reproducing a
+384-word span verbatim needs a contiguous RUN of rows, a new position every
+decode step, which is the work the kept set is supposed to do. And the score is
+GRADED ("copied 137 of 384 words before derailing"), which is what ranking
+configurations requires and what 1.000-or-0.000 cannot give. The span carries
+~105 arbitrary numbers, scored separately, because fluent paraphrase can carry
+word accuracy and cannot invent digits.
+
+mexp/glm53/run_copy.py: 32768-token context, span at 9% through (deep in the
+archive, past the sinks, far from the recent window), n=20, seed 0, prompts a
+pure function of (seed, index) so every arm sees identical bytes. Verified
+offline before launch: a perfect copy scores 1.000, a half copy 0.500 (numbers
+0.410), a copy behind a preface still 1.000, a refusal 0.000.
+
+Filler AND span are natural prose from one corpus, deliberately. Synthetic
+filler would measure the DSA fence, which owns that regime; and a random word
+salad as the span would be maximally anomalous, so tier 1 would preferentially
+keep it and the test would pass for a reason unrelated to ordinary coverage.
+
+Ordered so the decisive runs land first:
+  c521cpref-dsa   the ceiling. If DSA cannot copy, the workload measures nothing
+                  and the rest is void -- ten minutes to find that out. Its own
+                  stem, so the audit does not read it as the ladder's control.
+  c521cp-t1-r32   tier 1 ALONE at rho 1/32, then
+  c521cp-t1-def   tier 1 ALONE at rho 1/128. These two are the INSTRUMENT test:
+                  on multikey both rho read 0.000, a floor that cannot move. If
+                  this score moves with rho, the copy task reads kept's coverage
+                  directly and kept can finally be bounded. If it does not, this
+                  probe is blind too and joins the list.
+  c521cp-def      the served pair, then rho 1/32 and rho 1/512 at the same close
+  c521cp-r32      block -- a 16x span in kept with everything else fixed. If the
+  c521cp-r512     served arm is flat across that, tier 2 covers the copy as well
+                  and kept has no lower bound this instrument can set either.
+
+c521sp-*: the speedup at the new default, which is NOT on disk. All three
+c521def byte jobs ran with STATS on and may not be timed. The only valid
+same-tree pair is c521z, on the OLD default: median ITL 11.06 vs DSA 10.83
+(0.979x), p99 11.69 vs 11.09, tput 78.53 vs 80.63.
+
+Same launch as c521z (32k in / 4k out, GRAPH_BS=MAX_REQS=1, STATS OFF), both
+arms, TWO draws -- the baseline's own median spans ~1.09% across runs while the
+gap is +2.1%, so one pair is barely two noise widths. The two arms of a draw
+share VK_JOB so their envs are identical and the audit's pair guard actually
+checks them; the draws differ in it so each gets a fresh server, which is part
+of what the replicate is measuring.
+
+Prediction, on the record so it can be wrong: unchanged at ~0.98x. The byte
+saving is 1.09 MB/step against a step that moves several GB of weights, so it
+is ~0.02% of the step against a +2.1% fixed cost. Bytes are not time at bs=1.
+
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "baseline", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521cpref-dsa"}, "id": "c521cpref-dsa", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1", "SGLANG_VESTIGEKV_RHO": "0.03125", "VK_JOB": "c521cp-t1-r32"}, "id": "c521cp-t1-r32", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1", "VK_JOB": "c521cp-t1-def"}, "id": "c521cp-t1-def", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521cp-def"}, "id": "c521cp-def", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_RHO": "0.03125", "VK_JOB": "c521cp-r32"}, "id": "c521cp-r32", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_RHO": "0.001953125", "VK_JOB": "c521cp-r512"}, "id": "c521cp-r512", "probe": false}
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521sp-r1"}, "id": "c521sp-r1-baseline", "probe": false}
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521sp-r1"}, "id": "c521sp-r1-vestigekv", "probe": false}
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521sp-r2"}, "id": "c521sp-r2-baseline", "probe": false}
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521sp-r2"}, "id": "c521sp-r2-vestigekv", "probe": false}
