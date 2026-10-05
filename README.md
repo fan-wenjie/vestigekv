@@ -2686,3 +2686,53 @@ substrate by 1.067-1.070x at 36k", never "compression buys 1.07x". The same
 measurement also explains why the DSA comparison cannot cross: against DSA both
 arms run the SAME kernel, so gamma is identical and only dA differs -- and dA is
 capped by DSA's constant 2048 rows at <= 12.8 us against a 230 us tax.
+
+c521pf RESULT -- the 230 us attributed, and the fusion plan is dead.
+
+Per-step GPU kernel time: DSA 11626.2 us; vestigekv 12071.9 (TP-0) / 11808.1
+(TP-1). TP-0's extra 283 us over TP-1 is entirely ncclDevKernel_AllReduce
+(+295.7), which does NOT appear in TP-1's top ten -- so that term is rank 0
+WAITING at the collective, double-counting the chain's latency rather than
+costing anything of its own. The real added GPU work is +150 to +162 us/step,
+consistent with the +230 us wall clock once host time and imperfect overlap are
+included.
+
+    kernel                          us/step  calls  grid        MB   achieved  vs roofline
+    _vk_dsa_decode_split_kernel    66.8/67.3    11  per layer  10.6  159 GB/s     11.4x
+    _scan_batched_kernel           33.4/33.6     1  cap 128    13.4  401 GB/s      4.5x
+    _prologue_scores_kernel        32.1/32.4     1  (11,32)     7.5  234 GB/s      7.7x
+    _prologue_merge_kernel         30.3/30.6     1  (11,)       7.5  248 GB/s      7.3x
+    memcpy32_post                  10.3/10.4    11
+    pack/compact/cub                  ~10     1 ea
+    DSA's _sparse_mla_decode_split      -76.6   11            23.1  300 GB/s
+
+FUSION IS NOT THE LEVER. The three chain kernels are called ONCE PER STEP each
+-- three launches, worth 2-6 us. Their 96 us is real GPU work, so there is no
+launch overhead to remove. And the attention fork, despite 11 calls/step, sits
+inside the captured graph where launches are free, and it already SAVES 9.8 us
+against DSA's own kernel (66.8 vs 76.6).
+
+THE LEVER IS OCCUPANCY. This GPU has 188 SMs and the chain's natural
+parallelism at bs=1 is 11 (layer, request) pairs. _prologue_merge_kernel
+launches 11 programs -- 5.9% of the GPU -- and costs 30.3 us.
+_prologue_scores_kernel is already split 32 ways for exactly this reason (352
+programs, 1.9 per SM) and still only reaches 234 GB/s. All three run 4.5-11x off
+the bandwidth roofline.
+
+REACHABLE TARGET, and it is not 50 us. The chain must touch 13.4 MB (the shared
+33 B scan) + 7.5 MB (kept scoring) ~ 21 MB: 11.7 us at peak, ~26 us at a
+realistic 800 GB/s for gather-heavy work, plus ~10 us of pack and misc. So the
+GPU floor is ~40 us against today's ~115 us of chain work. 230 -> ~120 us looks
+reachable; 230 -> 50 us does not, since 50 would need the GPU work at its floor
+AND zero host cost AND perfect overlap.
+
+WHAT tau=120 us BUYS, from the analytic model: the dense crossing moves 37k ->
+19k tokens, and the batching requirement moves B=71 -> B=37 against a
+pool-allowed 38 -- i.e. the batching route just barely opens. That is the prize,
+not the 1% of step time.
+
+CAVEAT that bounds every number here: _router_triton_kernel moved -41.1 us on
+TP-0 and +36.0 on TP-1, opposite signs, because the two profiled runs decode
+different tokens and route to different experts. No per-kernel attribution below
++-40 us is trustworthy. The chain kernels survive it only because they are new
+kernels (0 -> 33), not deltas.
