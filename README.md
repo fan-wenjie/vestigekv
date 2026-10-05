@@ -2736,3 +2736,96 @@ TP-0 and +36.0 on TP-1, opposite signs, because the two profiled runs decode
 different tokens and route to different experts. No per-kernel attribution below
 +-40 us is trustworthy. The chain kernels survive it only because they are new
 kernels (0 -> 33), not deltas.
+
+c521kq / c521kp: verify the K-major sketch basis on the served path
+(engine 614780e6c9). _prologue_merge_kernel went 34.87 -> 16.15 us offline,
+bit-identical on all five outputs, n_spills 0, and the registered reference test
+passes against an independent torch implementation.
+
+Two jobs, and they are NOT redundant:
+
+  c521kq-mk3  QUALITY, and it is the load-bearing one. The offline parity test
+              covers the KERNEL; it does not cover the host side of the layout
+              change -- the allocation in batched_step.py and the transposing
+              assignment self.v[i] = t.V.T. A wrong basis there computes garbage
+              that every byte counter reports as healthy, which is exactly the
+              failure byte-counters-cannot-see-wrong-rows was written about.
+              One draw, as a wiring check against a known 1.000, not as a
+              comparison.
+  c521kp-vk   PROFILE, because ITL cannot see this. The win is ~18 us against
+              an arm whose own two-draw median spread is 20 us, so a stream job
+              would report noise either way. The trace is diffed against
+              c521pf-r1-vestigekv (same shape, same steps) to confirm the kernel
+              time dropped in situ, and it also re-measures the other two chain
+              kernels, which decides whether steps 2 and 3 have any headroom.
+
+Neither c521pf finding applies to those two: _scan_batched_kernel's dots carry
+no input_precision="ieee" and no tl.trans, and its grid is (36, 11) = 396
+programs; _prologue_scores_kernel's dot is bf16, where the measurement says an
+in-loop trans costs nothing, and its grid is (11, 32) = 352. So the specific
+defect fixed here is absent from both, and any headroom they have needs its own
+isolated bench -- the roofline figures quoted for them earlier were built on
+byte estimates, and the one I made for the merge kernel was wrong by 4x.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521kq-mk3"}, "id": "c521kq-mk3", "probe": false}
+{"args": {"ctxs": "36864", "steps": 200}, "arm": "vestigekv", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521kp-vk"}, "id": "c521kp-vk", "probe": false}
+
+c521kq / c521kp RESULT -- step 1 verified; step 2 is not what it looked like.
+
+QUALITY WIRING: c521kq-mk3 niah_multikey_3 @65536 n=50 seed 0 = 1.000. That is
+the only detector for the host half of the K-major change (the allocation and
+the transposing assignment self.v[i] = t.V.T); a wrong basis there computes
+garbage every byte counter reports as healthy.
+
+IN SITU, diffed against c521pf-r1-vestigekv at the same shape and steps:
+
+    kernel                        before  after    delta
+    _prologue_merge_kernel          30.3   10.6    -19.8
+    _scan_batched_kernel            33.4   32.9     -0.5
+    _prologue_scores_kernel         32.1   32.0     -0.1
+    _vk_dsa_decode_split_kernel     66.8   66.9     +0.1
+
+Surgical: the target dropped 19.8 us (offline bench predicted 18.7) and nothing
+else moved. The chain is now ~95 us against ~115.
+
+BUT THE STEP IS NOT MEASURABLY FASTER, and that was predicted here before the
+run. Total GPU time in the same diff went UP +54.7 us: a cutlass GEMM whose
+CALL COUNT differs between the two profiles (3.0 -> 6.0, +57.8 us) and the
+nccl wait term (+77.7). Both are the +-40 us/kernel noise this register already
+records, worse here because a call count changed. So the claim is "the kernel is
+19.8 us cheaper", never "the step is faster" -- at 18 us against an arm whose
+own two-draw median spread is 20 us, no stream job can see this.
+
+STEP 2 FINDINGS, and two corrections I owe.
+
+Neither remaining chain kernel has step 1's defect: _scan_batched_kernel's dots
+carry no input_precision="ieee" and no tl.trans, grid (36,11)=396;
+_prologue_scores_kernel's dot is bf16, where an in-loop trans measures free,
+grid (11,32)=352.
+
+Recomputing the scan's real traffic from the buffers it loads -- side[64] bf16 +
+csk[64] + rho/arch/aidx/spread per archive entry, ~272 B per entry of 4 tokens
+-- gives ~27 MB/step and ~817 GB/s achieved, 45% of peak. NOT the 401 GB/s and
+4.5x headroom quoted earlier in this register: that figure came from a byte
+estimate, and the same kind of estimate was wrong by 4x for the merge kernel.
+Treat the earlier roofline column for the scan and the scores kernel as void.
+
+I then hypothesised the whole sketch chain (prologue + scan + compacts, ~86
+us/step) was DEAD on the branch arm, since group_fetch computes its rows from
+DSA's logits and never reads max1g/qsk_t/qres, and VKSTATS reports build=0.0ms
+x0. MY OWN MEASUREMENT REFUTES IT: the merge kernel's q-side projection only
+runs when a_len > 0 (it returns at the top otherwise), and step 1 moved that
+projection 30.3 -> 10.6 us in situ. So a_len > 0, tiers exist, and the chain is
+doing real work. build x0 counts the calibrated/async builds only; the
+provisional index is a separate path.
+
+(Also: an earlier claim in this investigation that st["tier"] is only ever
+assigned None was a bad grep -- it misses the tuple assignments at :3250 and
+:3446.)
+
+What remains open and is worth one instrumented run, not more code reading: the
+sketch chain's compacts write fetch_buf/fetch_len, and branch_fire writes the
+same buffers every step. Which one the fork actually consumes on the branch arm,
+and whether the other is redundant, decides whether ~86 us/step is recoverable.
+Served behaviour will not be changed on the strength of inference that has
+already been wrong twice here.
