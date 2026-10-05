@@ -2292,6 +2292,29 @@ Bytes come after quality, on the 4k/32k long decode where the tail cycles.
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521cb-inert-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "4096"}, "id": "c521cb-inert-mk3", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521cb-2048-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "2048"}, "id": "c521cb-2048-mk3", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521cb-1024-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024"}, "id": "c521cb-1024-mk3", "probe": false}
+
+c521tl-*: what the tail is worth, on the long decode where it cycles. The close
+block passed quality at 2048 and 1024 (and inert at its default), so these four
+measure the byte payoff: 4k in / 32k out, STATS on, ordered best-candidate
+first so the decisive number lands earliest.
+
+Already measured on this shape: B 4096 reads 1.351x DSA at rho 1/32 and 1.174x
+at rho 1/128, with ~2048 of kept's 2190 rows being un-closed tail. Halving the
+close block should halve that term -- about 28 B/token against DSA's ~49 B/token
+row budget at this length -- so B 1024 x rho 1/128 is the first configuration
+with a chance of reading BELOW 1 on a long decode. Whether fetch compensates is
+not predictable: rho's elasticity measured 0.11 here, while CLOSE_BLOCK pushed
+fetch +184 on a short window.
+
+The quality caveat travels with these numbers: multikey cannot resolve tier 1
+(tier 1 ALONE reads 0.000 on it), and sigma's selection IS tier 1, so 1.000 at
+B 1024 means the metric cannot tell, not that sigma still works. Both knobs'
+quality evidence is "not refuted", not "verified".
+
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521tl-b1024-r128", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521tl-b1024-r128", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521tl-b2048-r128", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "2048", "SGLANG_VESTIGEKV_RHO": "0.0078125"}, "id": "c521tl-b2048-r128", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521tl-b1024-r32", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024"}, "id": "c521tl-b1024-r32", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521tl-b2048-r32", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "2048"}, "id": "c521tl-b2048-r32", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
