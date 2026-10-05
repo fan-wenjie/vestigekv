@@ -2272,6 +2272,26 @@ directly. r2's output is preserved under a job-keyed name. r3 re-runs the same
 arm so the pair exists again.
 
 {"args": {"max_length": 65536, "subsets": "multi_news"}, "arm": "vestigekv", "client": "longbench1", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521lb-same-r3"}, "id": "c521lb-same-r3", "probe": false, "skip": false}
+
+c521cb-*: the close block, the only knob on the tail. Quality side is
+exhausted -- no instrument here resolves tier 1 -- so this is the performance
+item that is both unambiguous and independent of the kept question: a long
+decode reads 1.351x DSA at the default and still 1.174x at rho 1/128, because
+~2048 of kept's 2190 rows are un-closed tail and rho cannot touch it.
+
+Order follows the day's most expensive lesson. c521cb-inert-mk3 sets the knob to
+its DEFAULT 4096, so the re-application itself is tested before any value is
+read: 1.000 means the threading is inert, anything else means I broke something
+again and no knob number would mean anything. Then 2048 (cutoff 128 tokens,
+basis 6% of the window) and 1024 (64 tokens, 12%). 256 is not queued: its basis
+occupies 48% of a 64-group window and its cutoff is 16 tokens, which is a
+different statistic rather than a smaller one.
+
+Bytes come after quality, on the 4k/32k long decode where the tail cycles.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521cb-inert-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "4096"}, "id": "c521cb-inert-mk3", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521cb-2048-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "2048"}, "id": "c521cb-2048-mk3", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521cb-1024-mk3", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024"}, "id": "c521cb-1024-mk3", "probe": false}
 tier-2 chain) at the two batched shapes that fit the pool. It is a COST
 CONTROL, never a method. At bs=1 it splits the +0.22 ms/step gap in half
 (tier-1 0.114 ms, tier-2 0.109 ms). The batched gap is +0.67 to +0.77 ms, so
