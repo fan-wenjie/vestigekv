@@ -2829,3 +2829,117 @@ same buffers every step. Which one the fork actually consumes on the branch arm,
 and whether the other is redundant, decides whether ~86 us/step is recoverable.
 Served behaviour will not be changed on the strength of inference that has
 already been wrong twice here.
+
+c521sk-*: is the sketch chain the redundant half? engine 8b27109864 adds
+SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN (default OFF, served behaviour untouched)
+which skips the fused prologue, the batched scan and the compaction, leaving
+branch_fire and the CSR pack.
+
+The question: on the branch arm the compaction writes fetch_buf/fetch_len and
+branch_fire writes the same buffers every step, so one of the two is redundant,
+and the chain costs ~86 us/step at 36k by CUPTI -- more than half the +150 us of
+added GPU work, and more than step 1 recovered.
+
+  c521sk-mk3  QUALITY is the detector. 1.000 means the chain is the redundant
+              half and ~86 us/step is recoverable. Anything below means the
+              chain is load-bearing and the knob goes back in its box. This is
+              the ONLY sound detector: VKSTATS gathers fetch_len on the host
+              after the step, so it reports whichever write landed last and
+              cannot say which one the fork consumed.
+  c521sk-pf   PROFILE is the actuator trace, and a better one than a log line:
+              the prologue, scan and compact kernels must be ABSENT from the
+              trace. If they are still there the gate did not reach the capture.
+
+Why a knob and not a default change: inference has already been wrong twice
+here. I read build=0.0ms x0 as "no tier" when it counts only the calibrated
+builds, and I concluded the chain was dead until my own K-major measurement
+refuted it -- the q-side projection only runs when a_len > 0, and it moved
+30.3 -> 10.6 us, so tiers exist and the chain does real work. Real work whose
+output may still be overwritten, which is exactly what these two jobs settle.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "VK_JOB": "c521sk-mk3"}, "id": "c521sk-mk3", "probe": false}
+{"args": {"ctxs": "36864", "steps": 200}, "arm": "vestigekv", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "VK_JOB": "c521sk-pf"}, "id": "c521sk-pf", "probe": false}
+
+c521sk-cp / c521sk-mk3b / c521sx-*: the sketch chain IS removable -- 80.2 us/step
+by CUPTI -- and these decide whether that is free.
+
+What c521sk already showed. Quality 1.000 on multikey with
+SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN=1, and the actuator trace is unambiguous:
+_scan_batched_kernel 32.9 -> 0, _prologue_scores_kernel 32.0 -> 0,
+_prologue_merge_kernel 10.6 -> 0, _compact_write 3.4 -> 0, _compact_scan 1.3 ->
+0, and "only in a" lists exactly those five. The CSR pack kernels stay, which is
+right -- the fork reads them. 80.2 us of the ~150 us of added GPU work.
+
+What it did NOT show, and why these jobs exist. The chain's compaction and
+branch_fire write the SAME fetch_buf/fetch_len, so "the chain was dead" and "the
+chain's rows were being attended and branch_fire's are just as good" both
+produce 1.000 on multikey -- a metric that reads 1.000 at every rho from 1/32 to
+1/512 and so cannot resolve a row-set change at all.
+
+  c521sk-cp    the COPY probe, which can: it has full dynamic range on this
+               question (served 1.0000 vs tier-1-alone 0.0000) and was verified
+               to read intermediate values. 1.0000 here is a real statement.
+  c521sk-mk3b  the second multikey draw, because one is not quotable for a
+               change that would become the default.
+  c521sx-*     cost, two draws. 80 us is 0.7% of an 11.04 ms step against ~0.2%
+               of two-draw noise, so unlike every earlier kernel win on this
+               line this one may actually resolve in ITL.
+
+The knob is inert on a DSA arm (_ingraph_device_step is a vestigekv method), so
+the baseline rows carry it too -- that keeps each draw's two arms identical and
+lets the audit's pair guard check them, which it refused to do otherwise.
+
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "VK_JOB": "c521sk-cp"}, "id": "c521sk-cp", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "VK_JOB": "c521sk-mk3b"}, "id": "c521sk-mk3b", "probe": false}
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "VK_JOB": "c521sx-r1"}, "id": "c521sx-r1-baseline", "probe": false}
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "VK_JOB": "c521sx-r1"}, "id": "c521sx-r1-vestigekv", "probe": false}
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "VK_JOB": "c521sx-r2"}, "id": "c521sx-r2-baseline", "probe": false}
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "VK_JOB": "c521sx-r2"}, "id": "c521sx-r2-vestigekv", "probe": false}
+
+c521dflt / c521fence: the branch lineage, now that it is the only one that can
+merge. engine 605362463c makes the sketch-chain skip AUTOMATIC on the branch arm
+(_skip_sketch_chain(); the env knob is tri-state, 0 forces the chain back on).
+
+Why only this lineage ships, with the byte accounting behind it. The sketch
+scan reads side[64] + csk[64] + metadata per archive entry, ~272 B per group of
+4 = 68 B/token, over the WHOLE archive every step, and nothing in the baseline
+pays it. The branch rule's scan is DSA's own 33 B/token index-k, which the
+baseline pays too, so it cancels. At S=131072 across 11 layers that is 98 MB of
+sketch scan per step against DSA's entire 23 MB row budget -- the non-branch
+scheme reads 4x more than the baseline it is trying to beat, and the gap grows
+linearly with context. It cannot pass on bytes at any implementation quality.
+
+(That also resolves a discrepancy flagged earlier in this register: the scan was
+measured at 68 B/token while the VKSTATS formula carries 35.25, and I marked it
+as possibly under-counted. It was not -- the 68 belongs to the sketch scan,
+which the branch arm does not run, and the five kernels leaving the CUPTI trace
+proves it does not.)
+
+  c521dflt-mk3 / -cp   the new default path. The gate changed from an env read
+                       to `_branch_q() is not None`, which is different code, so
+                       the c521sk draws do not carry over. The copy probe is the
+                       load-bearing one: it has range on a row-set change where
+                       multikey does not.
+  c521dflt-ctrl-mk3    the chain forced back ON, which is both the matched
+                       control and the proof the tri-state resolves.
+  c521fence-*          the budget-derived fence. WF today comes from the fetch
+                       buffer WIDTH (512 groups), so a lane firing 511 groups
+                       reads 4+288+tail+2044 > DSA's 2048 and the "never worse
+                       than the baseline" claim is an average, not a bound.
+                       Deriving WF from the budget instead -- 2048 - sinks -
+                       kept - worst tail, which is 127 groups at S=65536 -- makes
+                       it a BOUND: a lane either fits under 2048 or fences to
+                       DSA's own selection and reads exactly 2048. Measured f is
+                       68-75 groups, so 127 should not fire; fallback is the
+                       instrument and it is 0.00000 today.
+
+Note the bound needs FIXED kept to hold at long context: with rho proportional,
+worst-case kept at S=131072 is 4 + 1024 + 1023 = 2051 rows, which leaves no
+budget at all. So the fence and fixed kept are one change in two parts, and this
+pair only demonstrates the near end of it.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521dflt-mk3"}, "id": "c521dflt-mk3", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521dflt-cp"}, "id": "c521dflt-cp", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "0", "VK_JOB": "c521dflt-ctrl-mk3"}, "id": "c521dflt-ctrl-mk3", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "127", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521fence-mk3"}, "id": "c521fence-mk3", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "127", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521fence-L"}, "id": "c521fence-L", "probe": false}
