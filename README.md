@@ -3016,3 +3016,61 @@ What the final picture changes downstream:
   backend:2959.
 - the budget-derived fence is free: fetch p99 is ~99 groups against a 127-group
   trigger, fallback 0.00000 measured.
+
+c521cpq-*: re-check "kept has no lower bound", because the triangle changed what
+that claim could have measured.
+
+The claim came from the copy probe reading 1.0000 at rho 1/512, i.e. 68 kept
+rows. But c521tri then showed fetch is not spread over steps at all -- p90 is
+zero and p99 is 396 rows, so branch_fire carries about 1% of steps and those
+steps carry all of multikey's quality. If the copy probe's fetches concentrate
+in the same 1%, then what it measured was whether those rare fetches suffice,
+not whether 68 kept rows do, and the lower-bound reading has to be withdrawn.
+
+  c521cpq-noq        the copy probe with BRANCH_Q REMOVED at the served rho:
+                     kept alone, no 1% mechanism. 1.0000 means kept really does
+                     carry the copy; anything lower means it never did.
+  c521cpq-noq-r512   the same at rho 1/512 -- the exact 68-row point the claim
+                     rests on.
+  c521cpq-q-r512     rho 1/512 WITH branch_fire, the matched control, so the
+                     pair isolates the 1% rather than the rho change.
+
+This gates the constant-kept size: if kept alone carries the copy at 68 rows the
+budget can be small, and if it does not then 99% of steps are running on a kept
+set that is only adequate because the other 1% repairs it, which is a different
+design question.
+
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "VK_JOB": "c521cpq-noq"}, "id": "c521cpq-noq", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "SGLANG_VESTIGEKV_RHO": "0.001953125", "VK_JOB": "c521cpq-noq-r512"}, "id": "c521cpq-noq-r512", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "SGLANG_VESTIGEKV_RHO": "0.001953125", "VK_JOB": "c521cpq-q-r512"}, "id": "c521cpq-q-r512", "probe": false}
+
+c521cpq RESULT -- "kept has no lower bound" is RETRACTED. The matched pair:
+
+    rho 1/512 (68 kept rows), branch_fire ON   lead 1.0000  bag 1.0000  num 1.0000
+    rho 1/512 (68 kept rows), branch_fire OFF  lead 0.0001  bag 0.0634  num 0.0772
+    rho 1/128,                branch_fire OFF  lead 0.0007  bag 0.0456  num 0.0350
+
+Same rho, same 68 rows, the only variable being whether the ~1% of steps that
+fetch anything do so. 0.0001 against 1.0000. So the copy probe never measured
+kept's lower bound; it measured whether tier 2's sparse fetches suffice, and
+kept's own contribution to the copy is indistinguishable from zero.
+
+What this does NOT retract: the probe's range. 1.0000 vs 0.0001 on a matched
+pair is exactly why it could settle this where multikey reads 1.000 either way.
+Every quality verdict in this register that rests on the copy probe stands; what
+falls is one inference drawn from it.
+
+CONSEQUENCE FOR THE CONSTANT-KEPT SIZE, which this check was queued to gate.
+The argument "32 groups is enough because kept has no measured lower bound" is
+gone. The replacement is cleaner and does not depend on kept carrying retrieval
+at all: kept's remaining jobs are the sinks, the recent window, and the
+q-quantile sample for the branch threshold, and a quantile's precision depends
+on the SAMPLE size rather than the population -- 32 groups gives a q0.75
+standard error of 0.077, 64 gives 0.054. Nothing about that scales with context,
+so nothing about kept should.
+
+And the quantity that genuinely needs a bound is no longer kept but tier 2's
+per-fire budget, measured at p99 = 396 rows ~ 99 groups. That retires the
+"conservative margin" framing of the budget-derived fence: 127 groups is not
+slack above a measured 68-75 mean, it is the smallest budget that covers the
+p99 of what actually fires.
