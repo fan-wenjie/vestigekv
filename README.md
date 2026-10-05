@@ -2510,3 +2510,28 @@ is ~0.02% of the step against a +2.1% fixed cost. Bytes are not time at bs=1.
 {"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521sp-r1"}, "id": "c521sp-r1-vestigekv", "probe": false}
 {"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521sp-r2"}, "id": "c521sp-r2-baseline", "probe": false}
 {"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521sp-r2"}, "id": "c521sp-r2-vestigekv", "probe": false}
+
+c521cp-t1b-*: the tier-1-alone floor, correctly specified. The c521cp-t1-* pair
+above does NOT measure it and must not be read as the floor.
+
+_indexer_only() is an OR: SGLANG_VESTIGEKV_INDEXER_ONLY=1 or BRANCH_Q set. What
+it gates is the CERTIFICATE tier 2 (_recall_step returns early); the branch-rule
+tier 2 is gated separately, on BRANCH_Q itself. Every job on this line carries
+BRANCH_Q=0.75, so _indexer_only() is already True on the served arm and adding
+INDEXER_ONLY=1 flips a value that was true anyway. c521cp-t1-r32 and
+c521cp-t1-def are therefore byte-identical in behaviour to c521cp-r32 and
+c521cp-def -- useful as free replicates of the served arm, and nothing else.
+
+Turning tier 2 off means REMOVING BranchQ and setting INDEXER_ONLY, which is
+what the older c521t1q-* pair did (no BRANCH_Q in their env) and why their
+0.000 on multikey is a real tier-1-alone reading. These two repeat that
+configuration on the copy task at both rho.
+
+Note for the record, not acted on here: the branch rule -- the only GLM version
+this line is allowed to publish -- is switched on by an ENV VAR, not by a
+compiled default (BRANCH_Q defaults to None, which selects the certificate
+path). So "the served arm" is still half a launch-time construction even after
+DSA_RHO and DSA_CLOSE_BLOCK became compiled defaults.
+
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1", "SGLANG_VESTIGEKV_RHO": "0.03125", "VK_JOB": "c521cp-t1b-r32"}, "id": "c521cp-t1b-r32", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1", "VK_JOB": "c521cp-t1b-def"}, "id": "c521cp-t1b-def", "probe": false}
