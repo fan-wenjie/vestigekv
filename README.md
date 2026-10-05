@@ -2535,3 +2535,64 @@ DSA_RHO and DSA_CLOSE_BLOCK became compiled defaults.
 
 {"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1", "SGLANG_VESTIGEKV_RHO": "0.03125", "VK_JOB": "c521cp-t1b-r32"}, "id": "c521cp-t1b-r32", "probe": false}
 {"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_INDEXER_ONLY": "1", "VK_JOB": "c521cp-t1b-def"}, "id": "c521cp-t1b-def", "probe": false}
+
+c521cp / c521sp RESULT.
+
+COPY, n=20, ctx 32768, 384-word span at 9%, seed 0:
+
+    arm                 rho     kept@32k   lead     bag     num
+    DSA (ceiling)        -           -   1.0000  1.0000  1.0000
+    served             1/32        1028   1.0000  1.0000  1.0000
+    served            1/128         260   1.0000  1.0000  1.0000
+    served            1/512          68   1.0000  1.0000  1.0000
+    tier 1 ALONE       1/32        1028   0.0017  0.0306  0.0157
+    tier 1 ALONE      1/128         260   0.0000  0.0173  0.0146
+
+(c521cp-t1-r32 and -t1-def also read 1.0000; they are the served arm, as the
+note above explains, and serve as free replicates of r32 and def.)
+
+The instrument has FULL range -- 1.0000 against 0.0000 -- and was verified
+before launch to read intermediate values. So the served arm's flatness across
+16x in kept is real flatness, not a metric that cannot tell, and that is the
+distinction every earlier probe here failed on. Actuator verified per arm from
+the unconditional tier-1 log line: rho=0.03125 / 0.0078125 / 0.00195312,
+close_block=1024 throughout.
+
+CONCLUSION: kept has no lower bound, and this time as a positive finding. 68
+kept rows out of 32768 still reproduce a 384-word span exactly, every number
+included. Tier 2 does all the retrieving. The floor moves slightly with rho
+(bag 0.031 -> 0.017), the direction coverage predicts, but both are floor
+readings with no replicate -- do not build on that difference.
+
+COST at the served default, 32k in / 4k out, bs=1, STATS off (verified: 0
+VKSTATS lines), actuator verified (rho=0.0078125 close_block=1024):
+
+    draw  arm         mean   median   p90    p99    tok/s
+    r1    DSA        10.83   10.83   10.96  11.33   80.55
+    r1    vestigekv  11.06   11.02   11.12  11.41   78.39
+    r2    DSA        10.83   10.83   10.92  11.03   80.63
+    r2    vestigekv  11.08   11.04   11.15  11.74   78.31
+
+Speedup 0.983 and 0.981 on median, 0.993 and 0.939 on p99, 0.973 and 0.971 on
+throughput. The old default's single draw was 0.979 and the 0.02-0.04 ms
+difference is inside this arm's own two-draw spread, so the prediction logged
+above held: taking the byte ratio from 1.351x to 0.607x changed latency by
+nothing. The baseline's two draws are identical on median (10.83, 10.83), so
+that is not instability in the reference.
+
+Why, structurally: DSA reads a CONSTANT index_topk=2048 rows per request per
+step, so the entire prize is 2048 rows. Measured row sensitivity from the
+matched pair c521def-L (940 rows) vs -ctrl-L (2946 rows) -- same shape, same
+STATS overhead -- is <= 5 ns/row (2006 rows moved the median 0.00 ms, the mean
+0.01 ms), so the whole budget is worth <= 10 us against a 230 us tax. A factor
+of 23, with 940 rows (<= 4.7 us) of headroom left. Compression is not a latency
+lever against DSA; dispatch is, and the tax is ~100 launches of it.
+
+Our rows grow as 4 + S/128 + tail + fetch while DSA's are flat, crossing at
+S ~ 158k, past which we read MORE than DSA.
+
+NEXT, not queued: dense_mla.sh exists and has never been run on a stream shape.
+Against a dense baseline the saving is unbounded in context -- 178 us at
+S=36864, 386 us at S=78784 (the pool limit at bs=1) against the 230 us tax -- so
+it should cross 1 near 50-60k. Two jobs, ~50 min, and the only cheap experiment
+on this line that can produce a number above 1.
