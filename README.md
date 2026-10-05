@@ -2596,3 +2596,36 @@ Against a dense baseline the saving is unbounded in context -- 178 us at
 S=36864, 386 us at S=78784 (the pool limit at bs=1) against the 230 us tax -- so
 it should cross 1 near 50-60k. Two jobs, ~50 min, and the only cheap experiment
 on this line that can produce a number above 1.
+
+c521dn-*: vestigekv against a DENSE substrate, the one comparison on this line
+that can produce a speedup above 1. dense_mla.sh (DSA off at the config level,
+stock triton MLA) has existed unrun since the arm was written.
+
+Why it can cross where DSA cannot: DSA reads a CONSTANT index_topk=2048 rows, so
+the entire prize against it is 2048 rows, measured at <= 10 us against a 230 us
+tax (c521sp, c521def-L vs -ctrl-L). Dense reads S rows, so the prize grows
+without bound in context.
+
+The prediction is a RANGE, not a crossing, and that is the point of this pair.
+Row sensitivity is only bounded, not resolved: c521def-L vs -ctrl-L moved 2006
+rows for <= 0.01 ms, so the slope is anywhere in 0 .. 5 ns/row, while physics
+puts it near 1024 B / 1466 GB/s = 0.70 ns/row. At S=36864 dense reads ~35800
+rows more than we do, which is 25 us at 0.70 ns/row and 179 us at 5 ns/row,
+against the 230 us tax -- i.e. 0.98x either way at THIS shape, but the two ends
+imply crossings 7x apart in context. So this pair is run to RESOLVE THE SLOPE
+from a large row delta, not to show a win: once the slope is a number, the
+crossing context follows without guessing, and a long shape can be aimed at it.
+
+Same launch as c521sp (32k in / 4k out, GRAPH_BS=MAX_REQS=1, STATS OFF), two
+draws, dense FIRST in each draw because this arm has never been launched and a
+startup failure should cost five minutes. The two arms of a draw share VK_JOB so
+their envs are identical and the audit's pair guard checks them.
+
+Note the pools will NOT match: with DSA off there is no index cache, so the
+dense arm resolves a different max_total_num_tokens. 36864 tokens fits either
+way, but read both logs before comparing anything at a longer shape.
+
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "dense_mla", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521dn-r1"}, "id": "c521dn-r1-dense_mla", "probe": false}
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521dn-r1"}, "id": "c521dn-r1-vestigekv", "probe": false}
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "dense_mla", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521dn-r2"}, "id": "c521dn-r2-dense_mla", "probe": false}
+{"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521dn-r2"}, "id": "c521dn-r2-vestigekv", "probe": false}
