@@ -2368,3 +2368,79 @@ RETRACTED: the two analyses built on the 0.984 mid-run figure for B2048 x rho
 different sigma windows doubles fetch. That run finished at 1.007 with fetch
 392.3, and neither inference survives the final number. Mid-run VKSTATS lines
 are not results: this pair read 0.928 at step 14050 and 1.007 at 32750.
+
+c521def-*: the new served default, verified as a default. engine db1387723f
+makes rho 1/128 and close block 1024 this arm's compiled-in pair (DSA_RHO /
+DSA_CLOSE_BLOCK), scoped so vestigekv_mla -- which reads RHO and CLOSE_BLOCK
+directly and has no override -- keeps the values the whole Kimi record was
+collected at. RHO and CLOSE_BLOCK stay the sizing ceilings, so the previous
+served pair is still expressible, which is what -ctrl-L exercises.
+
+QUALITY FIRST, and not as a formality: the PAIR has never been drawn on
+multikey. rho 1/128 alone read 1.000 and close block 1024 alone read 1.000, but
+rho 1/128 together with close block 256 read 0.000 on both draws -- so a joint
+effect is exactly what is unmeasured here. Two draws, because one is not
+quotable. The caveat still stands either way: tier 1 ALONE reads 0.000 on this
+task, so 1.000 means the metric cannot resolve what these knobs move.
+
+Then three byte checks, which are also the only actuator evidence that the
+default reaches the kernel rather than merely being constructed:
+  c521def-L      4k/32k, no knob env  -- must reproduce 0.614x
+  c521def-S      32768/256, no knob env -- must reproduce 0.645x (the tail is
+                 zero at both 1024 and 4096, so this isolates rho; reading
+                 0.879 would mean the default did not take effect)
+  c521def-ctrl-L the previous pair forced back through the env overrides --
+                 must reproduce 1.351x, proving the raised guards still admit
+                 a control at the sizing ceiling
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521def-mk3-r1"}, "id": "c521def-mk3-r1", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521def-mk3-r2"}, "id": "c521def-mk3-r2", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521def-L"}, "id": "c521def-L", "probe": false}
+{"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521def-S"}, "id": "c521def-S", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "4096", "SGLANG_VESTIGEKV_RHO": "0.03125", "VK_JOB": "c521def-ctrl-L"}, "id": "c521def-ctrl-L", "probe": false}
+
+c521def RESULT -- the new default verified as a default, and one correction.
+
+    job              rho    CB     kept    fetch   ratio   quality
+    c521def-mk3-r1   1/128  1024      -        -       -   1.000
+    c521def-mk3-r2   1/128  1024      -        -       -   1.000
+    c521def-L        1/128  1024   666.9    273.2   0.607      -
+    c521def-S        1/128  1024   367.0    654.3   0.688      -
+    c521def-ctrl-L   1/32   4096  2621.4    324.5   1.348      -
+
+fallback 0.00000 on all three byte jobs. Median ITL 12.33-12.34 ms and p99
+13.07-13.78 ms across all three, i.e. flat -- these are STATS-on byte jobs and
+carry no cost claim either way.
+
+ACTUATOR TRACE, which is the part a log line does not give for free: c521def-L
+and -S emitted NO override lines (correct, no env was set) and their VKKEPT
+lines read rho=0.0078125 CLOSE_BLOCK=1024, so the compiled-in pair is what the
+kernel received. c521def-ctrl-L emitted both override lines, now correctly
+reading "(default 1024)" and "(default 0.0078125)", and its VKKEPT read
+rho=0.03125 CLOSE_BLOCK=4096 -- so the guards, raised to the sizing ceilings,
+still admit the previous served pair as a control. Engine 72d0c6c2cb now logs
+the effective pair unconditionally, because before it a run on the compiled-in
+pair left no record of what the kernel was given.
+
+The long decode reproduced: 0.607 against the grid's 0.614, and the control
+1.348 against 1.351. kept is exact to the row in both (666.9, 2621.4); fetch
+spreads ~6% between runs, so the ratio carries ~0.01 of replicate noise and
+0.614 vs 0.607 is one point measured twice.
+
+CORRECTION, affecting a number recorded above: the c521tl block says the
+aligned short shape "is rho's alone" because the tail is zero at every close
+block, and attaches 0.645x to the served pair. The ratio there is 0.688x. A
+zero tail means the block buys no kept rows, not that it does nothing -- the
+block is also sigma's window, so it changes WHICH rows tier 1 keeps and moves
+the tier-2 threshold regardless. Measured at this shape, kept is flat (379.2 at
+a 4096 block vs 367.0 at 1024) while fetch rises 29% (507.4 -> 654.3), and the
+0.645x belongs to rho 1/128 at a 4096 block, not to the served pair.
+
+So the recommendation stands on the balance, not on dominance: the long decode
+gains 1.174x -> 0.607x where this shape gives up 0.645x -> 0.688x, and both
+stay under 1x. Any byte ratio quoted from here must name its shape.
+
+QUALITY: both draws of the PAIR read 1.000, which was the open question -- each
+knob alone had read 1.000, but rho 1/128 together with a 256 block read 0.000
+twice. The standing caveat is unchanged: tier 1 ALONE reads 0.000 on this task,
+so 1.000 means the metric cannot resolve what these knobs move.
