@@ -2323,3 +2323,48 @@ half tier-2 -- if it is, both halves grow with the lane count and batching is
 not a lever on the tax. Same launch as the matching -branch row with
 SGLANG_VESTIGEKV_INDEXER_ONLY=1 added, so only that one variable moves.
 
+
+c521tl RESULT -- the tail and rho together, all six points at the full 32750
+steps, fallback 0.00000 on every arm (4k in / 32k out, STATS on):
+
+    config                    kept   fetch    rows   ratio vs DSA
+    B4096 rho1/32 (served)  2621.4   332.4  2953.8    1.351
+    B4096 rho1/128          2189.7   283.1  2472.8    1.174
+    B2048 rho1/32           1630.1   392.3  2022.4    1.007
+    B1024 rho1/32           1134.5   457.9  1592.4    0.848
+    B2048 rho1/128          1174.5   217.5  1392.0    0.774
+    B1024 rho1/128           666.9   290.4   957.3    0.614
+
+The prediction above held: B 1024 x rho 1/128 is the first configuration below
+1 on a long decode, at 0.614x -- a 2.2x reduction from the served
+configuration. BOTH knobs are needed: they hold different terms of
+kept = sinks + rho*closed + tail, and alone they reach only 1.174 and 0.848.
+
+Fetch did compensate, partially and unpredictably, exactly as flagged. At rho
+1/32 it rises monotonically as the close block shrinks (332 -> 392 -> 458); at
+rho 1/128 it does not (283 -> 218 -> 290). The q0.75 threshold is taken over
+the kept GROUPS' logits, so changing the kept set's composition moves the
+threshold in a direction neither knob predicts alone, and the optimum is
+therefore not at a corner of the grid.
+
+On the aligned short shape (32768 prompt, 256 steps) the tail is zero at every
+close block, so the ratio is rho's alone: 0.879 at 1/32, 0.645 at 1/128. So
+rho 1/128 + CLOSE_BLOCK 1024 is below 1 on BOTH shapes.
+
+RECOMMENDATION: serve rho 1/128 with CLOSE_BLOCK 1024. It is the only grid
+point under 1 on both shapes, it keeps the close block at 1024 where sigma's
+low-pass cutoff is still 64 tokens and the 31-dim basis is 3% of the window,
+and it is the largest close block that gets there.
+
+SUPERSEDED, do not quote: the c521L-r* annotation above reads "rho 1/32 with B
+4096 reads 1.280x (kept 2622, fetch 138)" and "rho 1/128 with B 256 reads
+0.526x (kept 287, fetch 431)". The first is a mid-run VKSTATS dump of the run
+that finished at 1.351; the second is at CLOSE_BLOCK 256, which scored 0.000 on
+niah_multikey_3 and is not a configuration we may keep. The elasticity of 0.126
+rows derived from that pair is void with it.
+
+RETRACTED: the two analyses built on the 0.984 mid-run figure for B2048 x rho
+1/32 -- that fetch rose 2.65x and ate the gain, and that equal kept with
+different sigma windows doubles fetch. That run finished at 1.007 with fetch
+392.3, and neither inference survives the final number. Mid-run VKSTATS lines
+are not results: this pair read 0.928 at step 14050 and 1.007 at 32750.
