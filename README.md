@@ -2943,3 +2943,76 @@ pair only demonstrates the near end of it.
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "0", "VK_JOB": "c521dflt-ctrl-mk3"}, "id": "c521dflt-ctrl-mk3", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "127", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521fence-mk3"}, "id": "c521fence-mk3", "probe": false}
 {"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "127", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "VK_JOB": "c521fence-L"}, "id": "c521fence-L", "probe": false}
+
+c521tri-*: close the triangle, because the MECHANISM I gave for the sketch-chain
+default was wrong and the contradiction it leaves is unresolved.
+
+What is measured, same shape, STATS on where applicable:
+  chain ON,  BRANCH_Q set      fetched 273.2  ratio 0.607  multikey 1.000
+  chain OFF, BRANCH_Q set      fetched  11.0  ratio 0.474  multikey 1.000 x2,
+                                                           copy probe 1.0000
+  INDEXER_ONLY, no BRANCH_Q    (tier 1 alone)               multikey 0.000
+
+RETRACTED: that the chain was "the selector the branch rule replaced". The
+_branch_* kernels are ABSENT from both CUPTI traces -- 61 distinct kernels, no
+branch/fire/kept/hist match -- while _vk_dsa_decode_split_kernel is present, so
+in-graph kernels do get captured and branch_fire is simply not running. And
+fetched collapses 273.2 -> 11.0 when the chain is skipped, so the CHAIN was
+doing the fetching. What the default change actually did is cut tier 2 from 273
+rows to 11, and quality held on four instruments including the only one with
+range on a row-set change.
+
+The contradiction: 11 fetched rows scores 1.000 while tier 1 alone scores 0.000.
+Those cannot both hold unless BRANCH_Q changes something besides firing rows --
+and I have now tried to derive that from the code twice and been wrong twice.
+
+  c521tri-noq-mk3   chain OFF with BRANCH_Q REMOVED. Against the two rows above
+                    this is the missing corner: if it reads 1.000, BRANCH_Q is
+                    not what carries the arm and the 0.000 belongs to something
+                    INDEXER_ONLY does beyond gating the certificate recall. If
+                    it reads 0.000, BRANCH_Q is load-bearing through a path that
+                    is not branch_fire, and that path is what to find.
+  c521tri-noq-L     the same with STATS, to see what the 11 rows are.
+
+The default is NOT being reverted on this. Its evidence -- two multikey draws,
+the copy probe on all three scores, the byte ratio, and a two-draw cost pair --
+is independent of the mechanism I got wrong.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "VK_JOB": "c521tri-noq-mk3"}, "id": "c521tri-noq-mk3", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN": "1", "VK_JOB": "c521tri-noq-L"}, "id": "c521tri-noq-L", "probe": false}
+
+c521tri RESULT -- the triangle closes, and it corrects TWO of my readings.
+
+    arm                          fetched  fetch p50/p90/p99   multikey
+    chain ON,  BRANCH_Q set        273.2    0 / 1380 / 1984    1.000
+    chain OFF, BRANCH_Q set         12.4    0 /    0 /  396    1.000 (copy 1.0000)
+    chain OFF, no BRANCH_Q           0.0    0 /    0 /    0    0.000
+
+branch_fire DOES run. It fetches on about 1% of steps -- p90 is zero, p99 is 396
+rows or ~99 groups -- and that 1% carries all of the quality: remove it and
+multikey goes to 0.000. The sketch chain fetched ~273 rows on nearly every step
+(p90=1380) and removing it costs nothing measurable, so 261 rows per step were
+waste and the byte ratio goes 0.607 -> 0.511.
+
+FIRST CORRECTION, to the mechanism originally given for the default change: the
+chain was NOT "the selector the branch rule replaced" -- it was doing bulk
+fetching of its own, and the branch rule is the sparse mechanism that matters.
+What the default change did was delete bulk waste, not a redundant selector.
+
+SECOND CORRECTION, to the retraction itself: I then said branch_fire "basically
+does not work" because the _branch_* kernels are absent from the CUPTI trace's
+61 kernels. That inference is invalid for a kernel firing on 1% of steps -- two
+firings averaged over 200 steps sit below every other entry. Absence from a
+profile's top-N is evidence about the MEAN, never about whether a path executes.
+The fetch percentiles settled it and they were in VKSTATS the whole time.
+
+What the final picture changes downstream:
+- kept now carries 99% of steps, so its size is a main-path decision. The
+  earlier "kept has no lower bound" reading needs re-checking: if the copy
+  probe's fetches also concentrate in that 1%, it measured whether those rare
+  steps suffice rather than whether kept does.
+- maintaining kept is therefore main-path cost too, which is the argument for
+  the incremental merge at close rather than the O(closed-prefix) topk at
+  backend:2959.
+- the budget-derived fence is free: fetch p99 is ~99 groups against a 127-group
+  trigger, fallback 0.00000 measured.
