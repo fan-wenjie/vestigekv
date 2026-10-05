@@ -3106,3 +3106,43 @@ kept at 131k is 4 + 1024 + 1023 = 2051 rows, leaving nothing for recall.
 {"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521ck32-L"}, "id": "c521ck32-L", "probe": false}
 {"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521ck32-S"}, "id": "c521ck32-S", "probe": false}
 {"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "223", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521ck32-fence-L"}, "id": "c521ck32-fence-L", "probe": false}
+
+c521ck32-smoke: a 4k/256 stream ahead of the batch, because the batch's five
+jobs all died with "server did not start" on an init-order crash I introduced
+(engine 2426216c81 fixes it and guards the class). Nine unit test files passed
+through that bug -- the backend's test skips __init__ with __new__ -- so a job
+whose only requirement is that a server comes up is the cheapest instrument for
+it, and it belongs ahead of any batch that changes construction.
+
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521ck32-smoke"}, "id": "c521ck32-smoke", "probe": false}
+
+c521xl-*: the long-context byte point, which is the ONE claim a constant budget
+makes that nothing on disk has tested.
+
+Everything measured so far is at 36k or shorter, and there the constant budget
+LOSES on bytes: 0.578 against the proportional 0.511 at 4k/32k, because kept
+dropped 27.9 rows while fetch rose 208.6 -- the q0.75 threshold falls with a
+smaller kept set and the branch rule fires far more groups. The budget-derived
+fence then recovers it (fetch 221.0 -> 31.3, ratio 0.578 -> 0.508, fallback
+0.00000), which says those extra fires were almost all low value.
+
+So at 36k the pair is a wash on bytes and the gain is the hard bound. The whole
+case for a constant budget rests on what happens FURTHER OUT, where
+proportional rho's kept grows as closed/128 and crosses DSA's flat 2048-row read
+near 158k while a constant budget does not move. 4k/124k is the longest shape
+this pool has served (CTX 135168, MEM_FRAC 0.96, and this exact launch has run
+before).
+
+  c521xl-prop    proportional rho, the control at this shape
+  c521xl-ck32    constant 32 groups
+  c521xl-ck32f   constant 32 groups plus the budget-derived fence at 223 groups
+
+Predicted, on the record: proportional degrades toward 1 (the model puts its
+rows at 4 + 1024 + 512 + fetch against DSA's 2048), the constant arm stays near
+its 36k value, and the fence arm is the lowest of the three. If instead the
+constant arm also degrades, the shape argument is wrong and the only thing left
+in it is the bound.
+
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_RHO": "0.0078125", "VK_JOB": "c521xl-prop"}, "id": "c521xl-prop", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_RHO": "0.0078125", "VK_JOB": "c521xl-ck32"}, "id": "c521xl-ck32", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "223", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_RHO": "0.0078125", "VK_JOB": "c521xl-ck32f"}, "id": "c521xl-ck32f", "probe": false}
