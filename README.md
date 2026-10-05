@@ -2629,3 +2629,60 @@ way, but read both logs before comparing anything at a longer shape.
 {"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521dn-r1"}, "id": "c521dn-r1-vestigekv", "probe": false}
 {"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "dense_mla", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521dn-r2"}, "id": "c521dn-r2-dense_mla", "probe": false}
 {"args": {"input_len": 32768, "output_len": 4096, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521dn-r2"}, "id": "c521dn-r2-vestigekv", "probe": false}
+
+c521pf-*: attribute the 230 us, before touching anything. The static read of the
+decode path overturned my own framing and could not replace it.
+
+What it overturned: decode IS cuda-graph captured here (decode backend "full",
+cuda_graph_max_bs_decode=1), so launches inside the graph cost nothing and "the
+tax is ~100 kernel launches" was wrong. What the read also ruled out: _stage_step
+is three copies at bs=1, and _ingraph_host_step's pairs/tiers loop is epoch-gated
+and skipped on a steady step. And it found a saving already banked --
+_out_graph_metadata_lite skips the base's ~99 us/step dense kv_indices fill, so
+the +230 us is NET and the gross host cost is nearer 330 us.
+
+What is left is three candidates with three different fixes: per-step host work in
+_decode_prologue / _step_slots / _maybe_close_blocks; eager ops outside the graph;
+and real GPU work inside it (scan, CSR pack, the fork's extra loads). A static
+read cannot choose between them, so this pair measures instead:
+profile_stream.py drives torch.profiler with CUPTI, which captures kernels inside
+graph replays, and kernel_diff.py differences the two arms per kernel. ctxs=36864
+to land at the context the 230 us was measured at; steps=200; same launch as
+c521sp so the number being attributed is the one already quoted.
+
+{"args": {"ctxs": "36864", "steps": 200}, "arm": "baseline", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521pf-r1"}, "id": "c521pf-r1-baseline", "probe": false}
+{"args": {"ctxs": "36864", "steps": 200}, "arm": "vestigekv", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "VK_JOB": "c521pf-r1"}, "id": "c521pf-r1-vestigekv", "probe": false}
+
+c521dn RESULT -- the first speedup above 1 on this line, replicated.
+
+    draw  arm         mean   median   p90    p99    tok/s
+    r1    dense_mla  11.78   11.78   11.94  12.35   70.16
+    r1    vestigekv  11.08   11.04   11.13  11.44   78.29
+    r2    dense_mla  11.79   11.79   11.92  12.14   70.20
+    r2    vestigekv  11.07   11.02   11.12  11.44   78.46
+
+Speedup 1.067 and 1.070 on median, 1.080 and 1.061 on p99, 1.116 and 1.118 on
+throughput. Both arms reproduce to 0.01-0.02 ms across draws, 4096 output tokens
+each, 1 successful request each. The dense arm is verified dense from its own
+log: attention_backend 'triton', index_topk null. Its pool resolves to 104607
+tokens against the vestigekv arm's 78784 -- expected, there is no index cache --
+and 36864 fits either way.
+
+THE ATTRIBUTION IS NOT BYTES, and the registered prediction was wrong in a way
+that is worth keeping. It said this shape would read ~0.98x either way, bounding
+the byte gain at 179 us. The measured gap is 740 us. The analytic model puts the
+dense crossing at S = tau/(L*r*(1-rho)*gamma) = 37,044 tokens, i.e. a predicted
+ratio of ~1.000 at S=36864 -- so 750 of the 740 us is not explained by row
+counts at all.
+
+Back-solving gamma per arm settles it: the dense triton-MLA arm achieves ~534
+GB/s on its rows, while our fork's marginal rows are hidden entirely (c521def-L
+vs -ctrl-L moved 2006 rows for <= 0.01 ms, i.e. >= 2.26 TB/s effective). So
+gamma is a per-KERNEL constant, not a machine constant, and almost all of this
+win is kernel quality rather than compression.
+
+So the claim this pair supports is "our kernel AND fewer rows beat a dense
+substrate by 1.067-1.070x at 36k", never "compression buys 1.07x". The same
+measurement also explains why the DSA comparison cannot cross: against DSA both
+arms run the SAME kernel, so gamma is identical and only dA differs -- and dA is
+capped by DSA's constant 2048 rows at <= 12.8 us against a 230 us tax.
