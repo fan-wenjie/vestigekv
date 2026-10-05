@@ -3074,3 +3074,35 @@ per-fire budget, measured at p99 = 396 rows ~ 99 groups. That retires the
 "conservative margin" framing of the budget-derived fence: 127 groups is not
 slack above a measured 68-75 mean, it is the smallest budget that covers the
 p99 of what actually fires.
+
+c521ck32-*: the constant tier-1 budget, 32 groups = 128 rows (engine 6c9b373512).
+
+The size comes from the quantile argument, not from kept carrying retrieval --
+that reading was retracted today (c521cpq: lead 1.0000 with branch_fire on,
+0.0001 off, same 68 rows). kept's jobs are the sinks, the recent window, and the
+q0.75 sample, and a quantile's standard error is 0.077 at 32 groups and 0.054 at
+64, neither depending on the context.
+
+  c521ck32-mk3 / -cp   quality. The copy probe is the one that matters: it has
+                       range on a row-set change (1.0000 vs 0.0001 measured on a
+                       matched pair) where multikey reads 1.000 either way.
+  c521ck32-L / -S      bytes at both shapes. The claim is specifically that the
+                       ratio STOPS tracking context: proportional rho reads
+                       0.511 long and 0.645 short today and crosses DSA near
+                       158k, while a constant budget is flat.
+  c521ck32-fence-L     the hard bound, now possible because the budget is
+                       constant: WF = 2048 - 4 - 128 - 1023(worst tail) = 893
+                       rows = 223 groups, context-INDEPENDENT. Every lane then
+                       either fits under DSA's 2048 rows or fences to DSA's own
+                       selection and reads exactly 2048. Measured fetch p99 is
+                       396 rows ~ 99 groups, so 223 should not fire and fallback
+                       is the instrument.
+
+With proportional rho that bound does not exist at long context at all: worst
+kept at 131k is 4 + 1024 + 1023 = 2051 rows, leaving nothing for recall.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521ck32-mk3"}, "id": "c521ck32-mk3", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521ck32-cp"}, "id": "c521ck32-cp", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521ck32-L"}, "id": "c521ck32-L", "probe": false}
+{"args": {"input_len": 32768, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521ck32-S"}, "id": "c521ck32-S", "probe": false}
+{"args": {"input_len": 4096, "output_len": 32768, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "223", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521ck32-fence-L"}, "id": "c521ck32-fence-L", "probe": false}
