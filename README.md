@@ -3146,3 +3146,39 @@ in it is the bound.
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_RHO": "0.0078125", "VK_JOB": "c521xl-prop"}, "id": "c521xl-prop", "probe": false}
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_RHO": "0.0078125", "VK_JOB": "c521xl-ck32"}, "id": "c521xl-ck32", "probe": false}
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "223", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_RHO": "0.0078125", "VK_JOB": "c521xl-ck32f"}, "id": "c521xl-ck32f", "probe": false}
+
+c521xl RESULT -- the long-context point, and the 36k conclusion gets a boundary.
+
+    shape            proportional   constant 32   constant + fence(223)
+    4k/32k   (36k)       0.511          0.578            0.508
+    4k/124k (128k)       0.849          0.719            0.706
+
+    at 128k:  kept 1035.2 -> 639.4   fetched 226.8 -> 71.3 -> 16.2
+    at 36k:   kept  666.9 -> 639.0   fetched  12.4 -> 221.0 -> 31.3
+
+All six at 126950/126976 or 32750 steps, rc=0, fallback 0.00000 throughout,
+actuator confirmed per job from the tier-1 log line.
+
+THE PREDICTION logged above was half right. Proportional does degrade (0.511 ->
+0.849) and the constant arm does win at 128k and the fence arm is lowest of the
+three. But I predicted the constant arm would "stay near its 36k value" and it
+did not: 0.578 -> 0.719.
+
+Why, and it matters more than the win. The ROW term falls with the constant
+budget -- 0.686 MB at 36k to 0.671 MB at 128k -- so kept and fetch are not what
+degrades. It is the shared 33 B/token index scan, 1.217 MB at 36k and 4.325 MB
+at 128k, which is 63.9% of our read at the near shape and 86.6% at the far one.
+That term cancels in the DIFFERENCE against DSA, since both arms pay it, but it
+dilutes the RATIO toward 1. So a constant budget removes the crossing near 158k
+and slows the decay; it cannot stop it.
+
+That retires "kept" as a byte lever: at 128k the part of the read that is ours
+is already down to 0.671 MB against a 4.325 MB scan we share. The only
+degradation source left is the scan, which puts a coarser first-pass index of
+our own -- breaking the tie with DSA's pooling rather than reusing it -- as the
+next structural lever rather than an idea to keep in reserve.
+
+And the 36k verdict needs its boundary stated: the constant budget's sign
+depends on the shape, because a smaller kept set lowers the q0.75 threshold and
+fetch rises (12.4 -> 221.0 there) while proportional kept's growth has not yet
+bitten. Quote the pair, never one shape.
