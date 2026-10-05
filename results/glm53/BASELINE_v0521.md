@@ -671,3 +671,211 @@ So at 32k the branch rule reads **0.845x DSA's bytes per layer-step** (83.7
 B/token against DSA's 99 B/token), with no fenced step, at DSA's quality
 (1.000 x3) and 1.05-1.06x its ITL. Two smokes agree on the fetch distribution
 (p50 344 / 360, fetched 470 / 451 rows per call).
+
+## Where the engineering tax is: nsys node-level decomposition of v5 (2026-10-03)
+
+Both arms under `nsys --cuda-graph-trace=node`, 32k prompt, 512 decoded, the
+served config (TP=2, GRAPH_BS=1); last 200 decode steps on ONE device, kernels
+summed per step, anchored on `kpool_topk_transform_kernel` (11 per step).
+Traces in the job scratch (`prof/{base,branch}`), scripts `decompose.py`.
+
+    wall/step        DSA 10923 us   branch v5 11421 us   +498 us (1.046x; the
+                     stream job measured 1.053x)
+    kernel sum/step  11664          12036                +371 us
+    launches/step    1379           1557                 +178 nodes
+
+| source of the +498 us | us/step | what it is |
+|---|---|---|
+| branch operators (Triton) | **198** | kept 74.7, compact_write 35.3, rows 26.5, hist 21.5, hit 14.0, compact_scan 13.7, thr 11.9 |
+| torch glue around them | **137** | inv scatter 39.6, copies 29.3+12.1, index_copy 17.9, fills 11.2+9.1+8.6, arange 7.4 |
+| graph-node / launch floor | **~127** | wall delta minus kernel delta: +178 nodes at ~0.7 us |
+| tier-1 bookkeeping | 10 | pack_csr 4.3+1.7, prologue 2.1, kv_splits 1.5 |
+| attention | +2 | fork 73.5 vs DSA's kernel 76.4 at 1590 vs 2048 rows; reduce +4.7 |
+| everything else (MoE, GEMV, KDA, NCCL, indexer chain) | ~+20 | noise; the indexer chain is identical (207 us) in both |
+
+So the tax is almost entirely the SELECTION CHAIN'S OWN SHAPE -- how many
+nodes it is -- not any one kernel and not the rows attended: the attention
+over 1590 rows is cheaper than DSA's over 2048, and the model is untouched.
+
+**Disassembly** (`cuobjdump -res-usage`, SASS): every VestigeKV kernel on the
+path is spill-free -- `STACK:0`, `LDL/STL 0`: branch_kept REG 34, hist 20,
+hit 22, thr 27, rows 29, compact_scan 24, compact_write 38, pack_csr 26/40,
+ring_write 40, the decode fork 201, fused_prologue 128, sigma_fused 254 (at
+the ceiling, close-time only). No register cost hides behind the timings.
+
+**Theoretical bound.** Per step, with f the fallback (fence) rate:
+
+    T(f) = T_DSA + T_tier1 + T_chain + (1 - f) * 11 * [t_fork(rows) - t_dsa(2048)]
+
+The attention term is 11 x (73.5 - 76.4) = -32 us at f=0 and 0 at f=1: the
+fallback rate moves the TIME by under 0.3% at this geometry, because a fenced
+step attends DSA's 2048 rows at DSA's own kernel cost and an unfenced one
+attends fewer. What f does move is bytes -- ratio(f) = (1 - f) * 0.845 + f --
+and quality. The chain itself is f-independent (it runs every step; a
+lean-like variant that skips it on the step after a fence would make it
+(1 - f) * T_chain, i.e. 1.00x at f = 1, where the rule is DSA).
+
+The chain's floor on this design: tier 1 (10 us) + operators with the glue
+folded in and the kept kernel parallelised across CTAs (198 + 137 -> ~130 us:
+the inverse built once per step instead of per layer, the fills/copies
+absorbed into the kernels' first pass, the single-CTA kept kernel split) +
+a node floor of ~50 nodes (~35 us) = **~+175 us -> 1.016x**, against 1.046x
+in-trace / 1.053x measured today. Beyond that the launch floor of a
+multi-kernel chain is what remains; 1.00x needs the chain inside the fork
+(one kernel), which the fork's 201 registers argue against.
+
+## The fused operators: the tax halved, and where the floor is (2026-10-04)
+
+`vestigekv/dsa_branch.py` rewritten as five kernels with no host-side glue, the
+fallback and the recall as two arms of ONE kernel (the MLA line's pattern:
+`_compact_write_kernel` publishes `out_len` and `out_ovf` from one program).
+`_branch_commit_kernel` decides per lane, publishes both words at the same
+addresses either way, and runs the row expansion only on the recall arm -- so
+two lanes of one batch may take different arms, which the previous chain could
+not express without a host readback. Nothing is memset from the host: `km` is
+reset by its last reader, the histogram and range by the commit kernel for the
+next layer, the bucket counts by `_compact_scan_kernel`. The page-table inverse
+is built once per STEP (on the first MLA layer), not once per layer.
+
+Microbench, CUDA-graph replay, one lane, idle GPU:
+
+| | 32k | 128k |
+|---|---|---|
+| chain (v5) | 24.6 us/layer | 35.0 us/layer |
+| **fused (v6)** | **10.3 us/layer** | **10.3 us/layer (flat in context)** |
+
+Of the 10.3 us, 7.2 us is kernel time (kept 2.40, hit 1.50, hist 1.31, commit
+1.07, scan 0.95); the rest is the 5-node launch floor. Disassembly: all five
+kernels `STACK:0`, no `LDL`/`STL`; REG 26 / 20 / 23 / **40 (commit, both arms)**
+/ 24 -- the two arms cost no spill.
+
+Served (`c521br5-{32k4k,4k124k}`, STATS off, decode-only stream, seed 0,
+check_builds clean, no traceback), beside the chain and the indexer-only floor:
+
+| arm | 32k/4k median | p99 | tput | 4k/124k median | p99 | tput |
+|---|---|---|---|---|---|---|
+| DSA | 10.832 | 11.095 | 80.626 | 10.874 | 11.496 | 91.854 |
+| **branch v6** | **1.026x** | **1.030x** | 0.975x | **1.023x** | **1.034x** | 0.978x |
+| branch v5 (chain) | 1.053x | 1.056x | 0.953x | 1.058x | 1.052x | 0.945x |
+| indexer-only (floor) | 1.011x | 1.013x | 0.988x | 1.009x | 1.029x | 0.989x |
+
+The fused operators halved the tax at both shapes (1.053 -> 1.026 and 1.058 ->
+1.023). What is left is 1.5 points above the indexer-only floor, and that floor
+is not removable by this design: any rule that reads DSA's pooled logits pays
+the 0.29-0.31 ms/step DSA's own scoring chain costs.
+
+**The microbench projected 1.011x and the server gives 1.026x.** The gap is not
+launch count -- 123 us/step of replay against a 10.9 ms step is 1.011x -- so it
+is interference: the chain's CTAs contend with the model's own kernels, which an
+isolated replay cannot show. Quote the served numbers; the microbench is for
+ranking implementations of the same rule, not for predicting the arm.
+
+Quality is unchanged by the rewrite, as the rule is: `c521br5-mk3`
+(multikey_3 @65536, n=50) is **1.000**, a fourth draw at DSA's level
+(1.000 x4 against DSA 1.000 / 1.000 and the sketch arm's 0.540 / 0.660).
+Bytes (`c521br6-smoke`, live counters): `bytes[step=2.68MB dsa=3.14MB
+ratio=0.852 per_tok=84.4B]`, `fetch[p50=360 p90=1168 p99=1860]`, no fenced step
+in 250 x 11 layer-steps -- within a point of the chain version's 0.845.
+
+### One served-geometry bug, and why the unit test missed it
+
+The first v6 server died in graph capture: `scatter_: index [1, 2113] larger
+than self [1, 1233]`. The page table's width comes from `max_context_len` and
+the inverse's from the KV POOL, and on this box the pool is the SMALLER of the
+two (the weights take ~88 GB and the pool is the residual), so **a page table
+wider than the inverse is the normal served case here, not an edge**. The fix
+trims the table to the inverse's width -- a request's live page count never
+exceeds the pool's, so only padding is dropped. The fixture's table was
+NARROWER than its inverse, exercising the opposite geometry;
+`TestBranchServedGeometry` now drives a table 4x the inverse's width and was
+mutation-checked (it fails on the pre-fix code with the identical error).
+
+## (a)(b)(c): can the tax reach parity, and can recall buy a speedup (2026-10-04)
+
+**(a) The attended row count is NOT a time lever at bs=1.** Device time of the
+fork, one layer one lane, H=32, kv_dim=576 bf16, sweeping the rows a lane
+attends:
+
+    2048 rows  9.10 us (1.000x)   1593  8.98 (0.987x)   1120  8.82 (0.969x)
+     800       8.65  (0.951x)      512  8.63 (0.948x)    256  8.35 (0.917x)
+     128       8.18  (0.899x)
+
+A 16x cut in rows buys 10% of the kernel: it is schedule-bound, not
+bandwidth-bound, at this geometry. (First measured as wall time, which read
+flat at 48 us/layer -- that is the eager launcher, not the kernel. Device time
+is the only honest instrument here.)
+
+**This retracts the "~1.007x reachable" estimate.** That assumed 69 us/step
+from cutting rows; the real figure is ~4 us/step. And the recall rate governs
+only the FETCHED rows -- 473 of the 1593 we attend (30%); firing zero groups
+still attends the 1120 kept rows, 55% of DSA's 2048. So recall is a lever on
+23 points of the row count, on a term that barely responds to row count at all.
+**By recall, a speedup is not reachable at bs=1.**
+
+**(b) The page-table inverse is deleted.** Tier 1 records each kept row's
+request-relative POSITION beside its physical row (`eviction.kept_rows` already
+computed it), so `_branch_kept_kernel` reads the position and the physical row
+is never touched. Every layer is now 10.3 us / 5 launches -- the first layer's
+20.5 us inverse build is gone -- so the chain is **113 us/step, down from 123**.
+It also deletes the failure class that crashed the first v6 server (a page table
+wider than the KV pool): no kernel here reads a page table, and
+`TestBranchServedGeometry` was retired as moot.
+
+**(c) Skipping DSA's discarded top-k is NOT free, and the reason corrects an
+error of mine.** DSA's `kpool_topk_transform_kernel` costs 90 us/step and its
+result is used only by a fenced lane -- and no lane fenced in 250 steps x 11
+layers at 32k. But the branch rule is **not** stale-by-one: the indexer runs
+before the attention within a layer's forward, so `fetch_ovf` is written and
+read in the SAME step. The fence therefore cannot be predicted before the
+top-k would have been computed. Skipping it on the strength of last step's
+fence count means a lane that fences after a quiet run has no selection to fall
+back to, and the fork would have to degrade to attending the kept set alone.
+That is a change to the fallback's guarantee, not an optimisation, so it is not
+taken unilaterally.
+
+Where that leaves the tax: (b) alone gives ~1.017-1.025x served. (c) would add
+0.8% and reach ~1.009-1.017x. **Parity is the floor of this design on this box**
+-- the ceiling computation stands: the whole KV side is 2.61% of a decode step
+at bs=1 and 6.0% at full pool occupancy, and a rule that must read DSA's logits
+can claim only the attention part of it.
+
+## The baseline is 3.2x off its own floor, and 45% of it is a bf16 fallback (2026-10-04)
+
+Measured, not inferred: this box does 1466 GB/s (bf16 copy, read+write). GLM-5.3-Flash
+has 18B active parameters; at NVFP4 (~0.55 B/param with scales) that is 9.9 GB
+per decode step, 5.0 GB/GPU at TP=2, so the **weight-bandwidth floor of one
+decode step is 3.41 ms**. The served DSA step is **10.83 ms -- 3.2x off its own
+floor.** Every GLM ratio quoted before this section divides by that step.
+
+Where the slack is, by launch shape in one step (nsys, one device):
+
+| kernel | launches/step | grid / block | what it is |
+|---|---|---|---|
+| `cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_16x16...` | 34 + 11 | (8,32,2) / (8,4,32), block (32,1,1) | per-layer batched projection, **bf16**, one warp per CTA, 67 us each. 34 = the KDA layers, 11 = the DSA layers. 3019 us/step = 27.6% |
+| `internal::gemvx::kernel` (cuBLAS) | 87 + 42 | (512,1,1) / (256,1,1) | dense / shared-expert GEMV, **bf16**, 15 us each. 1942 us = 17.8% |
+| `GemmUniversal<GroupProblem>` | 84 = 2 x 42 | (1,188,1) | the **fp4** grouped MoE GEMM -- the one path that is fast. 1995 us, 23.8 us each |
+| `ncclDevKernel_AllReduce_RING_LL` | 91 | | 676 us: PCIe, `NCCL_P2P_DISABLE=1` and `--disable-custom-all-reduce` in common.sh |
+
+**4961 us = 45% of the step is bf16 work on an NVFP4 checkpoint**: only the MoE
+grouped GEMM takes the fp4 path; the projections and the dense GEMVs
+dequantize. That is the inflation, and it is in the BASELINE -- it makes every
+arm look equally good and every ratio look equally flat.
+
+Configuration against the cookbook (`docs/cookbook/autoregressive/GLM/GLM-5.3-Flash.mdx`,
+which was not read before 30+ hours of measurement -- `.claude/rules/cookbook-first.md`
+exists for exactly this): recommended hardware is H100/H200/B200/B300/GB200/GB300
+with **FP8 weights** and **FP8 KV cache by default on Blackwell**. This box is an
+RTX PRO 6000 Blackwell **Workstation** Edition (not on the list, no NVLink)
+serving an **NVFP4** checkpoint with **bf16 KV**.
+
+**What this retracts:** the conclusion "a speedup is unreachable on this box".
+The KV side being 2.61% of a step at bs=1 is 2.61% of a 3.2x-inflated step. On
+a weight-bound step the same 285 us is 8.4%, and 685 us at full pool is 20% --
+a regime where a KV reduction can show up. **Not retracted:** the byte ratio
+(0.845-0.852x) and the quality (multikey 1.000 x4), which are counts and scores
+rather than times, and the ranking among the arms, all measured on one config.
+
+Sweep `sw00..sw08` re-establishes the baseline before any arm is re-quoted: the
+control, four `--moe-runner-backend`, three `--fp4-gemm-runner-backend`, and
+`--kv-cache-dtype fp8_e4m3` (the cookbook's Blackwell default), each the
+baseline arm at the c521z-32k4k shape with one knob changed.
