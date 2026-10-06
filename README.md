@@ -4763,3 +4763,38 @@ the claim. The claim is the kernel ratio: 3.35x at 124k, 1.47x at 36k.
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf-xl-r1"}, "id": "c521sf-xl-r1", "probe": false}
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf-xl-r2"}, "id": "c521sf-xl-r2", "probe": false}
 
+
+### CORRECTION: the 3.35x was measured where nothing fires, and in situ the fork regresses
+
+    lift   cands  emitted   fork_us   dsa_us        (124k, G=31744, kept 289)
+     0.0    7865      512     35.12    12.58   <- overflow
+     0.8    2250      512     35.10    12.58   <- overflow
+     1.6     415      342      6.42    12.60
+     2.0     171       98      6.42    13.61   <- the served fire rate
+     6.0      73        0      4.38    14.61   <- what the headline measured
+
+The benchmark used lift=6.0, which puts the kept q0.75 above every other score:
+**0 groups emitted**, 4.38 us for doing no work. That is the same vacuous regime
+that made the unit test compare two empty sets, and I repeated it in the bench
+after having already found it in the tests.
+
+  honest, realistic fire rate, no overflow :  1.96-2.12x
+  honest, overflow                         :  0.36x  (a 2.8x LOSS)
+  of which the 2048-element 1-CTA bitonic  :  28.7 us
+
+**And in situ it is a regression**, both replicates:
+
+    chain  median 10.984 / 10.983  tput 90.902 / 90.914  spiky 0.86%  p90 11.18
+    fork   median 11.254 / 11.175  tput 88.830 / 88.907  spiky 12.79% p90 15.91
+
+    gap by context: 49 us @8k -> 235 @28k -> 304 @86k -> 230 @117k
+
+The gap grows with context and the fork has 15x more slow steps, both consistent
+with overflow frequency rising as G grows. Quality is unaffected (multikey
+1.000), so this is purely cost.
+
+**The fix is to undo a choice I made on an unchecked premise.** The bitonic
+fallback was adopted because "even on overflow the total is not large" -- true at
+4k, where the smoke measured overflow=0, and false at 124k. The right tool for
+cutting an overflowing candidate set is a radix/histogram select, which is
+exactly what DSA's own kernel does and what I replaced with an O(n log^2 n) sort.
