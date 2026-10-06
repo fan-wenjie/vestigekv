@@ -4740,3 +4740,26 @@ inside the chain's 6.0 rows/call self-spread, kept identical at 243.8, multikey
 {"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf3-smoke"}, "id": "c521sf3-smoke", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf3-mk3"}, "id": "c521sf3-mk3", "probe": false}
 
+
+### c521sf3 passes: the fork is lossless in situ
+
+    arm                     fetched/call   kept    multikey @65536 n=50
+    chain (c521opt-*)       393.9/399.9   243.8    1.000
+    fork, broken km (sf2)   261.5         243.8    0.18
+    fork, FIXED (sf3)       419.5         243.8    **1.000**
+
+fetched is ~5% above the chain against a 6.0 rows/call SAME-CODE self-spread,
+but the two are different code and this decode path agrees with itself on 48% of
+greedy tokens, so the trajectories diverge from step one and the counts are not
+strictly comparable. With quality at 1.000 the excess is divergence or the fork
+being marginally less lossy -- the right direction, since the chain's
+level-quantised cap under-fills where the fork fills the budget exactly.
+
+c521sf-xl-r1/r2: the ITL pair, which the plan gated behind the smoke and the
+quality draw. Expect NO movement -- selection is 1.4% of a step and the residual
+there is GPU idle and MoE-GEMM collateral -- so this is a regression guard, not
+the claim. The claim is the kernel ratio: 3.35x at 124k, 1.47x at 36k.
+
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf-xl-r1"}, "id": "c521sf-xl-r1", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf-xl-r2"}, "id": "c521sf-xl-r2", "probe": false}
+
