@@ -4375,3 +4375,111 @@ dropped rows with no witness.
 
 Still open: the ITL pair (c521opt-xl-r1/r2) and the post arm's self-spread on
 fetched (c521opt-smoke-post2).
+
+## Tier 2 is launch-bound, not work-bound: the 5-to-2 kernel plan
+
+Registered before any change. The target is set by the ledger: our tier-1 and
+tier-2 kernels must cost less than the 158.5 us of DSA top-k we remove, or the
+ratio cannot pass 1 no matter what else is done.
+
+**The diagnosis is arithmetic, not a profile.** `_branch_hit` reads GP = 32768
+fp32 logits = 131 kB a layer-step and measures 49.3 us. That read is ~0.04 us
+at any plausible bandwidth, so the kernel is ~1000x off its roofline and the
+cost is not the work. 5 kernels x 11 layers = 55 launches for 138.3 us is
+~2.5 us each, which is what a graph-replayed launch costs. Tuning block shapes
+inside those kernels cannot move this; launching fewer can.
+
+Two structural facts make the collapse possible:
+
+1. **The quantile's reference set is tiny.** BRANCH_Q is a quantile of the KEPT
+   group scores and KEPT_GROUPS=32, so that set is ~61 groups. `_branch_hist`
+   sweeps all 32768 groups to collect those ~61 values, when `kept_pos` already
+   names them. Folding the histogram -- or just a direct selection, which is
+   cheaper still on 61 values -- into `_branch_kept` replaces a 512-CTA sweep
+   with ~18 CTAs.
+
+2. **The cap almost never binds, and the prefix sum exists only for it.** At 4k,
+   98 groups fire against WG=512. The NCODE=24 per-level counts and the global
+   cap scan are machinery for a rare event, and the readback that gates it
+   already exists (`_ovf_probe`, the pinned host scalar lean_step uses). On the
+   common path, fire can ATOMICALLY APPEND into the fetch buffer: ~98 atomics,
+   no level histogram, no prefix sum, no second sweep over 32768 groups.
+   Softmax is order-invariant so the fired set needs no order; the kept set,
+   which does, is already emitted chronologically by kept_rows.
+
+Result: (threshold-from-kept) + (fire + append) = 22 launches, ~55-60 us.
+
+**This is an equivalent rewrite, not an approximation.** Same quantile of the
+same set, same fire predicate, same set appended in a different order. The one
+behaviour that changes is ordering within the fired set, which no consumer
+reads. The overflow path keeps today's score-ordered cap and runs only when the
+previous step's counter says it is needed -- which is also the first time that
+counter has been trustworthy, since `ovf_rows` only just stopped being
+structurally zero.
+
+What is irreducible: one read of every group's score to test firing (the logits
+are DSA's and all of them must be looked at), and one write of the survivors.
+Everything else listed above is bookkeeping.
+
+Order of work: the queue drains (c521opt-xl-r1/r2, smoke-post2) -> per-kernel
+profile of the 5 as they stand, so the 138.3 us is attributed per kernel rather
+than in aggregate -> implement -> unit tests -> smoke + multikey -> ITL pair.
+
+### c521opt acceptance: the five changes are worth 138.5 us/step
+
+    arm                 median        p90          p99         mean      tok/s
+    DSA   r1 / r2    10.814/10.879  18.056/11.025 24.537/11.571  ...  91.871/91.841
+    vk  before       11.104/11.140  11.264/11.332 11.824/12.230  ...  89.886/89.622
+    vk  after        10.983/10.984  11.124/11.180 11.637/14.011  ...  90.902/90.914
+
+Ratio 0.9707-0.9798 -> 0.9845-0.9905, and the after-arm's two medians agree to
+1 us. The gain is 138.5 us/step against ~198 us of identified KERNEL duration,
+so kernel time converted to wall time at about 70% -- an upper bound, as said,
+but not a wild one.
+
+Quality and telemetry cleared this already: multikey 1.000 at n=50, and
+kept=243.8/call on both sides of the change.
+
+**This re-prices D1.** The top-k skip was one of the five, so DSA's top-k is
+already gone from this arm and D1 cannot remove it again. D1's remaining worth
+is our tier 2 going 5 kernels -> 2, about 3 x 11 x 2.5 = 82 us, against a
+residual gap of 104 us (vs DSA 10.879) to 169 us (vs 10.814). So D1 closes most
+of the gap and, on this arithmetic, not all of it -- and D1 must emit into our
+own fetch_buf rather than DSA's layout, because switching to DSA's attention
+kernel would hand back the 26.5 us our fork measures (98.1 -> 71.6).
+
+c521pf-xl4-vestigekv: re-profile the arm AS IT NOW STANDS. The chained profile
+read c521pf-xl3, which is the pre-change tree and now the wrong baseline; the
+per-kernel split of what remains is what decides whether D1 plus D2 is enough.
+
+{"args": {"ctxs": "126976", "steps": 200}, "arm": "vestigekv", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521pf-xl4"}, "id": "c521pf-xl4-vestigekv", "probe": false}
+
+
+### The profile: both top-k figures were right, and two corrections
+
+    36k  baseline   kpool_topk_transform   85.9 us/step   7.81 us/launch
+    124k baseline   kpool_topk_transform  157.4 us/step  14.31 us/launch
+    124k vestigekv  kpool_topk_transform  157.2 us/step  14.29 us/launch
+                    _branch_              138.3 us/step   2.52 us/launch
+                    _vk_dsa_decode         69.5  vs baseline _sparse_mla_decode 76.0
+                    paged_mqa_logits       67.2  vs baseline 67.3
+
+87.1 was the 36k measurement, 158.5 the 124k one. The histogram pass scales with the
+group count while the emit is fixed at 512, so the per-launch cost nearly doubles.
+
+**Correction.** The attention fork saves 6.5 us/step (76.0 -> 69.5), not the 26.5 I had
+been quoting from an earlier trace set. This is the directly comparable pair. So
+emitting in DSA's layout, which would hand that saving back, costs much less than I
+argued against it.
+
+**The ledger does not close.** Named kernels: DSA 300.7 us, ours 432.2 us, difference
+131.5 us against a measured gap of 227 us. ~95 us is unattributed and `sigma` matched
+no kernel at all. Against today's 104 us residual, D1 is ~44 us of wall (63 us of
+kernel at the 70% conversion measured today) and D2 ~8 us, leaving ~50 us short. So
+D1 + D2 do not cross 1 on present evidence, experiments stay closed, and the
+unattributed 95 us is now the most valuable unknown on the line.
+
+**The telemetry self-spread, measured rather than asserted.** fetched/call: pre 394.7,
+post 393.9, post2 399.9 -- the arm's own run-to-run spread is 6.0 rows/call, so the
+0.8 pre/post difference is inside it. kept=243.8 in all three, which is right: tier 1
+picks by sigma at block close and is deterministic where the fired set is not.
