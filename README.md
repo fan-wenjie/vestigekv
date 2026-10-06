@@ -4483,3 +4483,36 @@ unattributed 95 us is now the most valuable unknown on the line.
 post 393.9, post2 399.9 -- the arm's own run-to-run spread is 6.0 rows/call, so the
 0.8 pre/post difference is inside it. kept=243.8 in all three, which is right: tier 1
 picks by sigma at block close and is deterministic where the fired set is not.
+
+### The gap is launch COUNT, not kernel time
+
+Every kernel, both arms, no name filter (the filtered sum had misled me):
+
+    vk      : kernel-sum 11780.6 us/step   1440 launches/step
+    baseline: kernel-sum 11750.9 us/step   1379 launches/step
+    delta   :    +29.8 us/step    +61 launches/step
+
+    _branch_hit       45.0     _branch_kept     27.9     _branch_cap_scan  23.9
+    _branch_commit    23.1     _branch_hist     18.3     => tier 2 = 138.2 us
+    void sglang::(top-k)  -157.4      _vk_dsa_decode_split +74.1 vs -76.0 sparse_mla
+
+Total kernel time is +29.8 us against a MEASURED wall gap of 104 us. Tier 2's
+138.2 us is very nearly paid for by the 157.4 us of top-k removed. The ~74 us
+that remains is not kernel time at all, and we run +61 launches/step, which at
+roughly 1 us of graph-replay overhead each accounts for essentially all of it.
+
+**So the cost is launching, not working.** That is also why the scatter commit
+was nearly worthless: _branch_hit went 49.3 -> 45.0, a 4.3 us saving where I had
+predicted ~40. I spent that change optimising inside a kernel whose cost is its
+launch. The same reasoning retires any further block-shape tuning of these five.
+
+NOT claimed: the shared MoE kernels read +29.1 us (cutlass GEMM), +6.3 (gemvx),
++6.0 (doActivation), which would be L2 pressure from our buffers. This line's
+recorded profile-diff noise is +-40 us/kernel, so each sits inside it.
+
+**This re-prices D1 on the right axis.** 5 kernels -> 2 removes 33 launches/step
+(~40 us) on top of ~46 us of kernel, so ~86 us against a 104 us gap; D2 removes
+11 more launches (~13 us), bringing it to ~99 us. That is parity within the
+pairing spread, not a crossing -- and the 22 launches D1 leaves are the floor
+unless the selection fuses into a kernel that already runs (D3), which is gated
+on a forkable logits kernel.
