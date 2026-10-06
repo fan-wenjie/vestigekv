@@ -4249,3 +4249,129 @@ the paper, and what the 1.0295x ceiling says is the whole available prize.
 3. A multikey draw -- the only instrument with range on this arm.
 4. Only then cherry-pick to the served tree, re-profile (`c521pf-xl4`), and
    re-run the `c521dsa-xl` ITL pair for the before/after.
+
+## c521dsa-xl r1: the gap is a constant, and the ITL distributions differ in kind
+
+Per-step ITL by decode context (`mexp/glm53/itl_by_context.py`, which decodes
+through the archive's own `pack_streams.unpack_series` and asserts the recovered
+median against the recorded one):
+
+      ctx      DSA     vk     gap_us    ratio
+     8192   10.803  11.071    268.0    0.9758
+    16384   10.816  11.084    268.0    0.9758
+    28672   10.812  11.101    289.0    0.9740
+    53248   10.840  11.127    287.0    0.9742
+    86016   10.885  11.168    283.0    0.9747
+
+**The gap is flat in context: ~270-290 us/step from 8k to 86k.** That is what
+the byte model says it should be -- both arms' attention cost is near-constant
+in context, and our tier-1/tier-2 kernels are constant by construction -- and
+it means the ratio is not going to improve with length on its own.
+
+It also corrects the trace-wall estimate of +144 us. The trace's two arms came
+from different jobs and carry profiler overhead; the ITL pair is the
+authoritative number and says the gap is roughly twice that.
+
+The two distributions are not the same shape:
+
+    DSA   p0.1=1.637 p1=1.926 p10=3.184 p25=8.846 p50=10.814 p75=12.552
+          p90=18.056 p99=24.538  mean=10.878  std=5.041
+    vk    p0.1=6.840 p1=10.132 p10=10.970 p25=11.071 p50=11.140 p75=11.217
+          p90=11.332 p99=12.230  mean=11.151  std=0.498
+
+Ours is nearly a delta function; 0.30% of steps exceed 1.3x the median and
+their modal spacing is **1024** -- exactly CLOSE_BLOCK, so our only spikes are
+the block closes, which is the structure the design predicts. DSA's spread is
+two-sided (p10 at 3.18 ms, p90 at 18.06) with mean almost equal to median,
+19.6% of steps above 1.3x median at modal spacing 2.
+
+**The p90/p99 difference is NOT being claimed.** It is 1.59x and 2.01x as
+measured, but a two-sided spread whose mean tracks its median is the signature
+of redistributed step time, and I cannot say from here what in DSA's decode
+alternates. The dense reference at this shape is tight (median 4.365, p99
+5.971, ratio 1.37) so it is not a generic property of this client -- which
+makes it a real server-side behaviour worth explaining, and still not a
+latency win until explained. The quotable numbers are mean/throughput and
+median, both ~0.974.
+
+## c521opt: accepting the two optimisations
+
+Tests first: 21 files, 115 cases, all pass on `glm53-pr` at `73dfa3274e`,
+including `test_vestigekv_dsa_decode_fork` (the fork's VK_TOPK arm, which the
+top-k skip changes) and `test_a_non_overflowing_step_is_bit_identical_to_no_cap`
+plus `test_past_the_trigger_the_lane_truncates_by_score`, which drives 1200
+candidates through one bucket and so exercises the atomic-collision case the
+scatter introduces.
+
+The changed code is served through the queue's own `ENGINE` field pointed at
+`engine-glm521-pr`, so the served tree is not edited at all.
+
+**The telemetry control is run today, not read from the record.** `glm53-pr`
+diverged from the served branch at `5a7aab06f7` and carries commits the served
+tree does not (the dsa isolation, kappa=4, the PR-only defaults), so a smoke
+that failed to reproduce `c521k4-smoke2` would not tell me which difference did
+it. Both trees therefore run the same smoke now, and the comparison is
+tree-vs-tree on one day.
+
+- `c521opt-smoke-pr` / `c521opt-smoke-srv`: 4k/256, STATS on, matched env but
+  for ENGINE. Acceptance: `fetched`/`kept`/`overflow`/`fallback` equal to the
+  digit. Neither optimisation may move a row, only the time to pick it.
+- `c521opt-mk3-pr`: niah_multikey_3 @65536 n=50 on the PR tree. A byte counter
+  cannot see wrong rows, so this is the gate, not the smoke. Reference: DSA
+  1.00, and the branch arm's own 1.000.
+
+Only if all three pass do the four stream jobs follow -- the ITL pair re-run
+against the DSA baseline already measured at 10.814/10.879 median.
+
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521-pr", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521opt-smoke-pr"}, "id": "c521opt-smoke-pr", "probe": false}
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521opt-smoke-srv"}, "id": "c521opt-smoke-srv", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521-pr", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521opt-mk3-pr"}, "id": "c521opt-mk3-pr", "probe": false}
+
+
+**Correction to the plan above: the second tree is refused, and correctly.**
+`audit_queue.py` pins the glm53 line to one tree so that no cross-tree pair can
+be mistaken for a same-tree one, and pointing ENGINE at the PR worktree trips
+exactly that guard. So the before/after runs on the served tree instead, with
+the control FIRST and the cherry-pick between the two halves:
+
+  1. `c521opt-smoke-pre`  -- the served tree as it stands, STATS on.
+  2. cherry-pick d443f51100 and 73dfa3274e onto glm53-v0521, with no runner alive.
+  3. `c521opt-smoke-post` -- acceptance: fetched/kept/overflow/fallback equal to
+     the digit. Then multikey_3 @65536 n=50, then the ITL pair.
+
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521opt-smoke-pre"}, "id": "c521opt-smoke-pre", "probe": false}
+
+
+### c521opt-* acceptance rows (post-change, served tree)
+
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521opt-smoke-post"}, "id": "c521opt-smoke-post", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521opt-mk3"}, "id": "c521opt-mk3", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521opt-xl-r1"}, "id": "c521opt-xl-r1", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521opt-xl-r2"}, "id": "c521opt-xl-r2", "probe": false}
+
+
+**The "to the digit" criterion was mis-specified.** pre/post read kept=243.8
+both (the direct check on the kept-grid bound: too small a bound would drop
+kept rows silently, and it did not) but fetched 394.7 vs 393.9, and fetch
+p99 1376 vs 1300. This arm's decode is nondeterministic -- it agrees with
+itself on 48% of greedy tokens -- so a different sampled token gives a
+different query and a different fired set, and no two runs can match to the
+digit. c521opt-smoke-post2 is a self-replicate of the post arm, so the
+pre/post difference can be judged against the arm's own spread instead of
+against a criterion it could never meet.
+
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521opt-smoke-post2"}, "id": "c521opt-smoke-post2", "probe": false}
+
+
+### c521opt acceptance: the quality gate passes
+
+`c521opt-mk3`: niah_multikey_3 {'65536': 1.0} at n=50, wall 570s. Equal to
+DSA's 1.00 and to the branch arm's own prior 1.000. This is the check that
+matters -- the byte counters cannot see wrong rows, and this metric reads
+0.000 when the arm fires nothing, which is how the capacity-cap bug was
+caught. kept=243.8/call on both sides of the change independently clears the
+kept-grid bound, the one host-side constant among the five that could have
+dropped rows with no witness.
+
+Still open: the ITL pair (c521opt-xl-r1/r2) and the post arm's self-spread on
+fetched (c521opt-smoke-post2).
