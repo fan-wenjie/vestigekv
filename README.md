@@ -4625,3 +4625,31 @@ tier 1 hands it kept ROWS (1156) rather than kept GROUPS (289), so its block is
 2048 wide -- 4x the data -- and tl.histogram bins 289 entries across 2048 lanes.
 Passing the group list should take it to ~1 us, the selection to ~3.3 us, and the
 ratio to ~3.8x. That is the next change.
+
+### Selection is 3.35x DSA's top-k and FLAT in context
+
+Three replicates each, graph-captured, 1.81 us replay floor subtracted, bs=1:
+
+                            36k                   124k
+  DSA kpool_topk_transform   6.40 6.40 6.40        14.58 14.58 14.58
+  tier2 5-stage chain        8.44 8.45 8.44        12.54 12.54 12.53
+  D1 WIDE collect+emit       4.36 4.36 4.36         4.35  4.35  4.35
+  ratio                      1.47x                  3.35x
+  us/step over 11 layers     DSA 70  ours 48        DSA 160  ours 48
+
+**Our cost does not grow with context (4.36 -> 4.35) while DSA's does
+(6.40 -> 14.58).** The wide compare is bandwidth-trivial at both shapes, the
+threshold is over a fixed 289 groups, and the cut and emit are bounded by the
+512 budget -- nothing in our path scales with G, where DSA's histogram passes
+do. The advantage therefore GROWS with length, the opposite of every byte-ratio
+result on this line (0.508 at 36k decaying to 0.706 at 128k).
+
+Within a process the measurement is exact to 0.00 over three replicates; across
+processes DSA read 12.55 / 14.20 / 14.58 on the same shape, so 2.89x is the
+conservative figure and 3.35x the within-run pairing.
+
+The last change was the threshold kernel: tl.histogram costs scale with the bin
+count AND the block width, and only 289 of 2048 lanes carry a value, so binning
+the compacted group list removed 2.05 us of 4.35 with semantics untouched. The
+64-bin alternative buys the same time but coarsens the threshold -- it fires more
+and is therefore not lossless, so it was rejected.
