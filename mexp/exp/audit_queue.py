@@ -196,6 +196,41 @@ def main():
         if env.get("CTX") and int(env["CTX"]) > MAX_MODEL_CTX:
             bad(j, f"CTX {env['CTX']} exceeds the checkpoint's derived window "
                    f"({MAX_MODEL_CTX}); the server refuses to start")
+        # A vestigekv_dsa job must DECLARE its tier 2. `_branch_q()` reads
+        # SGLANG_VESTIGEKV_BRANCH_Q and `_skip_sketch_chain()` keys off
+        # `_branch_q() is not None`, so omitting the variable does not mean "the default
+        # branch rule" -- it silently selects the certificate/sketch lineage, the one
+        # ruled out of the merge. c521k4-smoke was queued that way and came back with
+        # overflow=722 / fallback=0.263 against the branch arm's 0 / 0.00000 at the same
+        # shape, which read as a kappa regression and was not one. Either variable counts
+        # as a declaration: BRANCH_Q picks the branch rule, DISABLE_SKETCH_CHAIN=0 is how
+        # a sketch-chain control asks for the chain on purpose.
+        if args.line == "glm53" and j.get("arm") == "vestigekv":
+            if not (
+                "SGLANG_VESTIGEKV_BRANCH_Q" in env
+                or "SGLANG_VESTIGEKV_DISABLE_SKETCH_CHAIN" in env
+                or "SGLANG_VESTIGEKV_INDEXER_ONLY" in env
+            ):
+                bad(j, "declares no tier 2: without SGLANG_VESTIGEKV_BRANCH_Q the "
+                       "branch rule never runs AND the sketch chain is not skipped, "
+                       "so the job serves the lineage that cannot merge. Set BRANCH_Q "
+                       "for the branch arm, or DISABLE_SKETCH_CHAIN=0 to ask for the "
+                       "chain on purpose")
+
+            # And its tier-1 budget, for the same reason. `_kept_m_fixed()` reads
+            # SGLANG_VESTIGEKV_KEPT_GROUPS, and on the research branch an unset
+            # variable serves the PROPORTIONAL rho form -- measured worse at long
+            # context (0.849 vs 0.706 byte ratio at 128k) and not what the submission
+            # branch keeps. RHO counts as a declaration: a proportional control says
+            # so by setting it.
+            if not (
+                "SGLANG_VESTIGEKV_KEPT_GROUPS" in env
+                or "SGLANG_VESTIGEKV_RHO" in env
+            ):
+                bad(j, "declares no tier-1 budget: without KEPT_GROUPS the arm "
+                       "serves the proportional rho form, which measured worse at "
+                       "long context. Set KEPT_GROUPS for the constant hot set, or "
+                       "RHO to ask for the proportional one")
         conc = int(a.get("concurrency", 1))
         if conc > int(env.get("MAX_REQS", 1) or 1):
             bad(j, f"asks for concurrency {conc} from a server admitting "

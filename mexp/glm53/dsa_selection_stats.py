@@ -61,7 +61,7 @@ def spearman(a, b):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dirs", default="cd_w3,cd_w2,cd_g2")
+    ap.add_argument("--dirs", default="cd3_64k,cd3_16k")
     ap.add_argument("--topk-rows", type=int, default=2048)
     ap.add_argument("--kappas", default="2,4,8,16,32,64,128")
     ap.add_argument("--block", type=int, default=256, help="group-space sigma window (1024 tokens / pool 4)")

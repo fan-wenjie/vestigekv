@@ -3210,3 +3210,617 @@ direction closes here.
 {"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_COARSE_PROXY": "16,0.5", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521cpx-cp50"}, "id": "c521cpx-cp50", "probe": false}
 {"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_COARSE_PROXY": "16,0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521cpx-cp75"}, "id": "c521cpx-cp75", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_COARSE_PROXY": "16,0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521cpx-mk75"}, "id": "c521cpx-mk75", "probe": false}
+
+c521fb-*: measure fallback on RULER, which has never been measured.
+
+Every fallback=0.00000 in this register comes from a STREAM job. The quality
+jobs run with STATS off and emit no VKSTATS at all, so RULER and MRCR have no
+fallback number -- and quoting the stream figure beside a quality result, as I
+have been doing, implies one where none exists.
+
+STATS is safe to add here: its measured effect is ~0.19 on MRCR but NULL on
+RULER niah at 131k n=150 (p=1.0), so a STATS-on multikey compares directly with
+the 1.000 already on disk.
+
+  c521fb-mk3-stats     the served arm with STATS on: what IS the fallback on a
+                       synthetic needle workload?
+  c521fb-cpx50-stats   the f=0.50 proxy, which took the copy probe from 1.0000
+                       to 0.2480. If the fence does not fire here either, that
+                       settles the direction question: the predicate is
+                       `fenced = ng > WF`, so it only ever trips on over-firing,
+                       while the synthetic-data failure is UNDER-recall, which
+                       produces fewer fires and is invisible to it.
+
+Measured already, from the stream runs: the f=0.50 proxy's own smoke reports
+fallback=0.00000 while the copy probe at that setting reads 0.2480 -- quality
+down 75 points with the fence never firing. These two jobs test whether RULER
+tells the same story.
+
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521fb-mk3-stats"}, "id": "c521fb-mk3-stats", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_COARSE_PROXY": "16,0.5", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521fb-cpx50-stats"}, "id": "c521fb-cpx50-stats", "probe": false}
+
+## c521kap-*: kappa as a served parameter, and the instrument that can rank it
+
+The compiled-in LOWPASS_KAPPA = 16 was chosen on the **mla** arm's signal -- the
+latent row's own salience branch, at m = rho*T groups with rho = 1/32 -- and the
+docstring records the curve as flat to +-0.3% over kappa in [4, 64]. The dsa arm
+does not compute sigma on that signal at all: `_index_sigma` runs the projection
+over DSA's **index-k** in group space, window `close_block/pool`. Nobody ever
+tuned kappa for it, and constant kept moved the used size from ~104 groups to 32.
+
+Re-measured at the served size, on the served signal, over all 88 calibration
+dumps (704 real queries, all 11 DSA layers, seq 13k-18k), with two criteria --
+captured attention mass from the real softmax over qcal and the latent rows,
+and precision against DSA's own top-512:
+
+    captured attention mass          m=32     m=64    m=128    m=256
+      sigma kappa=2                0.1551   0.1758   0.2022   0.2433
+      sigma kappa=4                0.1523   0.1698   0.1940   0.2342
+      sigma kappa=8                0.1480   0.1647   0.1889   0.2267
+      sigma kappa=16  (served)     0.1410   0.1608   0.1828   0.2207
+      sigma kappa=32               0.1358   0.1532   0.1761   0.2132
+      oracle (attention mass)      0.3327   0.3809   0.4376   0.5089
+      oracle (DSA score)           0.1705   0.2066   0.2459   0.3057
+      random (closed form)         0.0082   0.0164   0.0328   0.0655
+
+    precision vs DSA top-512         m=32     m=64    m=128    m=256
+      sigma kappa=2                0.6626   0.5369   0.4110   0.3070
+      sigma kappa=16  (served)     0.6264   0.5004   0.3844   0.2913
+      oracle (attention mass)      0.6491   0.5724   0.4867   0.3873
+      random (closed form)         0.1310   0.1310   0.1310   0.1310
+
+Monotone in kappa, no interior optimum, +10% captured mass at every m. Two
+things worth stating plainly. At m=32 a query-FREE sigma at kappa=2 has higher
+precision against DSA's selection (0.6626) than the true attention-mass top-32
+does (0.6491) -- which is the NoPE spectral property, not an artifact of the
+budget. And kappa is **free**: the basis is zero-padded to 32 columns whatever
+kappa is, so the projection costs exactly the same and no byte moves.
+
+The mass criterion had to be built, not reused. DSA's own score
+
+    s_g = sum_h w_h * relu(<q_h, k_g>)
+
+takes w from a plain linear projection with no activation: 53% of the gates and
+99.6% of the scores are negative, so "share of in-budget score mass" is ill-posed
+on it -- the budget sum is negative, a subset can exceed it, and random comes out
+below zero. On a signed score only the SET is well defined. The dumps carry qcal
+and the latent rows, so the mass criterion uses the real attention softmax.
+
+Offline evidence has never decided quality on this line, so it only shortlists.
+The problem is that both in-situ instruments are SATURATED: niah_multikey_3 at
+65536 reads 1.00 and the copy probe at ctx 32768 reads lead=1.0000 for every
+healthy configuration, including constant 32 groups. They move only when
+something is broken (the coarse proxy at f=0.50 took copy to 0.2480 and multikey
+to 0.38). A kappa A/B against 1.0000 measures nothing.
+
+So this batch builds the instrument first and A/Bs on it at the same time: the
+copy probe hardened along its two axes, context 32768 -> 65536 and the span
+384 -> 1024 -> 2048 words with the span moved deeper (pos 0.1 -> 0.5 -> 0.8),
+run at kappa 16 and kappa 2 as a matched pair. Sustained verbatim copying is
+this line's known weakness, so a long span late in a long context is where tier
+1's selection should start to matter; the paired form means the rungs that stay
+at 1.0000 cost nothing but the rung that breaks is already an A/B.
+
+The smoke rung is not optional: a Triton kernel behind an env flag has no
+compile-time coverage, and the last two defaults batches died at serve time on
+exactly that (an int32 Knuth constant, and an init-order read). kappa=2 builds a
+3-column basis the served path has never compiled.
+
+  c521kap-smoke     kappa 2, 4k/256 stream, STATS on: the basis compiles, the
+                    tier-1 log line names the served cutoff
+  c521kap-k16-s*    kappa 16 (explicit, so the pair differs in one value)
+  c521kap-k2-s*     kappa 2
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "2", "VK_JOB": "c521kap-smoke"}, "id": "c521kap-smoke", "probe": false}
+{"args": {"ctx": 65536, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "16", "VK_JOB": "c521kap-k16-s384"}, "id": "c521kap-k16-s384", "probe": false}
+{"args": {"ctx": 65536, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.5, "span_words": 1024}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "16", "VK_JOB": "c521kap-k16-s1024"}, "id": "c521kap-k16-s1024", "probe": false}
+{"args": {"ctx": 65536, "max_tokens": 6144, "n": 20, "seed": 0, "span_pos": 0.8, "span_words": 2048}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "16", "VK_JOB": "c521kap-k16-s2048"}, "id": "c521kap-k16-s2048", "probe": false}
+{"args": {"ctx": 65536, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "2", "VK_JOB": "c521kap-k2-s384"}, "id": "c521kap-k2-s384", "probe": false}
+{"args": {"ctx": 65536, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.5, "span_words": 1024}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "2", "VK_JOB": "c521kap-k2-s1024"}, "id": "c521kap-k2-s1024", "probe": false}
+{"args": {"ctx": 65536, "max_tokens": 6144, "n": 20, "seed": 0, "span_pos": 0.8, "span_words": 2048}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "2", "VK_JOB": "c521kap-k2-s2048"}, "id": "c521kap-k2-s2048", "probe": false}
+
+
+### c521kap-k1-*: the DC-only limit, added after the baselines were fixed
+
+The first run of the grid let its two extra baselines rank the whole group axis
+while sigma, by construction, ranks only the CLOSED prefix -- so a "centred row
+norm" that reached into the un-closed tail scored 1.3x sigma's captured mass and
+looked like a result. It was not: the tail is the most recent ~1000 tokens, held
+at full magnitude while every closed row had its block mean removed, so that
+baseline was picking recency, not salience. Restricted to the prefix the served
+code actually selects from, the baseline reproduces sigma k=1 to four digits --
+which is the identity (kappa=1 keeps bin 0 alone, so the residual IS the row minus
+its block mean) and a check on the whole chain.
+
+    closed prefix only       m=32     m=64    m=128    m=256
+      sigma kappa=1        0.1578   0.1805   0.2088   0.2511    mass
+      sigma kappa=2        0.1551   0.1758   0.2022   0.2433
+      sigma kappa=16       0.1410   0.1608   0.1828   0.2207
+      centred row norm     0.1578   0.1805   0.2088   0.2511    == kappa=1
+      raw row norm         0.1077   0.1121   0.1207   0.1464
+      oracle (att mass)    0.1969   0.2356   0.2857   0.3518
+      oracle (DSA score)   0.1446   0.1640   0.1887   0.2259
+      random (closed form) 0.0068   0.0135   0.0271   0.0542
+
+      sigma kappa=1        0.6825   0.5625   0.4416   0.3312    precision
+      sigma kappa=16       0.6264   0.5004   0.3844   0.2913
+      oracle (att mass)    0.5680   0.5083   0.4371   0.3512
+      raw row norm         0.1406   0.1033   0.0888   0.0824
+
+Three things follow, and the first is uncomfortable. **On the dsa arm's signal the
+best cutoff is DC-only**, so the trigonometric basis buys nothing there: a block
+mean and a row norm carry all of it. The 1.7% between kappa 1 and 2 is inside any
+honest error bar, but the direction is monotone across six values and the endpoint
+is a structurally different object than a low-pass. Second, the centring is the
+whole mechanism -- the raw row norm is barely above random on precision (0.1406 vs
+0.1234) while the centred one is 0.6825. Third, at m=32 a query-FREE sigma k=1
+captures more real attention mass (0.1578) than a per-query oracle over DSA's own
+indexer score (0.1446), and reaches 80% of the attention-mass oracle.
+
+This does NOT license removing the projection kernel. The mla arm serves kappa=16
+on a different signal, the basis is zero-padded to 32 columns whatever kappa is so
+there is no cost to recover, and nothing in-situ has confirmed any of it. What it
+licenses is measuring kappa=1 on the same ladder, which is what these three add.
+{"args": {"ctx": 65536, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "1", "VK_JOB": "c521kap-k1-s384"}, "id": "c521kap-k1-s384", "probe": false}
+{"args": {"ctx": 65536, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.5, "span_words": 1024}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "1", "VK_JOB": "c521kap-k1-s1024"}, "id": "c521kap-k1-s1024", "probe": false}
+{"args": {"ctx": 65536, "max_tokens": 6144, "n": 20, "seed": 0, "span_pos": 0.8, "span_words": 2048}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "1", "VK_JOB": "c521kap-k1-s2048"}, "id": "c521kap-k1-s2048", "probe": false}
+
+
+### c521kap-*-s1024-rep: the noise floor the batch needs to conclude
+
+The s1024 rung is the only one with dynamic range (384 saturates at 1.0000 on both
+kappas; 2048 lifts bag/num back up because a longer span gives more material to
+recover after a first divergence, so it discriminates less than s1024 at 1.5x the
+wall time). It reads kappa=16 lead 0.7314 / bag 0.8672 / num 0.8627 against kappa=2
+lead 0.7252 / bag 0.8248 / num 0.8322 -- kappa=2 lower on all three, which already
+refuses the offline +10%, but the batch has no same-config replicate at this
+operating point and therefore no noise floor. The decode path agrees with itself on
+48% of greedy tokens, so the floor is not assumed small.
+
+These two re-run s1024 at both kappas with identical env and seed. Same seed means
+the same 20 prompts, so the only source of difference is the decode path's own
+nondeterminism -- which is exactly the quantity needed. Without them the kappa
+comparison is a singleton pair and cannot be quoted either way.
+{"args": {"ctx": 65536, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.5, "span_words": 1024}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "16", "VK_JOB": "c521kap-k16-s1024-rep"}, "id": "c521kap-k16-s1024-rep", "probe": false}
+{"args": {"ctx": 65536, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.5, "span_words": 1024}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "2", "VK_JOB": "c521kap-k2-s1024-rep"}, "id": "c521kap-k2-s1024-rep", "probe": false}
+
+
+The s1024 triple came in INVERTED against the offline grid -- kappa 16 / 2 / 1 read
+lead 0.7314 / 0.7252 / 0.6489 and bag 0.8672 / 0.8248 / 0.7541, while offline
+captured attention mass ordered them 0.1410 / 0.1551 / 0.1578, i.e. exactly
+backwards. kappa=1 is the DC-only limit, the centred row norm with no trigonometric
+basis, and it is the worst configuration measured: removing the basis hurts. The
+doubt recorded above -- that the basis "buys nothing a mean and a norm could not" --
+is withdrawn on this evidence; that reading came from a criterion that scores only
+one of the kept set's two jobs.
+
+The other job is setting the tier-2 threshold, which is the q0.75 quantile of the
+kept GROUPS' scores. A set chosen for magnitude raises that quantile and suppresses
+the firing that does the retrieving, which would explain an anti-correlation rather
+than mere non-correlation. Hypothesis, not finding: testing it needs a STATS stream
+job per kappa comparing fetched/call, which these copy jobs cannot show.
+
+k1-s1024-rep makes the three-way replicate complete, because "the spectral basis
+earns its place" is a paper-level claim and currently rests on one draw.
+{"args": {"ctx": 65536, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.5, "span_words": 1024}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_LOWPASS_KAPPA": "1", "VK_JOB": "c521kap-k1-s1024-rep"}, "id": "c521kap-k1-s1024-rep", "probe": false}
+
+
+### c521kap-* VERDICT: kappa is UNRESOLVED, and the mechanism I wrote for it is withdrawn
+
+The first same-config replicate settles the batch, against the reading I gave it.
+`k16-s1024` and `k16-s1024-rep` are identical env, identical seed, therefore the
+identical 20 prompts, and they read
+
+      k16-s1024       lead=0.7314  bag=0.8672  num=0.8627   wall=1022s
+      k16-s1024-rep   lead=0.8687  bag=0.9183  num=0.9124   wall= 991s
+      spread          0.137        0.051       0.050
+
+The `lead` noise floor is 0.137. The whole kappa=16 -> kappa=1 gap was 0.083, so
+every comparison in this batch sits INSIDE the floor. Withdrawn, all of it:
+
+  - "in-situ ordering is kappa 16 > 2 > 1, monotone" -- three single draws from a
+    distribution this wide; not established.
+  - "kappa=1 is the worst configuration measured, removing the basis hurts" -- not
+    established. The offline grid is therefore neither confirmed nor inverted.
+  - "two span lengths agree on the direction" -- the s2048 cells are single draws
+    too, so their agreement carries no more weight than the s1024 one did.
+  - "DSA_LOWPASS_KAPPA = 16 now has a derivation, not just a measurement" -- the
+    mechanism (bins 1-15 are neighbourhood-common topical drift and so cannot
+    discriminate within a neighbourhood, while bins >= 16 carry token-level anomaly)
+    stands as THEORY and has no in-situ support. I published a mechanism for an
+    effect I had not shown exists.
+
+This is the failure mode the method rules name explicitly, and the sequencing error
+is the whole of it: I noted the missing noise floor two checks before writing the
+mechanism, queued the replicate, and then reasoned past it instead of waiting.
+
+What the batch did establish, which is about the INSTRUMENT and is worth more than
+the kappa answer would have been:
+
+  - the copy probe at ctx 65536 / span 1024 / n=20 has a `lead` replicate spread of
+    0.137, so it cannot resolve an effect of this size. Resolving 0.08 needs roughly
+    11 draws per arm, about 9.5 GPU-hours, for a knob that is free either way.
+  - `bag` and `num` are the tighter metrics here (spread ~0.05) and are what should
+    be quoted at this operating point.
+  - ctx 65536 / span 384 is dead: 1.0000 on all three metrics at all three kappas.
+  - span 2048 lifts bag/num while lead falls, so it discriminates less than s1024 at
+    1.5x the wall time.
+
+Served default: DSA_LOWPASS_KAPPA stays 16 because nothing displaced it, NOT because
+it was shown better. No further kappa jobs.
+
+## c521dnxl-*: the dense-MLA comparison at the long shape, which was never run
+
+The byte model, with no free parameters, reproduces the one measured >1 on this line
+to within 1%. Per decode step at bs=1 the context-INDEPENDENT weight traffic is
+4.983 GB (42 MoE layers x 9 experts x 12.58 MB, plus 3 dense FFN layers at 226 MB),
+cross-checked against a measured ITL: 5.05 GB at 11.3 ms is 447 GB/s aggregate, 224
+GB/s per rank at TP=2, i.e. the 13-18%-of-peak figure the profiles show.
+
+Against that denominator:
+
+    seq      dense MLA KV   DSA attn   VK attn   VK vs DSA   VK vs dense   dense KV share
+    4096           46.1M      24.6M     12.8M      1.0023        1.0067            0.9%
+    36864         415.2M      36.5M     24.7M      1.0023        1.0780            7.7%
+    65536         738.2M      46.9M     35.1M      1.0023        1.1401           12.9%
+    131072       1476.4M      70.6M     58.9M      1.0023        1.2811           22.9%
+    262144       2952.8M     118.2M    106.5M      1.0023        1.5593           37.2%
+
+Two readings, and they point opposite ways.
+
+**Against DSA, >1 is structurally closed.** DSA's whole attention read is 1.40% of
+the step at 131k, and the only part we can remove -- its 2048 rows -- is 23.07 MB =
+0.46%, CONSTANT in context. Reading zero rows AND zero scan caps at 1.0142x; at the
+measured row count it is 1.0023x, identical at every length, because DSA's prize does
+not grow. Batching cannot rescue it either: MoE traffic saturates once 9B >= 289
+while KV grows linearly, so KV reaches 10% of the step only near B=240, and the pool
+is 1.17 GB ~ 101k tokens, which holds ONE 131k sequence. Long context on this box is
+structurally bs=1.
+
+**Against dense MLA the ceiling GROWS with context**, because dense reads the whole
+archive -- 23% of the step at 131k against 0.9% at 4k. And the 36864 prediction,
+1.0780x, lands on the measured 1.067-1.070x. That agreement contradicts the reading
+in memory that the dense win is kernel quality rather than compression, and it makes
+the distinction testable in one pair: compression-driven predicts ~1.28x at 4k/124k,
+kernel-quality-driven predicts it stays near 1.07x.
+
+Only the 32768/4096 shape was ever run, so this is the gap. Two replicates of the
+matched pair, STATS OFF (never time a VestigeKV arm with STATS on), identical pool at
+MEM_FRAC 0.96, decode-only so median AND p99 ITL are both quotable. The vestigekv arm
+carries the selected design: constant 32 groups, budget-derived fence at 223 groups,
+close block 1024, branch threshold q0.75.
+
+If this comes back near 1.07x the byte model is wrong about WHY, and the >1 claim has
+to be attributed and re-derived. If it comes back near 1.28x then the line's headline
+is a compression-driven speedup that grows with context against dense attention, and
+the DSA comparison should be reported as byte parity-and-better rather than latency.
+
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "dense_mla", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "223", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521dnxl-r1"}, "id": "c521dnxl-r1-dense_mla", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "223", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521dnxl-r1"}, "id": "c521dnxl-r1-vestigekv", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "dense_mla", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "223", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521dnxl-r2"}, "id": "c521dnxl-r2-dense_mla", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_FENCE_GROUPS": "223", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521dnxl-r2"}, "id": "c521dnxl-r2-vestigekv", "probe": false}
+
+The s1024 replicate set completed. All six draws:
+
+    kappa 16   lead 0.7314, 0.8687   bag 0.8672, 0.9183
+    kappa  2   lead 0.7252, 0.7303   bag 0.8248, 0.9216
+    kappa  1   lead 0.6489, 0.6767   bag 0.7541, 0.8624
+
+The metrics disagree and that is the result. On `lead` both kappa=1 draws are the two
+lowest of six (sorted: 0.6489 k1, 0.6767 k1, 0.7252 k2, 0.7303 k2, 0.7314 k16, 0.8687
+k16), exact one-sided p = 1/C(6,2) = 0.067. On `bag` they interleave (0.7541 k1,
+0.8248 k2, 0.8624 k1, 0.8672 k16, 0.9183 k16, 0.9216 k2) and there is no separation.
+`bag` is the lower-variance metric at this operating point, so the `lead` result is
+not taken as real.
+
+Also withdrawn: the "noise floor is 0.137" figure I quoted from the first pair. The
+per-config spreads are 0.137 / 0.005 / 0.028 on `lead` and 0.051 / 0.097 / 0.108 on
+`bag` -- kappa=16 is widest on one metric and narrowest on the other. A two-draw range
+does not estimate a spread, so no single floor should be quoted from one pair.
+
+Final: kappa=16 and kappa=2 indistinguishable, kappa=1 a weak candidate for worse at
+p~0.067 on one metric and nothing on the other. UNRESOLVED. No further kappa jobs --
+p~0.067 on a free knob does not repay another 9 GPU-hours.
+
+## Where the DSA comparison's remaining headroom actually is (trace, not model)
+
+The byte model said the addressable term is 0.46% of the step and closed >1 against
+DSA. The traces say the surface is bigger than the byte term and it is COMPUTE, and
+they say we are not touching most of it. Per step, ctx36k, 200 steps, TP-0:
+
+                                              DSA baseline      vestigekv
+    sm120_fp8_paged_mqa_logits                 44.6us x13      44.6us x13
+    kpool_topk_transform_kernel<512>            ~87us x11      87.1us x11
+    _sparse_mla_decode_split + _reduce         98.5us x22      29.8us x11
+    kpool_decode_update_and_maybe_write        101.2us x23     102.3us x23
+    VK tier-1 sigma                                   --      +42.6us x2
+    VK tier-2 branch                                  --      +75.6us x15
+    total GPU                                   11.634ms        12.136ms
+
+**DSA's indexer top-k is identical on both arms, to the microsecond.** The fence's
+fallback target is DSA's 2048-row selection, so the top-k is computed unconditionally
+for the fallback to exist. We remove only the attention kernel (68.7us) and add
+118.2us: net +49.5us, which is why the arm sits below 1.
+
+    situation                          save    add     net        speedup
+    today                              68.7   118.2   -49.5us      < 1
+    skip DSA's top-k                  155.8   118.2   +37.6us     1.0032x
+    + fuse branch into the attn kernel 155.8   42.6   +113.0us     1.0098x
+    whole DSA path gone (limit)      202-230     0        --       1.0177x
+
+So the one algorithmic change that puts this arm above 1 against DSA is a predicate
+that decides BEFORE the top-k whether the step needs DSA's selection, firing it on
+~1% of steps rather than all of them. That is the under-recall quality floor already
+on the open list, and this re-prices it: it is the largest single item on the
+addressable surface (0.74% of the step, 42% of the total), not just a correctness gap.
+
+Even executed perfectly it is ~1.01x. The DSA comparison's claim stays BYTES; the
+latency claim belongs to the dense comparison, which is what c521dnxl-* is measuring.
+
+Bucketing trap recorded: `fusedBuildExpertMapsSortFirstToken` is 130us/step x42 and
+matches both "cutlass" and "sort" -- it is MoE expert routing, not the indexer. I
+inflated a "top-k/sort" bucket to 221us/step by catching it before splitting by name.
+
+## c521pf-xl-baseline: is DSA's top-k work-bound or latency-bound?
+
+From the ctx36k trace, `kpool_topk_transform_kernel<512>` costs 87.1 us/step over 11
+launches = 7.9 us per layer for G = 36864/4 = 9216 fp32 logits. Four radix passes over
+that is ~147 KB, so the kernel achieves ~19 GB/s -- about 2% of what the device can
+do. On that reading it is launch/occupancy bound on a tiny problem, and reducing the
+candidate count would buy almost nothing.
+
+But that is an ESTIMATE, not a measurement: a single 36k trace cannot separate the two,
+because its 200 steps grow the context by 0.5%. The separation is a context sweep, and
+G goes 9216 -> 32768 from 36k to 124k:
+
+    latency-bound  -> top-k grows to ~1.4x (about 11 us/layer, 120 us/step)
+    work-bound     -> top-k grows to ~3.6x (about 28 us/layer, 310 us/step)
+
+If it is work-bound at the long shape then the top-k becomes the dominant item on the
+addressable surface and work-side reduction -- a smaller candidate set -- is back on
+the table. This is the one measurement that can overturn that conclusion, and it is
+the same shape as the c521dnxl pair so the trace sits next to those ITL numbers.
+
+baseline arm only: the question is about DSA's own kernels, and the vestigekv arm runs
+them identically (87.1 vs 87.1 us at 36k), so one trace answers it for both.
+{"args": {"ctxs": "126976", "steps": 200}, "arm": "baseline", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "VK_JOB": "c521pf-xl"}, "id": "c521pf-xl-baseline", "probe": false}
+
+
+## c521cd3-*: re-collect the dumps, because cd_* predate the qidx clone fix
+
+All 88 dumps in `results/glm53/cd_{w3,w2,g2}` hold 8 BIT-IDENTICAL `qidx`/`qgate`
+(`max|q0-qi| = 0.000e+00`) at 8 distinct `qpos`. That is the aliasing defect fixed at
+vestigekv_dsa_backend.py:3112 -- `_indexer_query_for` row-selects out of a
+fixed-address per-layer buffer, so appending the view made every entry hold the last
+step's write. The comment at the fix site says so in as many words. These dumps were
+taken before it, the re-collection was listed as pending, and four offline studies ran
+on them today reporting "704 queries" when 88 were distinct.
+
+Two results are void, both of which were the session's most promising lead at the
+moment they appeared:
+
+  - step-to-step persistence r(k) = 1.0000 at every lag 1..7, in every layer, all 88
+    dumps. It compared one query with itself seven times.
+  - the static-pool oracle at recall 1.0000 for M/G = 0.25. The "union of 8 queries'
+    top-512" was one query's top-512, which fits in 831 groups trivially.
+
+A perfect 1.0000 in every cell is a provenance alarm, not a finding.
+
+What survives, because it rests on structure rather than sample size: the norm bound's
+0.0000 (a non-negative bound against a negative tau, with ||k|| held near-constant by
+indexer.k_norm -- architectural), the flat wq_b spectrum, and rank-r truncation's flat
+recall curve (0.27 at r=2 to 0.53 at r=64, where it saves no bytes at all -- far too
+large an effect for n=44 to overturn). The kappa grid's ORDERING remains a valid paired
+comparison but its error bars are ~2.8x wider than I implied, and it decided nothing
+anyway.
+
+Three changes from the retired dump jobs: ENGINE pinned (the old ones predate that
+requirement and would serve the Kimi tree), a fresh directory so the stale dumps can
+never be mixed in, and max_tokens 512 rather than 64 -- the dump appends one
+(qidx, qgate) per decode step per layer, so 512 steps give lags 1..511. That is the
+measurement the persistence question needs and the one 8 consecutive steps cannot give.
+{"args": {"ignore_eos": true, "length": 65536, "max_tokens": 512, "n": 2, "samples": "results/glm53/ruler/samples_baseline_n10_4096-8192-16384-32768-65536.json", "seed": 0, "tasks": "niah_single_2,ruler_cwe,ruler_fwe,ruler_qa_squad"}, "arm": "vestigekv", "client": "replay", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH": "0", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DEBUG_VESTIGEKV_DUMP_DIR": "results/glm53/cd3_64k", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "VK_JOB": "c521cd3-64k"}, "id": "c521cd3-64k-vestigekv", "probe": false}
+{"args": {"ignore_eos": true, "length": 16384, "max_tokens": 512, "n": 2, "samples": "results/glm53/ruler/samples_baseline_n10_4096-8192-16384-32768-65536.json", "seed": 0, "tasks": "ruler_fwe,ruler_cwe,niah_single_2"}, "arm": "vestigekv", "client": "replay", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH": "0", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DEBUG_VESTIGEKV_DUMP_DIR": "results/glm53/cd3_16k", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "VK_JOB": "c521cd3-16k"}, "id": "c521cd3-16k-vestigekv", "probe": false}
+
+
+## Is an approximate top-2048 feasible? The mass criterion, done properly
+
+The exact identity, no assumptions: for S subset of T with dropped mass m under
+p = softmax over T,
+
+    o_S - o_T = m/(1-m) * (vbar_S - vbar_D),  so  ||o_S - o_T|| <= m/(1-m)*diam(V)
+
+Output error is linear in dropped MASS; the set size never appears. So recall is the
+wrong axis and concentration is the question -- and the reference distribution decides
+the answer, which is where my first pass went wrong.
+
+Measured, 88 dumps, one honest query each (qidx is aliased, so only index -1 pairs
+correctly with qcal):
+
+    renormalised WITHIN DSA's 2048     n_eff = 30.1 mean head, 3.2 worst
+    rows for 50/90/99% within T        22 / 188 / 714 (mean head)
+    keep top-M by INDEXER score        M=256 -> drops 0.380 mass mean, 0.701 worst head,
+                                       relative output error 0.595 / 1.122
+
+    against FULL attention             DSA's 2048 rows hold 0.5631 of the mass,
+                                       0.2231 at the worst head
+    rows for 90% of full mass          2293.6 per head
+    union over 32 heads @ 90%          8526.6 rows = 4.16x the budget
+    union @ 99%                        14403 = 7.03x
+
+The within-T number is a CONDITIONAL distribution and is not the reference; against
+full attention the layer is diffuse, and the mass criterion demands a budget 4x LARGER
+than DSA's. So the criterion is sound but too conservative to design with: it is
+sufficient for output fidelity and nowhere near necessary for task quality -- DSA keeps
+56% of the mass and scores 1.00 on niah_multikey_3.
+
+Two structural facts fall out. The indexer score is a poor ranker of post-softmax mass
+(top-256 by indexer score loses 70% of the worst head's mass), because the selection is
+ONE shared set for a layer whose 32 heads are each sharply peaked at DIFFERENT rows --
+the 2048 budget is the union of 32 peaked distributions, and MLA's shared latent means
+the cost IS the union rather than the sum. And DSA's worst head receives only 22% of
+its mass, so the baseline is not claiming mass fidelity either, which is a point the
+paper can use rather than defend against.
+
+### c521pf-xl-baseline result: the top-k is 63% work-bound at 124k
+
+                           36k us/step   124k us/step   growth
+    indexer logits                44.6           67.3    1.51x
+    indexer top-k                 85.9          157.4    1.83x
+    sparse mla split+reduce       98.5           98.1     1.00x
+    index-k cache write           14.4           14.3     0.99x
+    MoE expert sort (unrelated)  135.5          134.5     0.99x
+    total GPU                   11.634ms      11.758ms
+
+G goes 9216 -> 32768, a 3.56x rise in elements, and the top-k grows 1.83x. Fitting
+cost = L + W*G: W = 0.00304 us/group, L = 57.9 us. So the kernel is 33% work at 36k and
+63% work at 124k, and the single-shape estimate that called it launch-bound was wrong
+at the long shape -- candidate reduction DOES pay there, on the logits kernel too.
+
+Addressable surface: 337.1 us = 2.87% of the step at 124k against 1.98% at 36k; the
+ceiling for removing the whole DSA path rises to 1.0295x. The top-k alone is 1.34% of
+the step and 47% of the DSA path.
+
+Unchanged: making that kernel faster is baseline-neutral, since DSA runs the identical
+one. The relative win needs a predicate that lets our arm skip it, and whether a
+sigma-ranked candidate pool can supply one is exactly what c521cd3-* re-measures --
+the 0.348 recall at M/G=0.25 came from the aliased dumps.
+
+### kappa RESOLVED to 4 (offline, cost-matched, on the re-collected dumps)
+
+Both earlier attempts scored the tier-1 kept set alone, and on this arm tier 1 alone is
+0.000 on multikey. kept's second job -- the one those grids missed -- is that it SETS
+the tier-2 threshold, the q0.75 quantile of the kept groups' indexer scores. A kappa
+that picks high-scoring rows raises that quantile and suppresses the firing that does
+the retrieving, so the two jobs pull opposite ways and only the end-to-end row set can
+rank kappa.
+
+240 honest queries from cd3_64k, figure of merit = real softmax mass over the rows the
+arm actually attends (kept + fired + sinks + un-closed tail), at EQUAL fired count:
+
+    fired   k=1      k=2      k=4      k=8      k=16     k=32
+      96    0.4038   0.4034   0.4034   0.4029   0.4016   0.3992
+     110    0.4103   0.4102   0.4100   0.4097   0.4089   0.4073
+     130    0.4189   0.4195   0.4187   0.4183   0.4176   0.4169
+
+Monotone at every cost point. UNMATCHED the ordering inverts -- raw mass reads
+k=32 0.4108 > k=16 0.4085 > k=1 0.4039 -- but k=32 got there by firing 116.3 groups
+against k=1's 96.2, and its mass per row is LOWER (3.085e-4 vs 3.225e-4). Same trap as
+matched-work-control-beats-auc.
+
+Served 4 rather than 1: kappa=1 keeps DC alone, so sigma degenerates to a block-mean
+subtraction with no margin if the block statistics shift; 4 keeps 7 basis columns, is
+within 0.0004 of kappa=1 at every cost point and 0.0018 above the old 16, and costs
+nothing either way. Committed on glm53-pr as 3172ef4527; needs a cherry-pick to the
+served branch plus a serve smoke once the queue drains.
+
+Stated as an offline-justified default and NOT a measured quality gain: +0.45% is far
+under the copy probe's 0.137 same-config spread.
+
+Two things worth more than the kappa answer. **branch_q carries ~3x the leverage** --
+at kappa 16, q0.75 -> q0.70 moves mass 0.4085 -> 0.4134 for 11 more fired groups --
+bounded by the fence rate (0.194 / 0.246 / 0.342 at 96 / 110 / 130 fired), since a
+fenced lane reads DSA's full 2048 rows. And the arm holds 0.404 mass on 1252 rows
+against DSA's 0.563 on 2048: **3.23e-4 vs 2.75e-4 mass per row**, so it is more
+mass-efficient per row than the baseline it approximates.
+
+## c521k4-*: validating kappa=4 on the served tree
+
+Cherry-picked to glm53-v0521 as 3e0af3fc3d (the dsa/ isolation, a prerequisite) and
+78ce52f083 (kappa 4). 107 registered tests pass; both backends import; the arms' knobs
+are now genuinely separate -- dsa reads kappa=4 / rho=1/128 / close=1024 with ceilings
+1/32 and 4096, mla reads kappa=16 / rho=1/32 / close=4096, and the DSA_-prefixed twins
+are gone from the shared module.
+
+A tree change cannot be validated by byte counters: a purge once made attention read the
+trash slot for ten hours while every byte, kept and ITL number reproduced. So a quality
+draw comes first.
+
+  c521k4-smoke   4k/256 stream, STATS on. Confirms the server starts and the tier-1 log
+                 line reports the served cutoff -- 1024/4 = 256 tokens, basis 7 dims.
+                 kappa=4 builds a 7-column basis the served path has never compiled.
+  c521k4-mk3     niah_multikey_3 @65536 n=50, the detector. The constant-32 arm read
+                 1.00 here at kappa=16 (c521fb-mk3-stats), so this is a matched
+                 comparison and anything below 1.00 is a regression, not noise.
+
+No cost job: kappa is free by construction (the basis is zero-padded to a fixed width
+whatever kappa is), so there is nothing for an ITL draw to find.
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521k4-smoke"}, "id": "c521k4-smoke", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521k4-mk3"}, "id": "c521k4-mk3", "probe": false}
+
+
+### c521k4-smoke measured the WRONG ARM; c521k4-smoke2 is the fix
+
+c521k4-smoke read `overflow=722 fallback=0.26255 fetched=532.7 ratio=0.421` against the
+matched kappa=16 control c521ck32-smoke's `overflow=0 fallback=0.00000 fetched=442.6
+ratio=0.380`, which looks like a kappa regression and is not one. The two jobs differ
+in more than kappa: I omitted `SGLANG_VESTIGEKV_BRANCH_Q` from the new one.
+
+`_branch_q()` is `envs.SGLANG_VESTIGEKV_BRANCH_Q.get()` and the descriptor is
+`EnvFloat(None)` -- there is NO compiled-in default. `_skip_sketch_chain()` returns
+`self._branch_q() is not None`. So with the variable unset the branch tier 2 never runs
+AND the sketch chain is not skipped: the job served the certificate/sketch lineage, the
+one ruled out of the merge. Its overflow and fallback are properties of that lineage at
+a short shape.
+
+**The defect this exposes is worth more than the smoke.** The branch rule is the only
+lineage that can merge, and it has no served default -- every run must set BRANCH_Q by
+hand, and forgetting it silently selects the lineage we rejected. On the submission
+branch, where the sketch chain is deleted outright, an unset BRANCH_Q would leave the
+arm with no tier 2 at all. It needs a compiled-in default in dsa/defaults.py, with
+`_branch_q()` falling back to it, before the deletions land.
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521k4-smoke2"}, "id": "c521k4-smoke2", "probe": false}
+
+
+### kappa=4 validated on the served tree
+
+  c521k4-mk3      niah_multikey_3 @65536 n=50 -> **1.00**, matching the kappa=16
+                  constant-32 arm (c521fb-mk3-stats). No quality regression.
+  c521k4-smoke2   4k/256, BRANCH_Q=0.75, against the matched kappa=16 control
+                  c521ck32-smoke at the same shape:
+
+                      kappa   overflow  fallback   kept/call  fetched/call  ratio
+                         16          0   0.00000       243.8         442.6  0.380
+                          4          0   0.00000       243.8         404.2  0.362
+
+`kept` is identical to the decimal, as a constant 32-group budget must be, and kappa=4
+FIRES LESS: -8.7% fetched rows, -4.7% byte ratio. The change is a small cost improvement
+on top of being quality-neutral.
+
+What makes that more than a single draw: the offline cost-matched study predicted it.
+At q0.75 it had kappa=4 firing 98.7 groups against kappa=16's 109.1, ratio 0.905; the
+served arm read 404.2/442.6 = 0.913, within 0.9%. An n=240 offline prediction landing on
+one served draw is the evidence, not the draw by itself. The ITL (12.30 median / 12.89
+p99) is not quoted as a cost claim -- 256 decoded tokens is too thin.
+
+## There is no hot region in DSA's selection (honest dumps)
+
+Both measurements re-run on cd3_* (176 dumps, 128 distinct queries per layer, G=15350).
+Their earlier versions ran on the aliased cd_* dumps and were artifacts.
+
+Step-to-step persistence -- recall of step t+k's top-512 inside step t's top-(mult*512):
+
+    k      pool 1x   pool 2x   pool 4x
+    1       0.2451    0.3647    0.5164
+    4       0.2395    0.3588    0.5147
+    7       0.2555    0.3807    0.5359
+
+r(1) = 0.245: at the NEXT step only a quarter of the new selection was in the old one,
+and the curve is flat in k, so there is no decay to extrapolate. Union over 8 steps is
+2.797x the budget. Per-layer r(7) spans 0.12-0.58.
+
+Concentration -- `always sel` is **0.000 at every one of the 11 layers**: not one group
+of 15350 is chosen by all 128 queries. `ever sel` is 0.395-0.593 over 128 queries, and
+the most-frequent 512 groups capture only 0.213-0.296 of all selections against the
+0.63-0.77 the aliased dumps reported. Spearman of frequency vs position -0.22..+0.22,
+vs key norm -0.14..+0.01.
+
+**Closed by this, with honest data:** the static sigma-ranked candidate pool,
+refresh-every-K-steps (dead at K=1, not at some large K), and a frequency-ranked hot
+cache. It also makes the long-lag dump instrumentation unnecessary -- the cheap lags
+answered the question, so the served tree needs no debug change.
+
+**Not closed:** the sigma-ranked kept set, which was never a cache of DSA's selection.
+Its job is the tier-2 threshold, and end-to-end it holds 0.404 mass on 1252 rows at
+3.23e-4 per row against DSA's 2.75e-4. What dies is the reading of it as a hot region --
+and with it my explanation for why the arm needs fresh indexer scores every step. The
+honest reason is that there is nothing to cache.
