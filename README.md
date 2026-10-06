@@ -4653,3 +4653,33 @@ count AND the block width, and only 289 of 2048 lanes carry a value, so binning
 the compacted group list removed 2.05 us of 4.35 with semantics untouched. The
 64-bin alternative buys the same time but coarsens the threshold -- it fires more
 and is therefore not lossless, so it was rejected.
+
+## c521sf: the forked selection, in situ
+
+The 3.35x is a KERNEL result. Nothing about serving it follows from that, so this
+batch tests the three things the bench cannot see, in order, and the ITL pair
+runs only if the first two pass.
+
+- `c521sf-smoke`: 4k/256, STATS on, SELECT_FORK=1. Against c521opt-smoke-post /
+  post2 already on disk (fetched 393.9 / 399.9, self-spread 6.0 rows/call,
+  kept 243.8). The row set is proven equal to the chain's by unit test, so
+  `fetched` must land inside that spread and `kept` must be identical. It also
+  tests two things only serving exercises: the module JIT-compiles inside the
+  server on first call, and the wide path's global candidate buffer and counter
+  must be CUDA-graph legal -- my own bench hit
+  cudaErrorStreamCaptureInvalidated from a host read inside a capture, and the
+  decode step is captured. The scratch is allocated once outside the step and
+  the reset is device-side, but that is reasoning, not evidence.
+- `c521sf-mk3`: niah_multikey_3 @65536 n=50, must read 1.000. Lossless at
+  system level is this, not a unit test.
+- `c521sf-xl-r1/r2`: the ITL pair against DSA's 10.814 / 10.879 median. Expect
+  no movement -- selection is 1.4% of a step and the residual there is GPU idle
+  and MoE-GEMM collateral -- so this is a guard against regression, not the
+  claim.
+
+Every row carries CUDA_HOME=/usr/local/cuda: the kernel JIT-compiles on first
+call and /usr/bin/nvcc's argv[0] sends it hunting for an absent /usr/nvvm.
+
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf-smoke"}, "id": "c521sf-smoke", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf-mk3"}, "id": "c521sf-mk3", "probe": false}
+
