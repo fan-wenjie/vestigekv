@@ -3182,3 +3182,31 @@ And the 36k verdict needs its boundary stated: the constant budget's sign
 depends on the shape, because a smaller kept set lowers the q0.75 threshold and
 fetch rises (12.4 -> 221.0 there) while proportional kept's growth has not yet
 bitten. Quote the pair, never one shape.
+
+c521cpx-*: does the two-level scan's loss cost quality? Asked with the proxy
+(engine HEAD) before any of the index is built.
+
+Offline the trade is 33 -> 18.56 B/token of scan at C=16, f=0.50 keeping 0.905
+of what branch_fire fires, and 26.84 at f=0.75 keeping 0.980. The proxy drops
+the same shape -- whole runs of 16 fine groups -- and picks survivors by hash
+rather than score, so it is strictly worse than the real filter.
+
+  c521cpx-smoke  a server has to come up; the batch before this one lost five
+                 jobs to an init crash because I skipped this step.
+  c521cpx-cp50   the copy probe at f=0.50, the aggressive setting. This is the
+                 decisive one: it reads 1.0000 on the served arm and 0.0001 with
+                 tier 2 off, so it can see a 9.5% loss of the fired set if that
+                 loss matters.
+  c521cpx-cp75   the copy probe at f=0.75, the conservative setting (2% loss).
+  c521cpx-mk75   multikey at f=0.75, for the record; it reads 1.000 on arms the
+                 copy probe separates, so it is not the instrument here.
+
+If cp50 holds, the design is worth building at the aggressive setting and the
+scan drops 44%. If only cp75 holds, the win is 19% for a new index, new buffers
+and two-level kernels, which is probably not worth it. If neither holds, the
+direction closes here.
+
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_COARSE_PROXY": "16,0.5", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521cpx-smoke"}, "id": "c521cpx-smoke", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_COARSE_PROXY": "16,0.5", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521cpx-cp50"}, "id": "c521cpx-cp50", "probe": false}
+{"args": {"ctx": 32768, "max_tokens": 4096, "n": 20, "seed": 0, "span_pos": 0.1, "span_words": 384}, "arm": "vestigekv", "client": "copy", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_COARSE_PROXY": "16,0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521cpx-cp75"}, "id": "c521cpx-cp75", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_COARSE_PROXY": "16,0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521cpx-mk75"}, "id": "c521cpx-mk75", "probe": false}
