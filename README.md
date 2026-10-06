@@ -4516,3 +4516,36 @@ recorded profile-diff noise is +-40 us/kernel, so each sits inside it.
 pairing spread, not a crossing -- and the 22 launches D1 leaves are the floor
 unless the selection fuses into a kernel that already runs (D3), which is gated
 on a forkable logits kernel.
+
+### The residual is GPU IDLE from dependency depth, and two hypotheses are dead
+
+                 kernel-sum  GPU-busy    wall   overlap   idle
+    vk             11780.6   10569.9  11276.8   1210.8   6.27%
+    baseline       11750.9   10528.2  11119.6   1222.7   5.32%
+    delta            +29.8     +41.7   +157.2    -11.9  +0.95pp
+
+0.95pp of 11276 us is +107 us/step of extra idle against a measured 104 us gap.
+Tier 2's five serially dependent stages x 11 layers are 55 serialisation points
+a step, each too small to keep the device busy across; the baseline's single
+14.3 us top-k kernel is not. Removing that top-k is therefore why our idle went
+UP (3.16% before the five changes, 6.27% after) and why the wall gained 138.5 of
+the 157.4 us removed.
+
+Dead hypotheses, both of which I had acted on:
+  kernel duration   scatter fix bought 4.3 us; its profile share predicted ~40.
+  launch overhead   merging two kernels into one, GRAPH-CAPTURED, bought 0.01 us
+                    (6.16 vs 6.17 us/layer-step). In a captured graph launches
+                    are near free, so +61 launches/step is not +61 us.
+
+And a measurement trap worth keeping: the first version of that bench, outside a
+graph, reported the pair at 32.41 us/layer-step against the trace's 4.2 -- it was
+timing Python's Triton launch overhead, and it would have "confirmed" the launch
+hypothesis it in fact refutes. Graph-captured, it reproduces the trace's
+_branch_hit to 0.7%. The `11.9 us/layer-step as its own kernel` note in
+branch.py, which is what argued against a separate threshold kernel in the first
+place, is very likely the same artifact.
+
+**So D1 is revived on a third mechanism**: 5 stages -> 2 cuts serialisation
+points 55 -> 22, and the prize is bounded by that +107 us. A microbenchmark
+cannot measure it -- those kernels in isolation have nothing to overlap -- so the
+in-situ ITL pair is the only instrument, and D1's wiring is the experiment.
