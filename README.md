@@ -4549,3 +4549,36 @@ place, is very likely the same artifact.
 points 55 -> 22, and the prize is bounded by that +107 us. A microbenchmark
 cannot measure it -- those kernels in isolation have nothing to overlap -- so the
 in-situ ITL pair is the only instrument, and D1's wiring is the experiment.
+
+### The control that retires four optimisations: a graph launch costs 0.5 us
+
+    empty graph replay   1.81 us      1 kernel, 512 CTAs  2.19 us
+    1 trivial kernel     2.19 us      5 trivial kernels   4.10 us
+    2 trivial kernels    2.22 us     20 trivial kernels  12.29 us
+
+Marginal launch (12.29-2.19)/19 = 0.53 us; grid width free (1 CTA and 512 both
+2.19). With the 1.81 us floor subtracted, the tier-2 chain does ~12.5
+us/layer-step of real work whether it is five stages or two -- 138 us/step,
+matching the trace's 138.1 exactly.
+
+    tune inside the kernel (scatter)   predicted ~40 us    got  4.3 us
+    merge 2 launches into 1            predicted ~13 us    got  0.01 us
+    5 serial stages -> 2               predicted ~107 us   got -0.02 us
+    launch cost, measured                   --             0.5 us/kernel
+
+So the launch-structure lever is 55 -> 22 x 0.5 = ~16 us/step, and the earlier
+"+61 launches/step" framing overstated it four-fold. The +107 us idle reading was
+real as a measurement but is not an actionable cause: collapsing the chain does
+not recover it.
+
+**Conclusion on the line.** Tier 2's cost is its work -- reading all 31744 group
+logits per layer and compacting the survivors -- and reading every group's score
+is what the earlier parasitic-route work already closed off (norm bounds, static
+pools, frequency caches, coarse screens, cross-layer sharing). So the arm is at
+its limit at ~0.985-0.990x against DSA at 4k/124k. The experiment gate stays
+shut; I do not believe another kernel change reaches 1.
+
+**D1 still lands, as a simplification rather than a speedup**: 5 kernels -> 2,
+the capacity cap and its 24 score levels deleted, and an overflow rule that is an
+exact score-ordered cut instead of a level-quantised one, proven to emit the same
+row set and the same fetch_len as the chain it replaces. 12 cases green.
