@@ -4695,3 +4695,48 @@ Re-queued as c521sf2-*.
 {"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf2-smoke"}, "id": "c521sf2-smoke", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf2-mk3"}, "id": "c521sf2-mk3", "probe": false}
 
+
+### c521sf2: the fork did not work in situ, and multikey is what said so
+
+The 3.35x kernel result was real and the served path was broken. Two bugs, both
+mine, both invisible to a green suite:
+
+1. **Row symbol.** `fetch_buf` is ONE row taller than req_to_token -- the trash
+   slot from `_alloc_recall_bufs` (`max_reqs + 1`) -- and both launchers declared
+   a single NSLOT for the two. Every served call failed the tensor match:
+   `Tensor<3, 2048>` at MAX_REQS=1, `<6, 2048>` at 4. c521sf-* never started.
+2. **km never reset.** `_select_scratch` is keyed on (bs, G), so all 11 layers
+   share one km buffer, and the Triton chain reset it inside _branch_hit_kernel.
+   Without that, km accumulates the union of every layer's kept groups, the
+   compare pass skips a growing set, and the fired count decays across layers and
+   across steps.
+
+    arm                        fetched/call   kept    multikey @65536 n=50
+    chain (c521opt-*)          393.9/399.9   243.8    1.000
+    fork, broken km (sf2)      261.5         243.8    **0.18**
+
+**The byte counter hinted and multikey convicted.** -34% on fetched is the sort
+of move that can be argued away; 1.00 -> 0.18 cannot. This is the sharpest
+instance yet of the rule that a quality draw gates every tree change here --
+and the reason the 3.35x was never claimed as a system result.
+
+**The suite was worse than silent, it was vacuous.** The fixtures lifted kept
+scores 6.0 clear of the bulk, which puts the kept q0.75 above every other score:
+nothing fired, and the equivalence case asserted two EMPTY sets were equal. It
+passed on any implementation. The lift sweep:
+
+    G=1027 kept=61   lift 0.0 -> 1124 rows   0.8 -> 364   2.0 -> 32   6.0 -> 0
+
+Fixtures now sit at the SERVED geometry (1027 groups, 61 kept, lift 0.8, 9.4%
+fired), every fired-set assertion requires a non-empty set, and a new case runs
+three layers on one scratch asserting km == 0 after each. The same sweep exposed
+a real divergence worth keeping: on overflow the fork fills the budget exactly
+(2048 rows) where the chain's level-quantised cap under-fills (692-1592).
+
+c521sf3-* re-runs both on the fixed code. Acceptance is unchanged: fetched
+inside the chain's 6.0 rows/call self-spread, kept identical at 243.8, multikey
+1.000.
+
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf3-smoke"}, "id": "c521sf3-smoke", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf3-mk3"}, "id": "c521sf3-mk3", "probe": false}
+
