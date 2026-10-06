@@ -3824,3 +3824,428 @@ Its job is the tier-2 threshold, and end-to-end it holds 0.404 mass on 1252 rows
 3.23e-4 per row against DSA's 2.75e-4. What dies is the reading of it as a hot region --
 and with it my explanation for why the arm needs fresh indexer scores every step. The
 honest reason is that there is nothing to cache.
+
+## The submission-branch deletion has an exact acceptance criterion
+
+Before removing the sketch lineage, the question was whether any of it still runs on the
+branch arm. Checked empirically rather than by tracing the call graph:
+
+                              build=      VKBUILDMS lines
+    branch arm (smoke2)       0.0 ms                    0
+    sketch chain (smoke)    117.4 ms                   66
+
+The index build is gated along with the scan -- `_skip_sketch_chain()` has one call site
+and the build path is behind the same decision -- so the branch arm builds NOTHING. My
+suspicion that we were paying a dead 117 ms build was wrong.
+
+Two consequences. It prices the lineage: the sketch chain costs 117.4 ms of index build
+per request on top of its 68 B/token scan, and the branch arm pays neither. And it makes
+the deletion the safest possible refactor, with a criterion that is a number rather than
+a judgement:
+
+  **the deletion must be a NO-OP on the branch arm's telemetry.** A post-deletion
+  4k/256 smoke with BRANCH_Q=0.75 and KEPT_GROUPS unset (now the served constant) must
+  reproduce c521k4-smoke2 to the digit: overflow 0, fallback 0.00000, kept 243.8/call,
+  fetched ~404.2/call, ratio ~0.362. Anything that moves means something live was
+  deleted, and byte counters alone are not enough -- the multikey draw comes too, since
+  a purge once made attention read the trash slot for ten hours while every byte, kept
+  and ITL number reproduced.
+
+Modules to go, 145 KB: recall_tier, fused_prologue, batched_step, pack_csr, scan_kernel,
+operand_fused. Plus vestigekv_mla_backend and its decode_fork, salience and ring_write,
+and TierDecodeRouter's base once DsaTierDecodeRouter no longer inherits it. The dsa
+backend's remaining ties are 6 RecallTier uses, 4 BatchedScanPack and 2
+pack_csr_all_layers, all on paths the branch arm does not enter.
+
+## Cross-layer selection sharing: 0.46 at adjacent layers, not shareable
+
+The last untested member of the faster-approximate-top-k family. sigma is known not to
+transfer across layers, but that is a query-free statistic; this asks whether the
+query-dependent SELECTION does. Overlap of top-512 between two layers of the same
+request at a matched decode step (asserted by qpos, not assumed), 6160 pairs:
+
+    gap  4   0.4599        gap 16   0.2679
+    gap  8   0.3649        gap >=24  ~0.24
+    gap 12   0.3109        random    0.0334
+
+Adjacent full-attention layers want 46% of the same rows -- 14x random, and higher than
+the same layer's step-to-step persistence of 0.245, so a layer's selection predicts its
+NEIGHBOUR at the same step better than itself one step later. Real structure, and worth
+recording.
+
+Not enough to share. Computing the top-k on 6 of 11 layers saves 5/11 of the top-k
+(71 us at 124k) and 5/11 of the logits (30 us), about 0.86% of the step, in exchange for
+a 54% selection loss on five layers -- against the calibration that truncating DSA's
+2048 to 256 loses 38% of the mass and yields 0.59 output error.
+
+Sample note: the same-layer control printed by this script is 0.3927 on n=14 (only the
+requests with two or more layers dumped), against 0.2451 from the full persistence run
+on 308 dumps. The large-sample figure is the one to use.
+
+So the family is closed. The branch rule already IS an approximate top-k that beats
+DSA's exact one per unit cost -- 3.23e-4 mass per row against 2.75e-4 -- and is cheaper
+in form (histogram and compare, one pass, no sort). What is missing is not a better
+selector but permission to stop paying DSA's, which the fallback forces.
+
+## Truncate the fence instead of falling back -- the first route above 1 vs DSA
+
+The fence currently zeroes `flen` and hands the lane DSA's `index_topk` selection, "and
+NOT the kept rows" (group_fetch's docstring). Two things follow once that is written out.
+
+**It saves no bytes.** The fetch buffer holds WF*pool = 512*4 = 2048 rows, and DSA's
+selection is 2048 rows. The fence swaps our 2048-row budget for DSA's, same size. On
+fenced steps only, 240 honest queries, kappa=4, kept 32 groups, q0.75:
+
+    WF    fence rate   design      mass    worst head   rows read
+    223        0.200   truncate  0.3745        0.1051      1702.5
+                       fallback  0.4134        0.1391      2663.1
+    512        0.096   truncate  0.3635        0.1143      2821.3
+                       fallback  0.3566        0.1079      2596.7
+
+At WF=512 -- the natural buffer width, BRANCH_FENCE_GROUPS unset -- truncation is
+budget-identical to DSA's selection and AHEAD on both mass and worst head, because it
+keeps the kept rows that the fallback drops. At WF=223 it is cheaper but loses mass, so
+the knobs interact and 512 is the operating point. Note this argues AGAINST the
+budget-derived 223 fence I selected earlier on byte grounds.
+
+**The prize is the dependency, not the bytes.** The fenced lane is the only consumer of
+DSA's top-k output on this arm, and the docstring says why it cannot be skipped
+speculatively: the indexer runs before attention inside a layer's forward, so this
+step's fence flag is unknown until the indexer has run. Truncation removes the consumer
+outright -- no speculation, no quality-floor predicate. That is 85.9 us at 36k and
+157.4 us at 124k, 1.34% of the step, against a deficit of ~0.5-0.8%.
+
+Implementation reuses machinery that is already there: `_branch_hit_kernel` builds a
+1024-bin histogram of kept group scores and takes `above = nkg - cumsum(h)` for the
+quantile. On overflow, build the same histogram over ALL groups, pick the bin where the
+cumulative count crosses WF, re-fire at that threshold. Two passes on the 9.6% of steps
+that fence, no sort, and capacity respected exactly -- which is what the fence was for
+and what zeroing `flen` never did.
+
+Offline only so far: mass at n=240 and 61k. Needs a multikey draw, a copy draw, and a
+decode-only stream pair before any latency claim.
+
+## c521ft-*: validating fence truncation on the served tree
+
+Cherry-picked to glm53-v0521 as 595cfb7cac; 85 registered tests pass there. The two
+served-default commits (BRANCH_Q, KEPT_GROUPS) stay PR-only, so these jobs set both
+explicitly. Note for reproducing anything measured before this change: the default is
+now truncation, so a historical fence measurement needs
+SGLANG_VESTIGEKV_FENCE_TRUNCATE=0.
+
+  c521ft-smoke     4k/256, STATS on. The candidate-histogram kernel is new and a
+                   Triton kernel has no compile-time coverage at serve time unless
+                   something calls it -- two defaults batches already died exactly
+                   there. Also the first in-situ read of the thing the change is for:
+                   overflow and fallback must be 0, and `fetched` should RISE, because
+                   a lane that used to be emptied now fills its buffer.
+  c521ft-mk3       niah_multikey_3 @65536 n=50, the regression detector. The arm reads
+                   1.00 at kappa=4 (c521k4-mk3), so this is matched and anything below
+                   is a regression rather than noise.
+  c521ft-xl-trunc  matched 4k/124k stream pair, STATS OFF, differing in exactly one
+  c521ft-xl-ctrl   variable. This prices the EXTRA PASS, which is all this change
+                   costs on its own -- DSA's top-k still runs, so no saving has been
+                   collected yet. The pair has to show the overhead is well under the
+                   85.9 us (36k) / 157.4 us (124k) that removing the top-k will return,
+                   or the follow-up is not worth doing.
+
+No copy draw: the probe's same-config `lead` spread is 0.137 and this change should
+move quality by far less, so a draw could not resolve it either way. multikey is the
+detector; the copy probe comes back when the top-k removal changes the row set
+materially.
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521ft-smoke"}, "id": "c521ft-smoke", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521ft-mk3"}, "id": "c521ft-mk3", "probe": false}
+
+
+## c521pf-xl2-vestigekv: the missing half of the 124k speedup model
+
+The speedup table's 124k row is part projection. Measured there: the step total, the
+indexer logits, the top-k, the sparse-mla pair and the index-k cache write, all from
+c521pf-xl-baseline. NOT measured: OUR tier-1 sigma and tier-2 branch at that shape --
+the only vestigekv trace is at 36k, and the 124k figures were scaled from it by the
+top-k's own observed 1.83x growth, which is a guess about a different kernel's shape.
+
+That matters because the margin is thin. Break-even on fence truncation's extra pass is
+36.4 us/step at 36k and 44.6 at 124k, i.e. about 3.3 us per layer launch, and a small
+Triton kernel at this size costs 2-5 us. The projection decides whether the follow-up
+(removing DSA's top-k) is worth building, so it should be a measurement.
+
+Same shape and knobs as c521pf-xl-baseline so the two traces subtract, and 124k is
+where this line's long-context claim lives.
+{"args": {"ctxs": "126976", "steps": 200}, "arm": "vestigekv", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521pf-xl2"}, "id": "c521pf-xl2-vestigekv", "probe": false}
+
+
+### The fence-truncation implementation regresses the SLOPE; the xl pair is withdrawn
+
+Reading the byte telemetry's own definition rather than reconstructing it:
+
+    DSA baseline   33.00 B/token      + 2048*1024 = 2.097 MB/call constant
+    VestigeKV      33 + 9/4 = 35.25   + (kept+fetched)*1024
+
+The 33 B is SHARED -- both arms make that read -- and the extra 9 B per group of 4 is
+the branch chain's own sweep. So we are 2.25 B/token WORSE on the slope, +6.8%, and the
+entire advantage lives in the constant term. Which is why the ratio decays toward 1 with
+context: the growing term is the one where we are behind.
+
+a16c47c445 raises that slope to 37.50 B/token: the hist kernel now reads the full logits
+block (+4 B/group, it used to mask to kept) and the new chist kernel reads km + logits
+(+5 B/group). That is +13.6% over DSA on the only growing term, and the byte ratio at
+4k/124k goes 0.706 -> 0.741.
+
+Bad trade: it regresses a measured claim that holds to buy a 1.34% latency term that
+materialises only after an unbuilt follow-up whose break-even is already ~3.3 us/layer.
+`_VK_FIXED_B` is also stale now, so the c521ft-* byte lines UNDER-count our read.
+
+c521ft-xl-trunc / c521ft-xl-ctrl are withdrawn: they would price an implementation that
+is being replaced. c521ft-mk3 stays -- truncation's QUALITY does not depend on how the
+histogram is built, so that draw is version-independent and still worth having.
+
+The replacement costs zero extra streaming bytes. The hit kernel already reads the full
+logits, so the candidate histogram is built THERE with atomics; `hit_ptr` stores the bin
+index instead of a 0/1 flag, same 1 B/group; the commit kernel applies the cap by
+comparing bins against the completed histogram, and it already reads `hit`. Bins come
+from a FIXED extension of the kept range, so no candidate-range pass is needed, and a
+lane with more than WF candidates clamped into the top bin falls back to the old fence,
+which keeps correctness.
+
+### What truncation discards: score, not time -- and the open-ended level is empty
+
+The retention rule, in order:
+
+  1. fire:  `m & (offs < plen) & (km == 0) & (s > thr_q)`, thr_q = the q0.75 quantile of
+     the KEPT groups' logits off the 256-bin kept histogram, rounded DOWN to its bin.
+  2. level: `clamp(((s - lo) / (2*width) * 16), 0, 15)`, over the kept groups' range
+     EXTENDED upward by one width. Monotone in the score.
+  3. cap:   `-1` if the total fits WF, else the LOWEST level whose strictly-above
+     population already fits -- `min{ l : above[l] <= WF }`.
+  4. keep:  level > cap. WHOLE LEVELS, never part of one. So
+     `min(kept score) > max(dropped score)` holds strictly, not approximately.
+  5. clamp: `ok = h & (pos < WG)`, the compaction's hard bound.
+
+Step 5 is the only one that is not score-ordered: `pos` is monotone in group id, so it
+keeps the LOWEST group ids -- the earliest positions -- and discards the newest. It is
+reachable only when the open-ended top level ALONE overpopulates WF, since no cap can
+bound that level.
+
+Measured (475 honest queries, 60 dumps, kappa=4, kept 32, q0.75, WF=512, NC=16):
+
+    fires per query, mean                            173.6
+    of which in the TOP level                          0.0   (0.1% of fires)
+    steps overflowing WF                               7.4%
+    steps where the TOP LEVEL alone overflows WF      0.00%
+
+Never reached. The top level holds ~0.17 fires a query against the 512 it would need --
+three orders away, not marginal. The reason is that sigma's 32 kept groups span a wide
+enough score range that doubling it covers the fired distribution.
+
+Stated honestly: 0 of 475 puts the 95% upper bound near 0.6%, so "not observed, under
+~0.6%", not "impossible". And because the path is never taken, its quality is UNVERIFIED
+-- it is a formal backstop, not part of the design argument.
+
+Correction to keep separate from that result: I had argued the degenerate case was
+harmless because "same level implies similar score". That is false for the top level,
+which is open above and unbounded in spread. The argument was wrong; the conclusion
+survives only because the level is empty.
+
+## Performance attribution at 124k, and the NCCL amplifier
+
+Both 124k traces, 200 steps, TP-0. This is the measurement the speedup model was
+missing, and it corrects two errors in it.
+
+                         baseline   vestigekv     delta   launches
+    indexer logits           67.3        67.2      -0.1         13
+    indexer top-k           157.4       158.5      +1.1         11
+    DSA sparse mla           98.1        29.2     -69.0         11
+    VK decode fork            0.0        71.6     +71.6         11
+    VK tier-2 branch          0.0       168.9    +168.9         55
+    NCCL                    723.9       966.7    +242.8         92
+    TOTAL GPU us/step     11758.3     12218.8    +460.5
+
+    ratio 0.9623x -- the arm is 3.8% SLOWER at 124k.
+
+**Error 1: the attention kernel is not saved, it MOVES.** `_sparse_mla_decode_split`
+goes 98.1 -> 29.2 (only the reduce survives) and our `_vk_dsa_decode_split` costs 71.6,
+so the attention path goes 98.1 -> 100.8: **+2.7 us, not -69**. Reading far fewer rows
+buys no kernel time, which is gamma_eff ~ 0 stated in microseconds.
+
+**Error 2: there was no NCCL term.** And it is the largest single item. The two arms
+make the IDENTICAL 92 launches a step with the identical 91 all-reduces and the same
+collective sizes; what changes is the mean duration, 7.6 -> 10.2 us. A ring all-reduce's
+kernel duration includes waiting on the slowest rank, so this is not work, it is WAIT --
+our added per-layer kernels reflected into the 91 collectives that follow them.
+
+**So this model has a ~2x amplifier on the engineering tax**: 240.5 us of added work
+becomes +460.5 us of step time. Every microsecond cut from a per-layer kernel is worth
+two. It also explains why the arm is 3.8% slower while its own kernels are 2%.
+
+Revised distance to the ceiling:
+
+    today (measured)                             added ~240.5   +460.5   0.9623x
+    zero-byte fix (drop chist 58.5, hist's full read ~12)  ~170    ~+321   ~0.973x
+    + remove DSA's top-k (158.5)                            ~12      ~+3   ~1.000x
+    absolute ceiling (whole DSA path gone, zero added)        --       --   1.0295x
+
+So the fix plus the top-k removal lands at about 1.00, not the 1.0038x the old model
+said. Passing 1 requires cutting our remaining ~98 us of tier 2.
+
+Our kernels, biggest first, and the one unexploited lever:
+
+    _vk_dsa_decode_split  71.6   _branch_hit      27.4
+    _branch_chist         58.5   _branch_commit   22.6
+    _branch_hist          32.6   _compact_scan    11.9
+    _branch_kept          27.9
+
+`_branch_hit` reads 164 kB in 27.4 us = **6 GB/s**, about 0.4% of what the device can
+do. These kernels are not bandwidth bound, their GRID is too small: NBK = GP/256 = 128
+CTAs against 188 SMs, so each pays launch latency instead of doing work. The dependency
+chain genuinely needs four grid-wide barriers and layers cannot batch (layer i's logits
+come from layer i's indexer), so the lever is per-kernel cost, i.e. occupancy:
+D.SCAN_BUCKET 256 -> 64 gives 512 CTAs, at the price of a longer counts array and scan.
+
+Experiments stay queued behind this, and their launch rows go in here before they run.
+
+## c521pf-xl3: what the zero-byte cap actually recovers
+
+The optimization loop's measurement, not an experiment. Served tree 4de8c68aef: the
+byte-costly truncation reverted (cd5e997948) and glm53-pr's zero-byte version taken
+wholesale, 110 registered tests passing.
+
+Predicted from the 124k attribution: `_branch_chist` (58.5 us/step) is deleted outright
+and `_branch_hist`'s full-logits read (~12 of its 32.6) reverts, so tier 2 should go
+168.9 -> ~98 us/step. With the ~2x NCCL amplifier the step should recover ~140 us of the
++460.5 us tax, i.e. ratio 0.9623 -> ~0.973.
+
+What the trace has to confirm, in order of how much it would change the plan:
+
+  1. `_branch_chist` is GONE from the kernel list. If it is still there the file did not
+     take.
+  2. tier 2 near 98 us/step over 55 launches, not 168.9.
+  3. NCCL's mean per all-reduce drops from 10.2 us toward the baseline's 7.6. This is
+     the amplifier's own prediction, and the one number that tests whether the NCCL
+     excess really is wait rather than work. If NCCL does NOT move while our kernels
+     do, the amplifier reading is wrong and the model needs rebuilding.
+
+Same shape and knobs as c521pf-xl-baseline and c521pf-xl2-vestigekv so all three
+subtract.
+{"args": {"ctxs": "126976", "steps": 200}, "arm": "vestigekv", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521pf-xl3"}, "id": "c521pf-xl3-vestigekv", "probe": false}
+
+
+### c521pf-xl3 result: the chist deletion landed, the NCCL model did NOT
+
+                      baseline   byte-costly   zero-byte
+    _branch_chist       absent       58.5 us      absent
+    tier-2 total           0.0   180.8 (x66)  138.3 (x55)
+    NCCL mean/AR        7.59 us      10.25 us    10.26 us
+    total us/step       11758.3       12218.8     12170.0
+    ratio                1.0000        0.9623      0.9662
+
+Q1 answered: `_branch_chist` is gone, the file took.
+
+**Q3 answered, and it refutes the amplifier model.** Our kernels fell 42.5 us and the
+mean all-reduce did not move -- 10.26 against 10.25 us, at the same 91 launches and the
+same sizes. So the +243 us of NCCL is NOT wait proportional to our added work; it is a
+FIXED cost of running this arm. The measured amplification is ~1.15x (-42.5 us of
+kernels bought +48.8 us of step time), not the 2x I derived last turn from a single
+pair of traces. That derivation was a two-point inference and this is the three-point
+test that kills it.
+
+The blocker moves with it. Removing DSA's top-k (158.5) would reach ~0.979; removing
+ALL of tier 2 as well (138.3) reaches ~0.990. Neither gets to 1, because ~243 us does
+not respond to kernel work at all -- and that is 2.1% of the step, larger than the
+entire addressable DSA surface (2.17%). Finding its cause is now worth more than any
+further kernel tuning.
+
+Q2 missed its prediction (138.3 against ~98) because the zero-byte scheme introduced a
+cost I had not priced: `_branch_hit` went 27.4 -> 49.3 us, +80%. The per-level tally is
+a `static_range(24)` of masked reductions, 24 * BLOCK per CTA, so "free counter slots"
+were not free. Firing is SPARSE -- about 115 of 32768 groups -- so the tally should be
+a per-element scatter (one atomic per fire, ~115 a layer-step) instead of 24 reductions
+over 512 CTAs (12288). That is the next kernel change.
+
+    zero-byte arm, per step:  _vk_dsa_decode_split 69.5   _branch_hist     19.2
+                              _branch_hit          49.3   _branch_cap_scan 18.7
+                              _branch_kept         27.6   _branch_commit   23.6
+
+### Correction: the NCCL penalty was an artifact of summing kernel durations
+
+    124k           kernel-sum   GPU-busy     wall    idle   kernels/step
+    baseline          11.751     10.528    11.120   5.32%          1379
+    zero-byte         12.160     10.908    11.264   3.16%          1451
+
+By WALL span the step goes 11.120 -> 11.264 ms: **+144 us, +1.3%, ratio 0.9872x**, not
+the 0.9662 the kernel sums gave. Streams overlap, so a sum of durations is not step
+time -- and our arm's idle fraction FALLS (5.32% -> 3.16%), filling gaps the baseline
+left empty, which is why longer all-reduces did not cost what they looked like.
+
+Two hypotheses were tested and rejected (proportional to our work; rank imbalance,
+measured at 0.3-0.6% skew against a 243 us excess) for a quantity that was not there.
+The lesson is about the metric: never sum kernel durations and call it step time.
+
+So the gap to parity is +144 us/step and removing DSA's top-k is 158.5 us of kernel
+time -- the lever is larger than the gap. The measurement that settles it has never
+been run: every stream pair on this line compared against DENSE MLA, never against DSA
+at the long shape.
+
+## c521dsa-xl: the DSA-vs-vestigekv ITL pair at 4k/124k
+
+Decode-only, STATS off, matched env, differing only in the arm -- so median AND p99 ITL
+are both quotable and the comparison is against the baseline the paper's claim is about.
+Two replicates each, because the dense pair showed this shape replicates to 0.3% on the
+median and a single draw would not be quotable under the method rules.
+
+What it decides: whether the arm is ~1.3% behind as the trace wall says, and therefore
+whether the top-k removal (158.5 us) can cover it. If the pair reads much worse than
+0.987 the trace wall is also misleading and only ITL counts; if it reads near 0.987 the
+remaining work is the top-k removal and nothing else.
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521dsa-xl-r1"}, "id": "c521dsa-xl-r1-baseline", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521dsa-xl-r1"}, "id": "c521dsa-xl-r1-vestigekv", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521dsa-xl-r2"}, "id": "c521dsa-xl-r2-baseline", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521dsa-xl-r2"}, "id": "c521dsa-xl-r2-vestigekv", "probe": false}
+
+
+## Two optimisations, registered before they are measured
+
+Both are committed on `glm53-pr` and untested: the queue is measuring ITL and
+nothing else may touch the device. Neither is on the served tree yet.
+
+**1. `d443f51100` -- tally fires by scatter.** `_branch_hit` counted its
+per-level histogram with `tl.static_range(NC)` whole-block reductions: 512 CTAs
+x NC=24 = 12288 reductions a layer-step, to count an event that happens ~115
+times in 32768 groups, and a CTA that fired nothing paid the same as one that
+fired. Replaced by one masked atomic per fired lane. `lvl` is clamped into
+[0, NC-1] for every lane so the scatter's address is always in range;
+`mask=fired` is what decides the write. _branch_hit measured 49.3 us a step at
+124k with ~80% in that loop.
+
+**2. `73dfa3274e` -- skip DSA's top-k.** Its only consumer in this arm is a
+FENCED lane, and fence truncation means no lane reaches that state. The other
+fence -- a lane with no compressed state for this layer -- was packed as
+min(seq, index_topk) placeholders that `forward_decode` overwrote with the
+selection; with no selection it keeps its full row set through r2t, the
+VK_TOPK=0 arm the fork already compiles for routerless models. That is exact,
+not approximate, and costs one step a dense read.
+
+Scoring stays: the paged-MQA logits ARE tier 2's score, which is why this
+cannot be the existing lean step (lean skips the GEMMs and the logits, and is
+explicitly disabled for the branch arm for exactly that reason). Returning
+None from `_get_topk_paged` is already a legal answer -- the lean path returns
+it -- and no GLM-5.3 layer reuses another's selection (all 45 `indexer_types`
+are `"full"`), so nothing downstream loses a value it had. Measured 158.5 us a
+step at 124k.
+
+**Why these two and not more kernel tuning.** The gap to parity at 124k is 144
+us/step of WALL time (the correction above). These two target 158.5 + ~40 us.
+If they land at anything near their profile weight the arm crosses 1.0 against
+DSA -- which is what `glm-line-order-and-paper-rule` demands before GLM enters
+the paper, and what the 1.0295x ceiling says is the whole available prize.
+
+**Acceptance, in this order, once the queue drains:**
+1. `test_vestigekv_dsa_branch` (9 cases) plus the geometry/kept/index-view
+   files -- the scatter must be bit-identical on the counts, so the
+   no-overflow-is-identical case is the one that matters.
+2. A 4k/256 smoke reproducing `c521k4-smoke2` to the digit on
+   `fetched`/`kept`/`overflow`/`fallback`. A byte counter cannot see wrong rows
+   (`byte-counters-cannot-see-wrong-rows`), so:
+3. A multikey draw -- the only instrument with range on this arm.
+4. Only then cherry-pick to the served tree, re-profile (`c521pf-xl4`), and
+   re-run the `c521dsa-xl` ITL pair for the before/after.
