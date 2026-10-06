@@ -4582,3 +4582,46 @@ shut; I do not believe another kernel change reaches 1.
 the capacity cap and its 24 score levels deleted, and an overflow rule that is an
 exact score-ordered cut instead of a level-quantised one, proven to emit the same
 row set and the same fetch_len as the chain it replaces. 12 cases green.
+
+## The DSA line succeeds: the selection is 2.06-2.58x DSA's top-k, lossless
+
+Measured against the kernel it replaces, graph-captured, 1.81 us replay floor
+subtracted. The whole-step ITL cannot resolve this -- selection is 1.4% of a
+step -- which is why four earlier structural attempts read as nulls and why I
+shelved exactly this change as "D1b, deferred, insufficient whole-step benefit".
+
+                             36k                    124k
+  DSA kpool_topk_transform    6.40 us/layer  1.00x   12.55-14.59  1.00x
+  tier2 5-stage chain         8.45           0.76x   12.54        1.16x
+  D1 narrow (1 CTA)           6.40           1.00x   12.55        1.16x
+  D1 WIDE collect+emit        4.35           1.47x    6.09        2.06-2.58x
+
+The 124k DSA figure is a range because the same kernel on the same shape read
+12.55 and 14.59 on two runs; the ratio inherits that spread and 2.06x is the
+conservative end.
+
+**The mechanism is the one structural difference between the rules.** A RANK
+threshold is unknown until every score is histogrammed, a histogram needs one
+block, so DSA's kernel runs ONE CTA over all G -- 127 kB through a single SM at
+~25 GB/s. A REFERENCE-SET threshold is known before the first score is read, so
+the compare has no cross-group dependency and takes the device. Hence the
+advantage GROWS with context: DSA scales 2.3x from 36k to 124k, ours 1.3x,
+because our cut and emit are bounded by the budget rather than by G.
+
+Lossless is tested, not assumed: the threshold is pinned to the rule the served
+arm scored multikey 1.000 with, and the wide path emits the same row set and
+fetch_len as the five-stage chain, resets its global candidate counter across
+calls, and cuts by exact score on overflow where the chain quantised to 24
+levels.
+
+**Not yet at the limit, so experiments stay shut.** Split directly:
+
+  kept_threshold (1 CTA, 289 groups)   3.78 us/layer-step   62% of ours
+  wide collect + emit                  2.31
+  if the threshold were free                                ratio 5.43x
+
+kept_threshold spends 3.78 us taking a quantile of 289 values (1.2 kB) because
+tier 1 hands it kept ROWS (1156) rather than kept GROUPS (289), so its block is
+2048 wide -- 4x the data -- and tl.histogram bins 289 entries across 2048 lanes.
+Passing the group list should take it to ~1 us, the selection to ~3.3 us, and the
+ratio to ~3.8x. That is the next change.
