@@ -5046,3 +5046,41 @@ That is an argument, not a measurement. This is the measurement.
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk3-xl-r3"}, "id": "c521vk3-xl-r3", "probe": false}
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk3-xl-r4"}, "id": "c521vk3-xl-r4", "probe": false}
 
+
+### Step 2 FAILS: end-to-end 0.994x where 1.008x was predicted
+
+                    median ITL (ms)                       throughput (tok/s)
+    DSA n=6   10.814 10.879 10.881 10.865 10.875 10.865   91.871 91.841 91.818 91.911 91.853 91.875
+    vk3  n=4  10.926 10.924 10.927 10.945                 91.422 91.422 91.415 91.254
+
+    delta  median +0.0676 ms (base sd 0.0251)   tput -0.4837 tok/s (base sd 0.0322)
+    pred          -0.085                               +0.80
+    end-to-end 0.9938x (median)  0.9947x (throughput)
+
+Wrong direction, 15x the noise, criterion fixed before the run.
+
+**This refutes the reason I gave for trying it.** I attributed the sibling arm's
+unexplained 115-182 us to its CSR pack, router, fence and attention fork. This
+patch has NONE of them -- one kernel swapped inside DSA's own pipeline, nothing
+else touched -- and it still loses ~160 us/step. Five conversion attempts now
+agree that a cheaper selection kernel does not make this system faster.
+
+The unexplained budget: -157.4 (top-k removed) + ~70 (our three kernels) = -87
+expected, +160 measured, so ~247 us/step is unaccounted.
+
+Two hypotheses tested and REJECTED before the trace:
+  host-side cost  decode is captured (3174 graph:True vs 31 False), so the env
+                  reads, the dict lookup and the output allocation are baked out
+                  at replay. Real style violations, ~zero per-step cost.
+  spill / atomics at 124k candidates run 741-12913 and 5/11-11/11 steps spill at
+                  rho<=0.99, but the bench prices 7865 candidates at 8.47 us
+                  against 171 at 6.41 -- 2 us for 46x the candidates. Neither
+                  the double pass nor single-address global atomic contention is
+                  worth 247 us.
+
+c521vkpf-xl: trace this arm and diff every kernel against c521pf-xl-baseline.
+Guessing has failed five times today; the full-kernel diff is what found the
+last two real causes.
+
+{"args": {"ctxs": "126976", "steps": 200}, "arm": "baseline", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vkpf-xl"}, "id": "c521vkpf-xl-baseline", "probe": false}
+
