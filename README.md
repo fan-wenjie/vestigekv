@@ -5007,3 +5007,42 @@ sibling arm there is no tier 2 behind this selection to recover a dropped group.
 {"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk2-smoke"}, "id": "c521vk2-smoke", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "baseline", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk2-mk3"}, "id": "c521vk2-mk3", "probe": false}
 
+
+### c521vk2: Step 1 PASSES -- the rule is lossless as DSA's sole selector
+
+    DSA reference                                niah_multikey_3 @65536 n=50  1.000
+    DSA + reference-set threshold, q=0                                        1.000
+    the same at q=0.75 (c521vk1)                                              0.72
+
+Smoke served clean at 4k/256: median 10.861, p99 11.161, 71.229 tok/s, rc=0, no
+traceback, no capture error, JIT built in-process.
+
+That answers the open question. Recall against DSA's exact top-512 is 0.91-1.00
+and -- unlike the sibling arm -- there is NO tier 2 behind this selection to
+recover a dropped group, so a 9% per-step miss had to be shown harmless rather
+than assumed. At n=50 it does not cost the needle.
+
+## c521vk3: Step 2, the throughput measurement
+
+4 replicates, 4k/124k, decode-only, SGLANG_DSA_VK_SELECT=1 with q=0, against the
+n=6 DSA floor measured earlier:
+
+    baseline  n=6   91.8617 +- 0.0322 tok/s     median 10.8632 +- 0.0251 ms
+    expected        +0.80 tok/s (12.7x the MDE)  -0.085 ms (1.7x the MDE)
+
+Primary endpoint is THROUGHPUT; median ITL is secondary because its MDE at n=4
+(0.049 ms) is only 1.7x the expected effect while throughput's is 12.7x.
+
+The honest risk, stated before the run: everything rests on the kernel-level
+2.1x converting to wall time, and four such conversions inside the sibling arm
+came out at ZERO today (the largest was 68 us of kernel producing -13 us
+end-to-end). The argument for why this differs is that the architecture has none
+of that arm's infrastructure -- no attention fork, no CSR pack, no router, no
+fence, no graph variants -- which is where the unattributed 115-182 us lived.
+That is an argument, not a measurement. This is the measurement.
+
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk3-xl-r1"}, "id": "c521vk3-xl-r1", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk3-xl-r2"}, "id": "c521vk3-xl-r2", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk3-xl-r3"}, "id": "c521vk3-xl-r3", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk3-xl-r4"}, "id": "c521vk3-xl-r4", "probe": false}
+
