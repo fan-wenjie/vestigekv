@@ -4821,3 +4821,32 @@ c521sf4-* re-runs the in-situ chain on this: smoke, multikey, then the ITL pair.
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf4-mk3"}, "id": "c521sf4-mk3", "probe": false}
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf4-xl-r1"}, "id": "c521sf4-xl-r1", "probe": false}
 
+
+### c521sf4: the radix select removes the in-situ regression
+
+    arm                 median              p90             p99          tok/s
+    DSA     r1/r2     10.814/10.879   18.056/11.025   24.537/11.571  91.871/91.841
+    chain   r1/r2     10.984/10.983   11.124/11.180   11.637/14.011  90.902/90.914
+    fork bitonic      11.254/11.175   11.440/15.905   12.067/24.592  88.830/88.907
+    fork radix  r1    10.996          11.189          13.158         90.815
+
+By context the fork now tracks the chain to 9-21 us across the whole sweep (the
+bitonic version went 49 -> 304 us and growing), and its spiky-step rate falls
+BELOW the chain's: 0.58% vs 0.86%, where bitonic was 12.79%. So the 200-270
+us/step regression was entirely the overflow sort, exactly as the bench said.
+
+**Where the line ends up, at the right granularity.**
+
+  Kernel -- what the line set out to do: the reference-set threshold replaces
+  DSA's rank top-k at 1.48-2.09x across the full fire-rate range (worst case
+  under heavy overflow), lossless: multikey 1.000 on three consecutive runs.
+
+  End-to-end: a wash against the chain (-0.1% median, -0.1% tput), both still
+  ~1% behind DSA. Selection is 1.4% of a step dominated by 4.98 GB of MoE weight
+  traffic, so a 2x kernel saving is 68 us on 11000 and cannot show up here.
+
+c521sf4-xl-r2 is the second replicate: r1 alone is a singleton and the -13 us
+against the chain is not callable from one draw.
+
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf4-xl-r2"}, "id": "c521sf4-xl-r2", "probe": false}
+
