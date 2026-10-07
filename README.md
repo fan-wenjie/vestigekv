@@ -4850,3 +4850,35 @@ against the chain is not callable from one draw.
 
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf4-xl-r2"}, "id": "c521sf4-xl-r2", "probe": false}
 
+
+### Batch sweep: the ratio holds at the operating point, shrinks only under overflow
+
+Served fire rate, ~98 groups emitted (G=31744, kept 289, budget 512):
+
+      bs   emitted   fork_us    dsa_us    ratio | fork/row  dsa/row
+       1        98      6.41     13.50    2.10x |     6.41    13.50
+       2        98      6.42     13.44    2.09x |     3.21     6.72
+       4        98      6.42     14.62    2.28x |     1.61     3.65
+       8        98      6.49     14.61    2.25x |     0.81     1.83
+
+Heavy overflow, budget filled:
+
+       1       512      8.49     12.59    1.48x |     8.49    12.59
+       2       512     10.37     12.58    1.21x |     5.19     6.29
+       4       512     10.52     14.61    1.39x |     2.63     3.65
+       8       512     12.56     14.61    1.16x |     1.57     1.83
+
+**At the operating point the ratio does not shrink: ~2.1-2.3x through bs=8.**
+I predicted it would, reasoning that DSA's one-CTA-per-row top-k amortises with
+batch while our collect at (G/256, bs) CTAs was already saturating. Wrong on the
+second half: 124 CTAs does NOT fill 188 SMs, so we were under-occupied at bs=1
+too and added rows cost almost nothing. Both sides amortise, per-row cost falls
+~8x for each, and the ratio holds. The 2.10 -> 2.25 drift is NOT read as
+improvement: DSA's in-process spread here is 13.44-14.62, which covers it.
+
+**Under overflow it does shrink, 1.48x -> 1.16x, and that trend is real** -- our
+cost rises monotonically 8.49 -> 12.56 while DSA's is flat. The mechanism is
+specific: the emit kernel is one CTA per lane and each lane runs a full radix
+select over up to kCandMax candidates, which does not amortise the way the wide
+collect does. If overflow turns out to be common at a deployed batch, that emit
+needs the same widening the compare pass got.
