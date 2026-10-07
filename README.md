@@ -5234,3 +5234,39 @@ chosen on the cost-matched end-to-end criterion (real softmax mass over
 kept+fired+sinks+tail at EQUAL fired count, 240 honest queries from cd3_64k),
 where k=1 leads k=4 by 0.0004 and k=1 degenerates to a bare block-mean
 subtraction with no margin if the block statistics shift.
+
+### The cut/expand split is dead, and that makes eight
+
+    budget  out_cols   before   after(split)
+       128       515     2.96      4.39
+       256      1027     2.31      4.35
+       512      2051     4.35      4.35
+
+The wide expand does what it was designed to -- the out_cols dependence is gone
+(flat 4.35, was 2.31 -> 4.35) -- but the extra launch plus the sel_groups global
+round-trip costs exactly what the write loop saved, and below budget 512, where
+there was less to save, it is a straight loss. Reverted; both trees clean, 24
+cases green, pre-split timings reproduce.
+
+That is eight structural predictions of mine refuted in two days:
+
+    tune inside _branch_hit (scatter)   predicted ~40 us    got  4.3 us
+    merge 2 launches into 1             predicted ~13 us    got  0.01 us
+    5 serial stages -> 2                predicted ~107 us   got -0.02 us
+    contention explains the gap         predicted large     got  4% of the ratio
+    page-table scatter is the emit cost predicted ~4 us     got  0.00
+    n_sel is the emit cost              predicted some      got  0.00
+    wide expand                         predicted +0.2 t/s  got  0 / worse
+
+**The only two that worked were deletions of work**: skipping DSA's top-k
+(157.4 us/step) and deleting the redundant pass over the global score row
+(1.017 tok/s, 0.9947x -> 1.0058x). At 1.45% of an 11 ms step the fixed costs --
+a 0.53 us launch, a global round-trip, one CTA's latency -- are comparable to the
+whole prize, so relocating work does not change the number. Recorded as
+memory/only-deleting-work-helps-here.
+
+**Line final state.** end-to-end 1.0058x (n=4 vs n=6, 16.5 sigma); multikey
+1.000 as DSA's sole selector; kernel 2.1x its rank top-k, flat in context,
+holding through bs=8; spill eliminated through rho=0.99. The remaining ~0.9% to
+the 1.0147x ceiling needs the selection's WORK to shrink, and what is left is one
+pass over all G scores -- the irreducible part of the rule.
