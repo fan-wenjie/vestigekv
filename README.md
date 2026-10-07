@@ -4882,3 +4882,42 @@ specific: the emit kernel is one CTA per lane and each lane runs a full radix
 select over up to kCandMax candidates, which does not amortise the way the wide
 collect does. If overflow turns out to be common at a deployed batch, that emit
 needs the same widening the compare pass got.
+
+## DSA's share of the step, and the noise floor the experiment needs
+
+Per-kernel, pure DSA at 124k (c521pf-xl-baseline, 200 steps, step = 10879 us):
+
+    top-k           void sglang::                157.4 us  11/step   1.45%
+    attention       _sparse_mla_decode_split      76.0     11        0.70%
+    indexer logits  sm120_fp8_paged_mqa_logits    63.3     11        0.58%
+                    _act_quant_kernel             24.7     11        0.23%
+                    _sparse_mla_reduce_kernel     22.1     11        0.20%
+    DSA path total                               343.5               3.16%
+
+    cutlass GEMM (MoE)                          3190.1              29.32%
+    GroupProblem GEMM                           1992.8              18.32%
+    gemvx                                       1943.1              17.86%
+      three GEMM families                       7126               65.5%
+    NCCL all-reduce                              690.8               6.35%
+
+An earlier category script reported the top-k at 337.2 us because the pattern
+"void sglang::" also matched tiny_n_gemm (115.9) and silu_mul_clamp (48.6).
+**157.4 is the top-k.** Verify a pattern against the kernel list before quoting
+a share.
+
+Ceilings for replacing the top-k:
+    free                                  1.0147x
+    at the measured 2.1x (saves 82.5 us)  1.0076x
+    whole DSA path free                   1.0326x
+
+**So the experiment's expected effect is 82.5 us against a baseline whose two
+replicates differ by 65 us.** Effect/noise ~1.3, which is why the noise floor
+comes before the code. c521nf-* adds four more DSA baseline replicates (n=6) to
+estimate the SD and the minimum detectable effect; if 82.5 us is not resolvable
+at a practical n, modifying DSA in place is not worth doing however clean it is.
+
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521nf-xl-r3"}, "id": "c521nf-xl-r3-baseline", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521nf-xl-r4"}, "id": "c521nf-xl-r4-baseline", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521nf-xl-r5"}, "id": "c521nf-xl-r5-baseline", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521nf-xl-r6"}, "id": "c521nf-xl-r6-baseline", "probe": false}
+
