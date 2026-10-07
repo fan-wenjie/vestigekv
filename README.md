@@ -5197,3 +5197,40 @@ selector with no tier 2 behind it; end-to-end 1.0058x at n=4 against n=6.
 Remaining headroom: ~10% of layer-steps still take the spill path into DSA's
 radix (16.3 us/step in the trace), and the emit's single-CTA structure is the
 next kernel-level item.
+
+### kappa=4's precision, and a retraction: the (kappa,m) grid was on ALIASED dumps
+
+Re-run on cd3_64k (176 dumps, non-aliased, G=15350), kappa=1,2,4,8,16:
+
+    precision vs DSA top-512   m=32     m=64    m=128    m=256
+      sigma k=1              0.6776   0.5928   0.4840   0.3692
+      sigma k=2              0.6727   0.5813   0.4716   0.3610
+      sigma k=4              0.6533   0.5698   0.4624   0.3550
+      sigma k=8              0.6348   0.5560   0.4492   0.3412
+      sigma k=16             0.6099   0.5319   0.4311   0.3267
+      centred row norm       0.6776   0.5928   0.4840   0.3692   == k=1
+      raw row norm           0.0722   0.0502   0.0345   0.0268
+      oracle (att mass)      0.9215   0.9043   0.8770   0.8099
+      oracle (dsa score)     1.0000   1.0000   1.0000   1.0000
+      random (closed form)   0.0313   0.0313   0.0313   0.0313
+
+    captured attention mass  m=32     m=64    m=128    m=256
+      sigma k=1              0.0246   0.0354   0.0490   0.0695
+      sigma k=4              0.0233   0.0328   0.0463   0.0665
+      sigma k=16             0.0212   0.0293   0.0409   0.0589
+      oracle (att mass)      0.0608   0.0796   0.1063   0.1447
+      random (closed form)   0.0019   0.0038   0.0076   0.0152
+
+**RETRACTED: "sigma beats the attention-mass oracle on precision".** The earlier
+grid (register ~line 3252) ran on cd_w3,cd_w2,cd_g2 -- the ALIASED dumps, where
+each of 88 files holds 8 bit-identical qidx/qgate, so "704 real queries" was 88.
+On those the oracle read 0.6491 against sigma k=2's 0.6626 and I called it the
+NoPE spectral property. On cd3 the oracle reads 0.9215 against sigma k=1's
+0.6776: sigma does NOT beat it, it reaches 74% of it. The whole earlier table is
+superseded by this one.
+
+kappa stays monotone with k=1 best, which does not change the served value: 4 was
+chosen on the cost-matched end-to-end criterion (real softmax mass over
+kept+fired+sinks+tail at EQUAL fired count, 240 honest queries from cd3_64k),
+where k=1 leads k=4 by 0.0004 and k=1 degenerates to a bare block-mean
+subtraction with no margin if the block statistics shift.
