@@ -4798,3 +4798,26 @@ fallback was adopted because "even on overflow the total is not large" -- true a
 4k, where the smoke measured overflow=0, and false at 124k. The right tool for
 cutting an overflowing candidate set is a radix/histogram select, which is
 exactly what DSA's own kernel does and what I replaced with an O(n log^2 n) sort.
+
+### The radix select fixes the overflow path, and the honest range is 1.48-2.09x
+
+   lift   cands  emitted   fork_us   dsa_us   ratio
+    0.0    7865      512     8.47    12.57    1.48x   (bitonic was 35.12, 0.36x)
+    0.8    2250      512     8.46    12.57    1.49x
+    1.6     415      342     6.41    12.62    1.97x
+    2.0     171       98     6.41    13.38    2.09x   <- the served fire rate
+
+No regime where it loses, and every point has groups actually emitted -- unlike
+the withdrawn 3.35x, which was measured where nothing fires.
+
+A radix select is exact only down to an 8-bit bin, ties within a bin arbitrary,
+which is the guarantee DSA's own kernel gives. That is weaker than the bitonic
+sort it replaces, and the reason for the change is purely cost: exactness ran
+28.7 us and made the arm a 200-270 us/step regression. Reverting is two lines.
+
+c521sf4-* re-runs the in-situ chain on this: smoke, multikey, then the ITL pair.
+
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DEBUG_VESTIGEKV_STATS": "1", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf4-smoke"}, "id": "c521sf4-smoke", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "vestigekv", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf4-mk3"}, "id": "c521sf4-mk3", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "vestigekv", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "SGLANG_VESTIGEKV_SELECT_FORK": "1", "VK_JOB": "c521sf4-xl-r1"}, "id": "c521sf4-xl-r1", "probe": false}
+
