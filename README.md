@@ -5115,3 +5115,45 @@ c521vkpf2-xl-baseline re-runs the trace on the now-consistent tree.
 
 {"args": {"ctxs": "126976", "steps": 200}, "arm": "baseline", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vkpf2-xl"}, "id": "c521vkpf2-xl-baseline", "probe": false}
 
+
+### c521vkpf2: removing the redundant scan is a ~322 us swing
+
+Full kernel diff, single-scan version vs pure DSA at 124k:
+
+    vk      : kernel-sum 11659.6 us/step   1390 launches/step
+    baseline: kernel-sum 11750.9 us/step   1379 launches/step
+    delta   :    -91.2 us/step    +11 launches/step
+
+    void sglang:: (DSA top-k)   157.4 -> 16.3   -141.1   16.3 = the spill path,
+                                                         so ~10% of layer-steps
+                                                         still spill (measured)
+    sglang:: (our two kernels)    0.0 -> 53.4    +53.4
+    _sparse_mla_decode_split     76.0 -> 70.7     -5.3   attention DOES shrink,
+                                                         which I predicted it
+                                                         would not
+    shared kernels, net                           +1.5
+
+                        kernel-sum  GPU-busy     wall   idle
+    vk (single-scan)       11659.6   10433.6  10957.5  4.78%
+    baseline (DSA)         11750.9   10528.2  11119.6  5.32%
+    delta                    -91.2     -94.6   -162.1  -0.54pp
+
+**-162 us/step by wall span, and idle BELOW the baseline's.** The pre-fix code
+measured +160 us the other way in ITL, so deleting one redundant scan of the
+score row is a ~322 us swing. -162 us on 11119.6 is 1.46% -> 1.0148x, which is
+the ceiling computed for a free top-k (1.0147x), reached because the attention
+read shrank as well.
+
+Caveat, from a lesson earlier today: TRACE WALL IS NOT ITL. I once reported
+0.9872x from trace wall where the ITL pair read 0.971-0.980x. This is a strong
+signal, not the number. c521vk4-* is the ITL at n=4.
+
+Note also: the 0.994x ITL was the PRE-fix code (three kernels, scattered
+gather). It and this trace are not comparable, which is why the ITL is re-run
+rather than reasoned about.
+
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk4-xl-r1"}, "id": "c521vk4-xl-r1", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk4-xl-r2"}, "id": "c521vk4-xl-r2", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk4-xl-r3"}, "id": "c521vk4-xl-r3", "probe": false}
+{"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk4-xl-r4"}, "id": "c521vk4-xl-r4", "probe": false}
+
