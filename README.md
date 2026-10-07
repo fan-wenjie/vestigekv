@@ -4955,3 +4955,25 @@ natural bootstrap.
 This makes the patch smaller than the tier-1 version AND removes the km mask:
 groups in the reference set SHOULD be allowed to fire again, unlike tier-1 kept
 rows which must be excluded from the fired set.
+
+## c521vk1: Step 1 of the DSA patch, in situ
+
+The arm is `baseline` -- this is DSA with its selection rule changed, not a
+VestigeKV arm. No attention fork, no CSR pack, no router, no fence, no graph
+variants: that infrastructure is what the four failed conversions were hiding
+in, and this architecture deletes it rather than optimising around it.
+
+  c521vk1-smoke  4k/256, SGLANG_DSA_VK_SELECT=1. Must serve. Tests two things
+                 no unit case can: the module JIT-compiles inside the server on
+                 first call, and the per-layer state dict is allocated lazily on
+                 a path that may be inside a capture (cudaErrorStreamCaptureInvalidated
+                 is how that would announce itself).
+  c521vk1-mk3    niah_multikey_3 @65536 n=50. MUST read 1.000. This is the
+                 acceptance; latency is recorded but NOT judged at this step.
+
+Step 2, only if both pass: 4 throughput replicates against the n=6 baseline
+floor 91.8617 +- 0.0322 tok/s, where the expected +0.80 tok/s has 12.7x margin.
+
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.75", "VK_JOB": "c521vk1-smoke"}, "id": "c521vk1-smoke", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "baseline", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.75", "VK_JOB": "c521vk1-mk3"}, "id": "c521vk1-mk3", "probe": false}
+
