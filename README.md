@@ -5157,3 +5157,43 @@ rather than reasoned about.
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk4-xl-r3"}, "id": "c521vk4-xl-r3", "probe": false}
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk4-xl-r4"}, "id": "c521vk4-xl-r4", "probe": false}
 
+
+## c521vk4: end-to-end CROSSES 1 -- the redundant scan was the whole failure
+
+    DSA baseline n=6       med  10.814 10.879 10.881 10.865 10.875 10.865
+                           tput 91.871 91.841 91.818 91.911 91.853 91.875
+    pre-fix (2 scans) n=4  med  10.926 10.924 10.927 10.945
+                           tput 91.422 91.422 91.415 91.254
+    single-scan       n=4  med  10.811 10.796 10.810 10.822
+                           tput 92.421 92.414 92.426 92.318
+
+                 throughput            ratio    median      ratio
+    pre-fix      91.3780 (-0.484)     0.9947x   10.9308    0.9938x
+    single-scan  92.3948 (+0.533)     1.0058x   10.8098    1.0049x
+
++0.533 tok/s on a 0.0322 sd: 16.5 sigma, criterion fixed before the run. The
+swing from the owner's one observation is 1.017 tok/s.
+
+**The engineering failure, named exactly.** The threshold -- the minimum of the
+previous selection -- was recomputed by a separate kernel that GATHERED up to
+512 scattered elements out of the global score row every layer-step, to recover
+a value the emit kernel already held in registers at the moment it selected.
+Carrying it forward as a scalar deleted a launch and a whole pass.
+
+Why it mattered so much on a 1.45% term: a redundant scattered gather is cheap
+in isolation (~3 us/layer) but lands on the same path, so it ate about twice the
+entire prize. On a term this small, any extra global traffic in the replacement
+is comparable to the thing being replaced. That is the general lesson.
+
+Caveats kept: trace wall said -162 us (1.0148x) and ITL delivered -53 us
+(1.0058x), ~40% of the 1.0147x ceiling -- trace wall overstates ITL, again. And
+p99 is noisy on this MACHINE: vk4 r2/r4 read 23.557/17.175 while r1/r3 read
+11.38/11.40, and DSA's own r1 read 24.537 against its siblings' ~11.5.
+
+**Line status.** Kernel 2.1x vs DSA's rank top-k (1.48x worst case under
+overflow), holding through bs=8; quality multikey 1.000 at n=50 as DSA's SOLE
+selector with no tier 2 behind it; end-to-end 1.0058x at n=4 against n=6.
+
+Remaining headroom: ~10% of layer-steps still take the spill path into DSA's
+radix (16.3 us/step in the trace), and the emit's single-CTA structure is the
+next kernel-level item.
