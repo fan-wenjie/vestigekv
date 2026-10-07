@@ -5084,3 +5084,34 @@ last two real causes.
 
 {"args": {"ctxs": "126976", "steps": 200}, "arm": "baseline", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vkpf-xl"}, "id": "c521vkpf-xl-baseline", "probe": false}
 
+
+### c521vkpf VOIDED: I edited the served tree three minutes into the run
+
+Server up 10:27:40, ready 10:30:16, client started 10:30:21. I edited the served
+tree's vk_select_transform.cuh at **10:30:53**. Two JIT build dirs appeared for
+that module during the run -- 10:29:59 and 10:31:07 -- with different content
+hashes, so the TP ranks compiled DIFFERENT kernel source, and the newer
+launcher takes a `next_thr` argument that the already-imported Python wrapper
+does not pass. The server logged 0 decode batches in seven minutes against 3174
+on a healthy run: it hung.
+
+Killed rather than reported. A trace whose two ranks may hold different binaries
+would have produced plausible numbers that mean nothing, which is worse than no
+trace. Second violation of never-edit-the-served-path-while-a-runner-lives today;
+the first one (the km fix, ~21:30) was harmless only because no further server
+launched. The rule is not about whether the edit looks safe.
+
+The fix in between IS the one the owner identified: do not scan the global score
+row more than once. prev_threshold was a scattered gather of up to 512 elements
+out of that row, every layer-step, purely to recompute a value the emit kernel
+already held. The emit kernel now writes the next threshold itself as a scalar,
+which deletes a launch and the gather and takes the common path to one scan.
+Also fixed on the way: thr was seeded to 0 instead of -inf (the first step would
+have fired "everything above 0" rather than bootstrapping through the radix), an
+atomicMin-on-float bit trick replaced by a plain shared reduction, and the
+comparison made inclusive since the carried threshold IS the K-th largest.
+
+c521vkpf2-xl-baseline re-runs the trace on the now-consistent tree.
+
+{"args": {"ctxs": "126976", "steps": 200}, "arm": "baseline", "client": "profile", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vkpf2-xl"}, "id": "c521vkpf2-xl-baseline", "probe": false}
+
