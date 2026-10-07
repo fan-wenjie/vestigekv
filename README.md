@@ -5320,7 +5320,17 @@ rule 1 has demanded of every other number on this line. If it does not, that is
 the more valuable outcome and it invalidates the one quality figure quoted for
 this arm.
 
-**Cost.** The full group at n=10 took 3604 s (`rulerv0520-baseline`), so n=50 is
-~5 h per arm and ~10 h for the pair. The queue is empty and the GPUs are idle, so
-nothing is preempted. `check_builds.py` is clean for GLM -- its eight flagged runs
-are all Kimi jobs already retired.
+**Cost: ~20.5 h for the pair, not the ~10 h first estimated.** The estimate
+scaled `rulerv0520-baseline` (650 requests in 3604 s = 5.5 s/req) by five. The
+run itself reports 11.5 s/it over 3250 requests, holding at an ETA of 10 h 16 m
+for the DSA arm alone, so the pair is a little over twenty hours. That rate is
+already an average over the whole ladder -- lm-eval interleaves all 13 tasks and
+all 5 lengths into one request stream rather than running cells in sequence -- so
+it is not an artifact of starting on the long cells. The n=10 precedent ran at a
+different geometry and does not scale.
+
+Kept at n=50 anyway: the GPUs are otherwise idle, nothing is preempted, and n=50
+is what makes the vk arm's `niah_multikey_3` @65536 cell an exact replicate of
+`c521vk2-mk3`. Cutting to n=25 would halve the wall time and give up the one
+free replicate of the only quality number this arm has. `check_builds.py` is
+clean for GLM -- its eight flagged runs are all Kimi jobs already retired.
