@@ -4977,3 +4977,33 @@ floor 91.8617 +- 0.0322 tok/s, where the expected +0.80 tok/s has 12.7x margin.
 {"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.75", "VK_JOB": "c521vk1-smoke"}, "id": "c521vk1-smoke", "probe": false}
 {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "baseline", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.75", "VK_JOB": "c521vk1-mk3"}, "id": "c521vk1-mk3", "probe": false}
 
+
+### c521vk1 FAILED: multikey 0.72, and the fixture was blind to why
+
+The plumbing served clean (rc=0, JIT built in-process, no capture error). The
+constant was wrong. With the reference set being the previous selection, a q>0
+threshold sits above that selection's own cut, so the threshold ratchets:
+
+    rho=0.99     step1      step2      step3      step4
+     q=0.00   512/1.00   512/0.91   512/0.91   512/0.92
+     q=0.25   512/1.00   403/0.79   328/0.64   273/0.53
+     q=0.75   512/1.00   130/0.25    35/0.07     9/0.02
+                                  (groups fired / recall vs DSA's exact top-512)
+
+**q=0 is the only fixed point, and it is derivable.** The threshold is stable
+only where the quantile equals the selection's own cut -- its minimum, which
+approximates the K-th largest. So this rule is "DSA's own threshold, one step
+stale", which is exactly what lets the histogram go.
+
+**The fixture, not the constant, is the lesson.** Every case drew INDEPENDENT
+logits per step, so the previous selection was a random sample under the new
+scores, 512 fired at every q, and no test could see the mechanism. Third time
+today the same class of defect cost a result (lift=6.0 emptied the fired set;
+independent steps emptied the reference set of meaning).
+
+c521vk2-* re-runs at q=0. Caveat: recall is 0.91-1.00, not 1.00, and unlike the
+sibling arm there is no tier 2 behind this selection to recover a dropped group.
+
+{"args": {"input_len": 4096, "output_len": 256, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.95", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk2-smoke"}, "id": "c521vk2-smoke", "probe": false}
+{"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "niah_multikey_3"}, "arm": "baseline", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521vk2-mk3"}, "id": "c521vk2-mk3", "probe": false}
+
