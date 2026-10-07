@@ -4921,3 +4921,37 @@ at a practical n, modifying DSA in place is not worth doing however clean it is.
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521nf-xl-r5"}, "id": "c521nf-xl-r5-baseline", "probe": false}
 {"args": {"input_len": 4096, "output_len": 126976, "seed": 0}, "arm": "baseline", "client": "stream", "env": {"CHUNK": "512", "CTX": "135168", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "1", "MAMBA_SLOTS": "1", "MAX_REQS": "1", "MEM_FRAC": "0.96", "SGLANG_VESTIGEKV_BRANCH_Q": "0.75", "SGLANG_VESTIGEKV_CLOSE_BLOCK": "1024", "SGLANG_VESTIGEKV_KEPT_GROUPS": "32", "VK_JOB": "c521nf-xl-r6"}, "id": "c521nf-xl-r6-baseline", "probe": false}
 
+
+## The noise floor at n=6, and the experiment is viable
+
+    DSA baseline medians  10.814 / 10.879 / 10.881 / 10.865 / 10.875 / 10.865
+    DSA baseline tput     91.871 / 91.841 / 91.818 / 91.911 / 91.853 / 91.875
+
+    median ITL   n=6  mean 10.8632  sd 0.0251 ms (0.231%)  range 0.0674
+      effect -0.085 ms     MDE n=2 0.108  NOT resolvable
+                           MDE n=4 0.049  resolvable
+    throughput   n=6  mean 91.8617  sd 0.0322 tok/s (0.035%)  range 0.0938
+      effect +0.80 tok/s   MDE n=2 0.138  resolvable, 5.8x margin
+                           MDE n=4 0.063  resolvable, 12.7x margin
+
+**Throughput is the primary endpoint; median needs n>=4.** The baseline is
+already at n=6, so the modified arm needs 4 runs. (The t values used at n=4/6
+are conservative, so those MDEs are upper bounds.)
+
+Also worth recording: I read r1 as an outlier at n=3 and withdrew that at n=4.
+At n=6 the spread is distributed, sd 0.0251 ms -- r1 is the low draw of a real
+distribution, not a bad run. Do not re-read the tea leaves every check; set the
+criterion, collect the n, then decide.
+
+### Step 1's shape changed on an implementation fact
+
+The reference set cannot be DSA's emitted selection: `dst_token_indices` holds
+page-table-mapped PHYSICAL ROW ids, not group indices. The fix is clean -- the
+kernel holds the group list before mapping, so it writes a [B, 512] int32 side
+output that the next step reads as its reference set. Step one has no previous
+selection, so a -inf threshold overflows into DSA's own radix, which is the
+natural bootstrap.
+
+This makes the patch smaller than the tier-1 version AND removes the km mask:
+groups in the reference set SHOULD be allowed to fire again, unlike tier-1 kept
+rows which must be excluded from the fired set.
