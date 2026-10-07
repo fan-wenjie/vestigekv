@@ -5270,3 +5270,57 @@ memory/only-deleting-work-helps-here.
 holding through bs=8; spill eliminated through rho=0.99. The remaining ~0.9% to
 the 1.0147x ceiling needs the selection's WORK to shrink, and what is left is one
 pass over all G scores -- the irreducible part of the rule.
+
+## c521q-full: the quality half of the crossover, on the arm that crossed
+
+The latency claim is settled: **1.0058x end-to-end** (tput 92.421/92.414/92.426/
+92.318 against a DSA baseline of 91.8617 +- 0.0322 at n=6, 16.5 sigma), kernel
+2.1x DSA's rank top-k, spill eliminated through rho=0.99. The quality claim is
+not. The entire quality record of that arm is **one cell** -- `niah_multikey_3`
+@65536, n=50, `c521vk2-mk3` = 1.000 -- and `glm-line-order-and-paper-rule` gates
+GLM's inclusion on a crossover vs DSA, which a latency number alone does not
+establish.
+
+The full v1 `ruler` group HAS run on this line, but only at n=10 and only on arms
+that predate the fork: `ruler-*` and `rulerv0520*` carry no
+`SGLANG_DSA_VK_SELECT` key at all. Nothing comparable exists for the served
+selector.
+
+So: the full 13-task group, the default 5-length ladder, n=50, both arms.
+
+    {"args": {"lengths": "4096,8192,16384,32768,65536", "n": 50, "seed": 0}, "arm": "baseline", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DSA_VK_SELECT": "0", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521q-full-dsa"}, "id": "c521q-full-dsa", "probe": false}
+    {"args": {"lengths": "4096,8192,16384,32768,65536", "n": 50, "seed": 0}, "arm": "baseline", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "VK_JOB": "c521q-full-vk"}, "id": "c521q-full-vk", "probe": false}
+
+**Why this pair is the cleanest control this line has produced.** Both rows are
+`arm=baseline` -- the DSA arm -- on one tree (`glm53-v0521` at `b3ad8ee706`,
+clean) at one geometry, with `args` byte-identical. The only env keys that differ
+are `SGLANG_DSA_VK_SELECT` and `VK_JOB` (the latter only so the runner does not
+reuse a server and accumulate VKSTATS across the pair). The hook is a single
+early return at `dsa_indexer_kpool.py:1200`, so `SELECT=0` falls through to DSA's
+own `_kpool_fused_topk_mapping` and its radix top-k. There is no second chain, no
+sidecar, no per-layer split: the diff is which kernel picks the 512 groups, and
+nothing else. Every confound that made the earlier GLM arms arguable -- a
+different tree, a different budget, a sidecar index, group-mean dilution across
+arms measured months apart -- is absent by construction.
+
+**Acceptance, stated before the data.** Per-cell, paired, 65 cells per arm
+(13 tasks x 5 lengths). Not the group mean: `glm-quality-claim-did-not-replicate`
+is the record of a group mean hiding a 0.54-vs-1.00 collapse on one cell, so the
+mean is reported only alongside the cells and never instead of them. The read is
+"no cell regresses beyond the paired noise", and the deciding cells are the
+retrieval ones -- `niah_multikey_*`, `niah_multivalue`, `niah_multiquery` -- since
+`mrcr-is-blind-to-admission-width` and `fence-is-a-cost-guard-only` both record
+that the aggregate metrics on this line cannot see a selection change that the
+needle tasks resolve immediately.
+
+**A free self-replicate.** The vk row reproduces `c521vk2-mk3` exactly: same
+task, same length, same n, same seed, same tree. If `niah_multikey_3` @65536 comes
+back 1.000 a second time, that singleton becomes a pair, which is what Method
+rule 1 has demanded of every other number on this line. If it does not, that is
+the more valuable outcome and it invalidates the one quality figure quoted for
+this arm.
+
+**Cost.** The full group at n=10 took 3604 s (`rulerv0520-baseline`), so n=50 is
+~5 h per arm and ~10 h for the pair. The queue is empty and the GPUs are idle, so
+nothing is preempted. `check_builds.py` is clean for GLM -- its eight flagged runs
+are all Kimi jobs already retired.
