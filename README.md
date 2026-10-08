@@ -5594,3 +5594,44 @@ That is the whole reason this job runs before any fix.
 n=10 not 50: the counters accumulate over every layer-step of every request, so
 one job is thousands of observations per recency slot. This measures the rule, not
 the score.
+
+### c521rec-vk is VOID: the telemetry measured extend steps, not decode
+
+The instrument fired (154 `VKRECENCY` lines, all 11 full-attention layers, env
+confirmed in the server process) and reported **n=12 where thousands were
+expected**. That is how the bug announced itself -- an absurd number rather than a
+plausible one.
+
+`_vk_select_from_kpool_logits` keys its per-layer state `(layer_id, n_rows)`, and
+the counters lived in that per-state dict. Decode and extend carry different
+`n_rows`, so they got DIFFERENT accumulators. The readout can only run on an eager
+extend step, because a host read inside a capture is
+`cudaErrorStreamCaptureInvalidated` -- so it reported the EXTEND accumulator while
+decode's accumulated correctly inside the graph and were never read. The
+graph-safety reasoning was right and the scope was wrong, which is a reminder that
+verifying an instrument captures and accumulates says nothing about whether it is
+accumulating the steps you meant.
+
+Fixed in f0d77304ff: one accumulator per LAYER, on self. Verified that 25 decode
+calls at bs=4 through a different state dict add exactly 100 to the same counter
+and the next extend sees it.
+
+Its scores, recorded for completeness and NOT quoted as a result, since the arm
+also carries the telemetry's extra passes: `ruler_cwe {'4096': 0.91, '65536':
+0.61}`, `niah_multikey_3 {'4096': 1.0, '65536': 1.0}`. The 0.61 sits below the
+five-draw vk range (0.702-0.784) and n=10 here against n=50 there, so it is not
+comparable and is not evidence of anything.
+
+**A second flaw in the same design, caught before it could mislead.** The counters
+are cumulative over a run and lm-eval interleaves the whole ladder into ONE request
+stream, so a job carrying both 4096 and 65536 mixes them into the same accumulator
+and erases exactly the dose-response the job exists to measure. Re-queued as two
+single-length jobs instead of bucketing inside the hot path:
+
+    {"args": {"lengths": "4096", "n": 10, "seed": 0, "tasks": "ruler_cwe,niah_multikey_3"}, "arm": "baseline", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "SGLANG_DSA_VK_SELECT_TELEMETRY": "1", "VK_JOB": "c521rec2-4k-vk"}, "id": "c521rec2-4k-vk", "probe": false}
+    {"args": {"lengths": "65536", "n": 10, "seed": 0, "tasks": "ruler_cwe,niah_multikey_3"}, "arm": "baseline", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "SGLANG_DSA_VK_SELECT_TELEMETRY": "1", "VK_JOB": "c521rec2-64k-vk"}, "id": "c521rec2-64k-vk", "probe": false}
+
+The read stands as registered: `sel_frac` low with `dsa_frac` high at 64k, both
+high at 4k, confirms starvation and the exemption is the fix. Both low means recent
+rows genuinely do not score well, the rule is not at fault, and the exemption and
+the length-segmented design would both be built on a refuted mechanism.
