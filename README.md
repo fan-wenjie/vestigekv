@@ -5490,3 +5490,56 @@ register and a memory.
 Side result, free: `niah_multikey_3` @65536 reads 1.000 for the third independent
 time on the vk arm (`c521vk2-mk3`, `c521q-full-vk`, `c521cwe-b2048-vk`). The
 needle cell is solid; it is the aggregate that moves.
+
+### cwe: the cause is self-output starvation, not coverage -- and my earlier mechanism was wrong
+
+Measured from the per-sample responses already on disk, both arms, n=50/cell:
+
+    len    arm   score  items  dup items  docs w/dup  docs w/derail
+   4096    dsa   1.000   3.42      0.48      3/50          2/50
+   4096    vk    0.998   2.70      0.58      4/50          0/50
+  16384    dsa   1.000   6.68      0.46      5/50          3/50
+  16384    vk    0.938   6.18      0.30      4/50         16/50
+  65536    dsa   0.960   8.32      1.28      9/50          5/50
+  65536    vk    0.758   7.94      2.36     26/50         18/50
+
+**vk finds the right words and cannot remember which it has already said.** A
+paired sample: DSA enumerates ten distinct correct words; vk gets eight, then
+emits `9. shrimp (already counted) 10. shrimp (already counted) Wait, I need to
+recount properly.` By position in the arm's own list, vk is 1.000 through item 6
+then 0.900 / 0.800 / 0.500 at items 7/8/9, while DSA is flat. Item counts are
+comparable (7.94 vs 8.32), so it is not generating less -- it is derailing.
+
+**Mechanism.** To avoid repeating itself the model must attend to its own just-
+generated tokens: the newest and fewest rows in the cache, against a 64k prompt.
+The carried threshold is the previous selection's minimum, and that selection is
+dominated by high-scoring PROMPT rows. So the self-output rows must clear a cut
+calibrated on the prompt's distribution, and are systematically not selected. DSA
+re-ranks exactly every step, so self-output competes on current score. The length
+dependence follows exactly: at 4k the budget is 50% of the sequence and
+self-output is selected anyway (ZERO excess derailment, 0/50 vs DSA's 2/50); at
+16k it is 12.5% (16/50); at 64k it is 3.1% (18/50).
+
+**Two corrections to what this register already says.**
+
+1. The "aggregation / broad coverage" mechanism recorded above is WRONG. All ten
+   target words occur exactly 30 times against 3430 distractors at exactly 3 --
+   a 10x margin, not a tight ranking -- and vk surfaces them. Nothing about
+   covering a flat target is at issue. cwe is simply the only v1 task requiring
+   SUSTAINED MULTI-ITEM OUTPUT, which is why it is the only task that moves.
+2. This is the same failure as mrcr-copy-derailment ("the real weakness is
+   sustained verbatim copying, not needle lookup; every retrieval test in the
+   paper is blind to it"). The two findings are one finding.
+
+It also explains why the recall evidence never fit. Recall against the top-2048 is
+~0.91 and FLAT in context (measured, and reproduced by a CPU model of the rule
+across a 32x range of G) -- correct, and irrelevant, because the failure is not in
+prompt retrieval. The starved rows are the self-output rows, which a prompt-only
+recall metric cannot see.
+
+**Not yet confirmed.** The decisive instrument is telemetry on whether the newest
+generated rows clear the carried threshold. The evidence here is output analysis
+-- 2.9x duplication, 3.6x derailment, positional decay, zero excess at 4k --
+which is strong but indirect. If it holds, the fix is structural and cheap: exempt
+the newest rows from the threshold, which is what DSA's exact re-rank gives for
+free and what a one-step-stale cut cannot.
