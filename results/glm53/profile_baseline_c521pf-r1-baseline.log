@@ -1,0 +1,3 @@
+ctx36k: profile started at #token=35900 (Start profiling.); waiting for the trace
+ctx36k: trace written after 10s: /home/user/vestigekv-glm/results/glm53/profile/c521pf-r1-baseline/ctx36k-TP-0.trace.json.gz
+generation finished: {'decoded': 35016, 'wall_s': 401.47874116897583}

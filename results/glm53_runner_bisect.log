@@ -1,0 +1,3 @@
+[16:25:29] server vestigekv env={'CHUNK': '1024', 'CTX': '73728', 'ENGINE': '/home/user/vestigekv-wt/engine-glm521', 'GRAPH_BS': '4', 'MAMBA_SLOTS': '4', 'MAX_REQS': '4', 'MEM_FRAC': '0.955', 'SGLANG_VESTIGEKV_BRANCH_Q': '0.75'} args=[] launching -> /home/user/vestigekv-glm/results/glm53/server_vestigekv_c521b1-revkernel-mk3.log
+[16:26:59] server vestigekv FAILED: ["AttributeError: 'VestigeKVRows' object has no attribute 'tiers'", "AttributeError: 'VestigeKVRows' object has no attribute 'tiers'"]
+[16:27:01] queue empty; exiting

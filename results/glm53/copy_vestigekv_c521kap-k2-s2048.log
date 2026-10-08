@@ -1,0 +1,26 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[transformers] You are using a model of type `glm5_next` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+corpus: 1197 passages; ctx=65536 span=2048w pos=0.8 n=20 seed=0
+[1/20] prompt=65206 lead=1.000 (2048w) bag=1.000 num=1.0 src=content
+[2/20] prompt=65125 lead=1.000 (2048w) bag=1.000 num=1.0 src=reasoning
+[3/20] prompt=65176 lead=0.001 (3w) bag=1.000 num=1.0 src=reasoning
+[4/20] prompt=65221 lead=0.058 (118w) bag=1.000 num=1.0 src=reasoning
+[5/20] prompt=65246 lead=0.003 (7w) bag=1.000 num=1.0 src=reasoning
+[6/20] prompt=65200 lead=1.000 (2048w) bag=1.000 num=1.0 src=content
+[7/20] prompt=65155 lead=1.000 (2048w) bag=1.000 num=1.0 src=content
+[8/20] prompt=65073 lead=1.000 (2048w) bag=1.000 num=1.0 src=reasoning
+[9/20] prompt=65212 lead=1.000 (2048w) bag=1.000 num=1.0 src=reasoning
+[10/20] prompt=65093 lead=0.002 (5w) bag=1.000 num=1.0 src=reasoning
+[11/20] prompt=65124 lead=0.963 (1973w) bag=0.963 num=0.9762931034482759 src=content
+[12/20] prompt=65136 lead=0.002 (4w) bag=1.000 num=1.0 src=reasoning
+[13/20] prompt=65138 lead=1.000 (2048w) bag=1.000 num=1.0 src=reasoning
+[14/20] prompt=65408 lead=0.996 (2040w) bag=0.996 num=0.9879807692307693 src=content
+[15/20] prompt=65136 lead=1.000 (2048w) bag=1.000 num=1.0 src=content
+[16/20] prompt=65212 lead=0.004 (8w) bag=1.000 num=1.0 src=reasoning
+[17/20] prompt=65160 lead=0.001 (3w) bag=1.000 num=1.0 src=reasoning
+[18/20] prompt=65058 lead=1.000 (2048w) bag=1.000 num=1.0 src=content
+[19/20] prompt=65194 lead=1.000 (2048w) bag=1.000 num=1.0 src=content
+[20/20] prompt=65149 lead=1.000 (2048w) bag=1.000 num=1.0 src=content
+
+COPY n=20 ctx=65536 span=2048 lead=0.6516 bag=0.9980 num=0.9982 wall=1503s
+wrote /home/user/vestigekv-glm/results/glm53/copy/c521kap-k2-s2048.json

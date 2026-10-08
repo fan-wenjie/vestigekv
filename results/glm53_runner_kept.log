@@ -1,0 +1,7 @@
+[13:18:54] server vestigekv env={'CHUNK': '512', 'CTX': '135168', 'ENGINE': '/home/user/vestigekv-wt/engine-glm521', 'GRAPH_BS': '1', 'MAMBA_SLOTS': '1', 'MAX_REQS': '1', 'MEM_FRAC': '0.95', 'SGLANG_DEBUG_VESTIGEKV_STATS': '1', 'SGLANG_VESTIGEKV_BRANCH_Q': '0.75'} args=[] launching -> /home/user/vestigekv-glm/results/glm53/server_vestigekv_c521k-smoke.log
+[13:20:34] server vestigekv ready: ['[2026-10-04 13:20:25 TP0] max_total_num_tokens=78784, chunked_prefill_size=512, max_prefill_tokens=16384, max_running_requests=1, context_len=135168, available_gpu_mem=3.35 GB'] ['[2026-10-04 13:20:17 TP0] VestigeKV: recall_capacity=2048 overflow_fallback=True activation_min_tokens=0 index_rank=64 recall_margin=0.0 recall_threshold=max prefill_calibration=False']
+[13:20:38] prewarm: 11264-token prefill ok in 4.2s
+[13:20:38] client stream for c521k-smoke: /home/user/.conda/envs/sglang-dev/bin/python -m sglang.benchmark.serving --backend sglang --model nvidia/GLM-5.3-Flash-NVFP4 --port 30000 --num-prompts 1 --dataset-name random --random-input-len 32768 --random-output-len 256 --random-range-ratio 1 --max-concurrency 1 --warmup-requests 0 --output-details --output-file /home/user/vestigekv-glm/results/glm53/latency_stream_32k-256_vestigekv_stats_c521k-smoke.jsonl --seed 0 -> /home/user/vestigekv-glm/results/glm53/stream_vestigekv_c521k-smoke.log
+[13:21:03] c521k-smoke done rc=0 wall=129s
+[13:21:03] pack: 0 packed, 94 skipped  |  0.0 MB -> 0.0 MB (0x)
+[13:21:03] queue empty; exiting

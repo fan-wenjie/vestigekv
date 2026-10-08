@@ -1,0 +1,25 @@
+[transformers] You are using a model of type `glm5_next` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+corpus: 1197 passages; ctx=65536 span=1024w pos=0.5 n=20 seed=0
+[1/20] prompt=65039 lead=0.010 (10w) bag=1.000 num=1.0 src=reasoning
+[2/20] prompt=65110 lead=0.623 (638w) bag=0.623 num=0.6363636363636364 src=content
+[3/20] prompt=65056 lead=0.499 (511w) bag=0.499 num=0.5167464114832536 src=content
+[4/20] prompt=65083 lead=0.115 (118w) bag=1.000 num=1.0 src=reasoning
+[5/20] prompt=65069 lead=0.568 (582w) bag=0.568 num=0.5660377358490566 src=content
+[6/20] prompt=65308 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[7/20] prompt=65074 lead=1.000 (1024w) bag=1.000 num=1.0 src=reasoning
+[8/20] prompt=65064 lead=1.000 (1024w) bag=1.000 num=1.0 src=reasoning
+[9/20] prompt=65068 lead=0.039 (40w) bag=1.000 num=1.0 src=reasoning
+[10/20] prompt=65079 lead=1.000 (1024w) bag=1.000 num=1.0 src=reasoning
+[11/20] prompt=65056 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[12/20] prompt=65091 lead=0.743 (761w) bag=0.744 num=0.7450199203187251 src=content
+[13/20] prompt=65092 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[14/20] prompt=65366 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[15/20] prompt=65092 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[16/20] prompt=65121 lead=0.008 (8w) bag=0.997 num=0.9926739926739927 src=reasoning
+[17/20] prompt=65103 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[18/20] prompt=65100 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[19/20] prompt=65185 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[20/20] prompt=65183 lead=1.000 (1024w) bag=1.000 num=1.0 src=reasoning
+
+COPY n=20 ctx=65536 span=1024 lead=0.7303 bag=0.9216 num=0.9228 wall=1006s
+wrote /home/user/vestigekv-glm/results/glm53/copy/c521kap-k2-s1024-rep.json

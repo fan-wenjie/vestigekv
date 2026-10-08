@@ -1,0 +1,13 @@
+[21:47:15] server vestigekv env={'CHUNK': '1024', 'CTX': '73728', 'ENGINE': '/home/user/vestigekv-wt/engine-glm521', 'GRAPH_BS': '1', 'MAMBA_SLOTS': '1', 'MAX_REQS': '1', 'MEM_FRAC': '0.955', 'SGLANG_VESTIGEKV_BRANCH_Q': '0.75', 'VK_JOB': 'c521lb-same-r1'} args=[] launching -> /home/user/vestigekv-glm/results/glm53/server_vestigekv_c521lb-same-r1.log
+[21:49:05] server vestigekv ready: ['[2026-10-04 21:48:54 TP0] max_total_num_tokens=118464, chunked_prefill_size=1024, max_prefill_tokens=16384, max_running_requests=1, context_len=73728, available_gpu_mem=2.84 GB'] ['[2026-10-04 21:48:46 TP0] VestigeKV: recall_capacity=2048 overflow_fallback=True activation_min_tokens=0 index_rank=64 recall_margin=0.0 recall_threshold=max prefill_calibration=False']
+[21:49:09] prewarm: 11264-token prefill ok in 3.8s
+[21:49:09] client longbench1 for c521lb-same-r1: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv-glm/mexp/kimi/run_longbench1.py --arm vestigekv --port 30000 --model nvidia/GLM-5.3-Flash-NVFP4 --out /home/user/vestigekv-glm/results/glm53/longbench1 --subsets multi_news --max-length 65536 -> /home/user/vestigekv-glm/results/glm53/longbench1_vestigekv_c521lb-same-r1.log
+[22:11:47] c521lb-same-r1 done rc=0 wall=1472s
+[22:11:47] pack: 0 packed, 108 skipped  |  0.0 MB -> 0.0 MB (0x)
+[22:11:57] server vestigekv env={'CHUNK': '1024', 'CTX': '73728', 'ENGINE': '/home/user/vestigekv-wt/engine-glm521', 'GRAPH_BS': '1', 'MAMBA_SLOTS': '1', 'MAX_REQS': '1', 'MEM_FRAC': '0.955', 'SGLANG_VESTIGEKV_BRANCH_Q': '0.75', 'VK_JOB': 'c521lb-same-r2'} args=[] launching -> /home/user/vestigekv-glm/results/glm53/server_vestigekv_c521lb-same-r2.log
+[22:13:37] server vestigekv ready: ['[2026-10-04 22:13:30 TP0] max_total_num_tokens=118464, chunked_prefill_size=1024, max_prefill_tokens=16384, max_running_requests=1, context_len=73728, available_gpu_mem=2.84 GB'] ['[2026-10-04 22:13:23 TP0] VestigeKV: recall_capacity=2048 overflow_fallback=True activation_min_tokens=0 index_rank=64 recall_margin=0.0 recall_threshold=max prefill_calibration=False']
+[22:13:41] prewarm: 11264-token prefill ok in 3.7s
+[22:13:41] client longbench1 for c521lb-same-r2: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv-glm/mexp/kimi/run_longbench1.py --arm vestigekv --port 30000 --model nvidia/GLM-5.3-Flash-NVFP4 --out /home/user/vestigekv-glm/results/glm53/longbench1 --subsets multi_news --max-length 65536 -> /home/user/vestigekv-glm/results/glm53/longbench1_vestigekv_c521lb-same-r2.log
+[22:34:12] c521lb-same-r2 done rc=0 wall=1345s
+[22:34:12] pack: 0 packed, 108 skipped  |  0.0 MB -> 0.0 MB (0x)
+[22:34:12] queue empty; exiting

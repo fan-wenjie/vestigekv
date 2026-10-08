@@ -5391,3 +5391,56 @@ every non-4k sample, which yielded an impossible mean of -0.600.
 1.0058x end-to-end comes with -0.202 at 64k on an aggregation task. The defensible
 claim is a speed/quality trade with a workload dependence, not a free win over
 DSA. Whether that is worth the paper is the user's call, not a measurement.
+
+## c521cwe: the budget sweep, and why it cannot answer the question as posed
+
+The ask was "sweep the budget, see whether the 0.202 comes back". Reading the
+code first changed what that can mean, so the design changed with it.
+
+**index_topk is the selection budget AND the attention row count.** The same
+number: `vk_dsa_select` derives `group_topk = topk // pool_size` and sizes its
+output `(rows, topk + tail)` from it, and `topk` is `self.index_topk` straight
+from model config. So at the served 2048 **vk and DSA already select the same 512
+groups over the same 2048 rows**. The measured gap (ruler_cwe @64k: dsa 0.960, vk
+0.758) is therefore a selection-ACCURACY deficit at matched cost, not a budget
+deficit -- the carried threshold's set drifts from the true top-512 and that drift
+costs 0.202. Raising vk's budget above 2048 lets it read more rows than DSA, which
+forfeits the comparison rather than winning it.
+
+So the sweep is worth running, but only with **a matched DSA control at every
+budget**: a vk arm at one budget against a DSA arm at another is not a pair,
+because the row count confounds the selector. Five jobs, in this order:
+
+    c521cwe-b2048-vk    SELECT=1  budget 2048  drift control, must reproduce 0.758
+    c521cwe-b4096-vk    SELECT=1  budget 4096  the decisive arm
+    c521cwe-b4096-dsa   SELECT=0  budget 4096  its matched control
+    c521cwe-b1024-vk    SELECT=1  budget 1024
+    c521cwe-b1024-dsa   SELECT=0  budget 1024
+
+Each runs `ruler_cwe,niah_multikey_3` at 65536, n=50, seed 0, geometry identical
+to `c521q-full`. Budget 2048 gets one arm because both halves are already measured
+(0.960 / 0.758); that job exists to show the harness reproduces them.
+
+`niah_multikey_3` rides along as the **plumbing check, not a second signal**.
+Overriding index_topk changes how many rows attention reads, and
+byte-counters-cannot-see-wrong-rows is this surface's record of a row-addressing
+change that reproduced every counter while attention read the trash slot. If the
+override breaks addressing, multikey collapses from its 1.000 and the cwe number
+from that job is void rather than interesting.
+
+**What each outcome means, stated before the data.**
+
+  - vk@4096 recovers cwe toward 0.96 -> the deficit is coverage, and the result is
+    an exchange rate: 2x the rows buys back 0.202. Since the whole latency prize
+    is a 1.45% term, 2x the rows certainly inverts the 1.0058x, so this would
+    establish the trade's price, not a fix.
+  - vk@4096 does NOT recover -> budget is the wrong lever entirely and the
+    reference-set rule is structurally wrong for a flat target. That is the more
+    useful answer and it closes the line.
+  - dsa@1024 collapses alongside vk@1024 -> cwe is simply row-hungry near 2048
+    and part of the gap is the task's sensitivity to row count, not the selector.
+
+Ordered so the decisive arm lands second: if DSA's own radix turns out not to
+support topk=4096 (its kernel is templated on K and 4096 was never built), that
+job fails and I still have vk@4096, with the control missing rather than the
+question unanswered.

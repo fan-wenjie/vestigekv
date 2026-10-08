@@ -1,0 +1,14 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[transformers] You are using a model of type `glm5_next` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+multi_news 1/200 6s
+multi_news 21/200 127s
+multi_news 41/200 250s
+multi_news 61/200 375s
+multi_news 81/200 497s
+multi_news 101/200 620s
+multi_news 121/200 742s
+multi_news 141/200 865s
+multi_news 161/200 987s
+multi_news 181/200 1107s
+multi_news 200/200 1221s
+{"multi_news": {"n": 200, "truncated": 0, "max_gen": 512, "wall_s": 1221, "tokens_max": 13967, "pred": "/home/user/vestigekv-glm/results/glm53/longbench1/c521lb-same-r3/pred_vestigekv_multi_news.jsonl"}}

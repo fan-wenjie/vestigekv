@@ -1,0 +1,26 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[transformers] You are using a model of type `glm5_next` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+corpus: 1197 passages; ctx=32768 span=384w pos=0.1 n=20 seed=0
+[1/20] prompt=32652 lead=0.138 (53w) bag=0.159 num=0.0380952380952381 src=content
+[2/20] prompt=32561 lead=0.055 (21w) bag=0.995 num=1.0 src=reasoning
+[3/20] prompt=32528 lead=0.180 (69w) bag=0.549 num=0.34177215189873417 src=reasoning
+[4/20] prompt=32632 lead=0.188 (72w) bag=0.831 num=0.7333333333333333 src=reasoning
+[5/20] prompt=32569 lead=0.174 (67w) bag=0.544 num=0.367816091954023 src=reasoning
+[6/20] prompt=32661 lead=0.172 (66w) bag=0.240 num=0.14 src=reasoning
+[7/20] prompt=32581 lead=0.000 (0w) bag=0.000 num=0.0 src=content
+[8/20] prompt=32626 lead=0.292 (112w) bag=0.737 num=0.6354166666666666 src=reasoning
+[9/20] prompt=32525 lead=0.081 (31w) bag=1.000 num=1.0 src=reasoning
+[10/20] prompt=32626 lead=0.513 (197w) bag=0.997 num=1.0 src=reasoning
+[11/20] prompt=32554 lead=0.133 (51w) bag=0.604 num=0.4430379746835443 src=reasoning
+[12/20] prompt=32648 lead=0.534 (205w) bag=0.828 num=0.8125 src=reasoning
+[13/20] prompt=32530 lead=0.383 (147w) bag=0.773 num=0.8229166666666666 src=reasoning
+[14/20] prompt=32620 lead=0.281 (108w) bag=1.000 num=1.0 src=reasoning
+[15/20] prompt=32585 lead=0.112 (43w) bag=0.779 num=0.7846153846153846 src=reasoning
+[16/20] prompt=32538 lead=0.323 (124w) bag=0.828 num=0.8691588785046729 src=reasoning
+[17/20] prompt=32680 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[18/20] prompt=32509 lead=0.000 (0w) bag=0.000 num=0.0 src=content
+[19/20] prompt=32518 lead=0.008 (3w) bag=0.510 num=0.3614457831325301 src=reasoning
+[20/20] prompt=32528 lead=0.396 (152w) bag=0.807 num=0.7297297297297297 src=reasoning
+
+COPY n=20 ctx=32768 span=384 lead=0.2480 bag=0.6591 num=0.6040 wall=947s
+wrote /home/user/vestigekv-glm/results/glm53/copy/c521cpx-cp50.json

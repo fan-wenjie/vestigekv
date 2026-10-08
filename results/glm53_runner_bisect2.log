@@ -1,0 +1,7 @@
+[16:47:45] server vestigekv env={'CHUNK': '1024', 'CTX': '73728', 'ENGINE': '/home/user/vestigekv-wt/engine-glm521', 'GRAPH_BS': '4', 'MAMBA_SLOTS': '4', 'MAX_REQS': '4', 'MEM_FRAC': '0.955', 'SGLANG_VESTIGEKV_BRANCH_Q': '0.75'} args=[] launching -> /home/user/vestigekv-glm/results/glm53/server_vestigekv_c521b1-revkernel2-mk3.log
+[16:49:30] server vestigekv ready: ['[2026-10-04 16:49:21 TP0] max_total_num_tokens=101056, chunked_prefill_size=1024, max_prefill_tokens=16384, max_running_requests=4, context_len=73728, available_gpu_mem=2.75 GB'] ['[2026-10-04 16:49:06 TP0] VestigeKV: recall_capacity=2048 overflow_fallback=True activation_min_tokens=0 index_rank=64 recall_margin=0.0 recall_threshold=max prefill_calibration=False']
+[16:49:34] prewarm: 11264-token prefill ok in 3.6s
+[16:49:34] client ruler for c521b1-revkernel2-mk3: /home/user/.conda/envs/sglang-dev/bin/python /home/user/vestigekv-glm/mexp/glm53/run_ruler.py --arm vestigekv --port 30000 --model nvidia/GLM-5.3-Flash-NVFP4 --n 50 --out /home/user/vestigekv-glm/results/glm53/ruler --lengths 65536 --tasks niah_multikey_3 --seed 0 --tag c521b1-revkernel2-mk3 -> /home/user/vestigekv-glm/results/glm53/ruler_vestigekv_c521b1-revkernel2-mk3.log
+[16:59:15] c521b1-revkernel2-mk3 done rc=0 wall=689s
+[16:59:15] pack: 0 packed, 105 skipped  |  0.0 MB -> 0.0 MB (0x)
+[16:59:15] queue empty; exiting

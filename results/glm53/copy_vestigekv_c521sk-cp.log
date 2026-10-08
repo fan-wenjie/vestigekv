@@ -1,0 +1,26 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[transformers] You are using a model of type `glm5_next` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+corpus: 1197 passages; ctx=32768 span=384w pos=0.1 n=20 seed=0
+[1/20] prompt=32652 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[2/20] prompt=32561 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[3/20] prompt=32528 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[4/20] prompt=32632 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[5/20] prompt=32569 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[6/20] prompt=32661 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[7/20] prompt=32581 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[8/20] prompt=32626 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[9/20] prompt=32525 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[10/20] prompt=32626 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[11/20] prompt=32554 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[12/20] prompt=32648 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[13/20] prompt=32530 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[14/20] prompt=32620 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[15/20] prompt=32585 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[16/20] prompt=32538 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[17/20] prompt=32680 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[18/20] prompt=32509 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[19/20] prompt=32518 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+[20/20] prompt=32528 lead=1.000 (384w) bag=1.000 num=1.0 src=content
+
+COPY n=20 ctx=32768 span=384 lead=1.0000 bag=1.0000 num=1.0000 wall=458s
+wrote /home/user/vestigekv-glm/results/glm53/copy/c521sk-cp.json

@@ -1,0 +1,26 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[transformers] You are using a model of type `glm5_next` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+corpus: 1197 passages; ctx=65536 span=1024w pos=0.5 n=20 seed=0
+[1/20] prompt=65039 lead=0.006 (6w) bag=1.000 num=1.0 src=reasoning
+[2/20] prompt=65110 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[3/20] prompt=65056 lead=1.000 (1024w) bag=1.000 num=1.0 src=reasoning
+[4/20] prompt=65083 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[5/20] prompt=65069 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[6/20] prompt=65308 lead=0.607 (622w) bag=0.607 num=0.669260700389105 src=content
+[7/20] prompt=65074 lead=0.510 (522w) bag=0.510 num=0.5825688073394495 src=content
+[8/20] prompt=65064 lead=1.000 (1024w) bag=1.000 num=1.0 src=reasoning
+[9/20] prompt=65068 lead=0.329 (337w) bag=0.329 num=0.33064516129032256 src=content
+[10/20] prompt=65079 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[11/20] prompt=65056 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[12/20] prompt=65091 lead=0.576 (590w) bag=0.576 num=0.5298804780876494 src=content
+[13/20] prompt=65092 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[14/20] prompt=65366 lead=1.000 (1024w) bag=1.000 num=1.0 src=content
+[15/20] prompt=65092 lead=0.004 (4w) bag=1.000 num=1.0 src=reasoning
+[16/20] prompt=65121 lead=0.605 (620w) bag=0.605 num=0.608058608058608 src=content
+[17/20] prompt=65103 lead=0.692 (709w) bag=0.692 num=0.7377777777777778 src=content
+[18/20] prompt=65100 lead=0.701 (718w) bag=0.701 num=0.6981981981981982 src=content
+[19/20] prompt=65185 lead=0.474 (485w) bag=0.474 num=0.48770491803278687 src=content
+[20/20] prompt=65183 lead=1.000 (1024w) bag=1.000 num=1.0 src=reasoning
+
+COPY n=20 ctx=65536 span=1024 lead=0.7252 bag=0.8248 num=0.8322 wall=1022s
+wrote /home/user/vestigekv-glm/results/glm53/copy/c521kap-k2-s1024.json

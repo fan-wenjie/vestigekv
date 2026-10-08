@@ -1,0 +1,10 @@
+[13:22:56] server vestigekv env={'CHUNK': '512', 'CTX': '135168', 'ENGINE': '/home/user/vestigekv-wt/engine-glm521', 'GRAPH_BS': '1', 'MAMBA_SLOTS': '1', 'MAX_REQS': '1', 'MEM_FRAC': '0.95', 'SGLANG_DEBUG_VESTIGEKV_STATS': '1', 'SGLANG_VESTIGEKV_BRANCH_Q': '0.75'} args=[] launching -> /home/user/vestigekv-glm/results/glm53/server_vestigekv_c521tail-30720.log
+[13:24:31] server vestigekv ready: ['[2026-10-04 13:24:24 TP0] max_total_num_tokens=78784, chunked_prefill_size=512, max_prefill_tokens=16384, max_running_requests=1, context_len=135168, available_gpu_mem=3.35 GB'] ['[2026-10-04 13:24:17 TP0] VestigeKV: recall_capacity=2048 overflow_fallback=True activation_min_tokens=0 index_rank=64 recall_margin=0.0 recall_threshold=max prefill_calibration=False']
+[13:24:36] prewarm: 11264-token prefill ok in 4.2s
+[13:24:36] client stream for c521tail-30720: /home/user/.conda/envs/sglang-dev/bin/python -m sglang.benchmark.serving --backend sglang --model nvidia/GLM-5.3-Flash-NVFP4 --port 30000 --num-prompts 1 --dataset-name random --random-input-len 30720 --random-output-len 256 --random-range-ratio 1 --max-concurrency 1 --warmup-requests 0 --output-details --output-file /home/user/vestigekv-glm/results/glm53/latency_stream_30k-256_vestigekv_stats_c521tail-30720.jsonl --seed 0 -> /home/user/vestigekv-glm/results/glm53/stream_vestigekv_c521tail-30720.log
+[13:25:00] c521tail-30720 done rc=0 wall=123s
+[13:25:00] pack: 0 packed, 95 skipped  |  0.0 MB -> 0.0 MB (0x)
+[13:25:00] client stream for c521tail-32764: /home/user/.conda/envs/sglang-dev/bin/python -m sglang.benchmark.serving --backend sglang --model nvidia/GLM-5.3-Flash-NVFP4 --port 30000 --num-prompts 1 --dataset-name random --random-input-len 32764 --random-output-len 256 --random-range-ratio 1 --max-concurrency 1 --warmup-requests 0 --output-details --output-file /home/user/vestigekv-glm/results/glm53/latency_stream_31k-256_vestigekv_stats_c521tail-32764.jsonl --seed 0 -> /home/user/vestigekv-glm/results/glm53/stream_vestigekv_c521tail-32764.log
+[13:25:26] c521tail-32764 done rc=0 wall=26s
+[13:25:26] pack: 0 packed, 96 skipped  |  0.0 MB -> 0.0 MB (0x)
+[13:25:26] queue empty; exiting
