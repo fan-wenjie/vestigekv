@@ -5635,3 +5635,58 @@ The read stands as registered: `sel_frac` low with `dsa_frac` high at 64k, both
 high at 4k, confirms starvation and the exemption is the fix. Both low means recent
 rows genuinely do not score well, the rule is not at fault, and the exemption and
 the length-segmented design would both be built on a refuted mechanism.
+
+## c521rec3: the mechanism is CONFIRMED -- recent rows are starved, and it scales
+
+Decode CUDA graphs disabled (`--cuda-graph-backend-decode=disabled`) so every
+decode step runs the Python readout; graphs change WHEN the rule is evaluated,
+not WHAT it decides. n ~2460-2493 observations per layer per length.
+
+    deficit = dsa_frac - sel_frac
+    (an exact rank top-k WOULD have selected this recent group, on this step,
+     from this score row -- and the carried threshold did not)
+
+              j=0(newest)   j=1      j=2      j=3  ...  j=7
+      4k        +0.089    +0.087   +0.074   +0.068      +0.047
+     64k        +0.165    +0.180   +0.172   +0.172      +0.147
+                  1.8x      2.1x                          3.1x
+
+    worst layers at 64k, newest group:
+      layer  7   sel 0.423  vs  dsa 0.769   deficit +0.346
+      layer 35   sel 0.655  vs  dsa 0.886   deficit +0.231
+      layer 39   sel 0.720  vs  dsa 0.937   deficit +0.217
+
+The registered read was "sel_frac low AND dsa_frac high at 64k, both high at 4k
+-> starvation confirmed, the exemption is the fix". That is what the data says,
+and the dose-response matches the derailment counts (0/50 at 4k, 18/50 at 64k).
+
+**Three corrections to the prediction, from the data.**
+
+1. The 4k deficit is NOT zero (+0.089) even though excess derailment there was
+   zero. So ~9% under-selection of recent rows is tolerable and ~17% is not --
+   a threshold effect, not an on/off.
+2. The deficit is BROAD across the whole 32-token window (+0.147 to +0.180 at
+   64k), not concentrated on the newest group. The fix is a WINDOW exemption,
+   not "exempt the last group".
+3. `dsa_frac` is itself below 1.0 at 64k on several layers (0.769 on layer 7),
+   so the DEFICIT is the right statistic; raw `sel_frac` would have been read as
+   a much bigger failure than it is. This is why the within-run exact-rank
+   control was worth building rather than comparing against a second arm.
+
+**A flaw in my own instrument:** `mean_margin` reads +inf everywhere, because a
+bootstrap step carries thr=-inf and poisons the sum. The three fractions are
+unaffected and are what the conclusion rests on. If the margin is ever wanted,
+it needs a median or an -inf exclusion.
+
+**Layer 7 is an outlier at both lengths** (deficit +0.233 at 4k, +0.346 at 64k,
+against means of +0.089 and +0.165). per-layer-behaviour-is-data-not-weights
+says not to build a load-time policy on that, but it does mean a uniform window
+is leaving the worst layer under-served.
+
+**The indicated fix, with its cost.** Exempt the newest W groups from the
+threshold -- include them unconditionally, which is what DSA's exact re-rank
+gives for free and a one-step-stale cut structurally cannot. At W=8 that is 32
+rows against the 2048 budget, 1.6%, and it touches neither the O(G) compare pass
+nor the emit, so the 1.0058x is untouched by construction. The acceptance is the
+cwe cell against the five-draw vk range 0.702-0.784 and DSA's 0.920-0.960, plus
+a multikey draw to show the needle did not regress.

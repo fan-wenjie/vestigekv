@@ -1,0 +1,28 @@
+{
+  "results": {
+    "ruler_cwe": {
+      "name": "ruler_cwe",
+      "alias": "ruler_cwe",
+      "sample_len": 10,
+      "4096,none": 0.9099999999999999,
+      "4096_stderr,none": "N/A"
+    },
+    "niah_multikey_3": {
+      "name": "niah_multikey_3",
+      "alias": "niah_multikey_3",
+      "sample_len": 10,
+      "4096,none": 1.0,
+      "4096_stderr,none": "N/A"
+    }
+  },
+  "wall_s": 242.34014773368835,
+  "n_per_cell": 10,
+  "lengths": [
+    4096
+  ],
+  "tasks": [
+    "ruler_cwe",
+    "niah_multikey_3"
+  ],
+  "seed": 0
+}
