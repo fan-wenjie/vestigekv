@@ -5444,3 +5444,49 @@ Ordered so the decisive arm lands second: if DSA's own radix turns out not to
 support topk=4096 (its kernel is templated on K and 4096 was never built), that
 job fails and I still have vk@4096, with the control missing rather than the
 question unanswered.
+
+### c521cwe: four arms blocked by the kernel package, and the drift control earned its keep
+
+**Blocked.** The four non-2048 budget arms failed at server start. The override
+itself worked -- the server log carries `SGLANG_DSA_INDEX_TOPK=1024 overrides
+index_topk=2048` on both TP ranks -- but the installed `sgl_kernel/top_k.py`
+asserts `topk == 2048` at all three entry points (`fast_topk_v2:36`,
+`fast_topk_transform_fused:71`, `:141`), so `SGLANG_DSA_FUSE_TOPK=0` is no escape
+either. The call that trips it is `_full_topk_for_short_sequence`, which never
+reaches the vk hook: for a sequence shorter than the budget it feeds ALL-ZERO
+logits to `topk_transform` and uses the op as a **page-table mapper**, not a
+selector. Replacing it means reimplementing DSA's own ragged `row_starts` mapping
+on the baseline's path -- the exact silent-wrong-row class that
+byte-counters-cannot-see-wrong-rows records -- to measure a budget nobody serves.
+Marked `skip` with that reason rather than forced. The budget axis is closed on
+this kernel package; reopening it needs a non-asserting mapper, not a flag.
+
+**And the drift control changed the headline.** `c521cwe-b2048-vk` is the served
+configuration, byte-identical in selector, geometry, seed and n to the vk half of
+`c521q-full`:
+
+    ruler_cwe @65536, vk, SGLANG_DSA_VK_SELECT=1, q=0, budget 2048, seed 0
+      c521q-full-vk      (cwe inside a 13-task, 3250-request run)   0.758
+      c521cwe-b2048-vk   (cwe inside a  2-task,  100-request run)   0.702
+      DSA reference, ONE draw                                       0.960
+
+**A 0.056 same-config spread on the cell the whole finding rests on.** The -0.202
+was quoted with a paired se of 0.036, and that se is an underestimate by
+construction: pairing by doc_id captures within-run sampling variance only, not
+the run-to-run nondeterminism of this decode path
+(vestigekv-decode-path-is-nondeterministic: an arm re-run identically agrees with
+itself on 48% of greedy tokens). The two runs also differ in batch neighbourhood,
+which is a real difference in conditions on a nondeterministic path, not pure
+replicate noise.
+
+The direction survives -- both vk draws sit far below DSA's 0.960, and the gap is
+0.202 and 0.258 -- but **the magnitude is not established to better than ~0.06,
+and DSA's 0.960 is still a singleton.** Method rule 1 exists for precisely this.
+So before any further mechanism work: three more replicates per arm at the served
+budget, `c521cwe-rep{2,3,4}-{vk,dsa}`, cwe + multikey at 65536, n=50. That gives
+four draws per arm and an honest error bar on a number already written into the
+register and a memory.
+
+Side result, free: `niah_multikey_3` @65536 reads 1.000 for the third independent
+time on the vk arm (`c521vk2-mk3`, `c521q-full-vk`, `c521cwe-b2048-vk`). The
+needle cell is solid; it is the aggregate that moves.
