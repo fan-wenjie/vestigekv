@@ -5334,3 +5334,60 @@ is what makes the vk arm's `niah_multikey_3` @65536 cell an exact replicate of
 `c521vk2-mk3`. Cutting to n=25 would halve the wall time and give up the one
 free replicate of the only quality number this arm has. `check_builds.py` is
 clean for GLM -- its eight flagged runs are all Kimi jobs already retired.
+
+## c521q-full result: the crossover is a trade, not a win
+
+Both arms rc=0 (`c521q-full-dsa` 15538 s, `c521q-full-vk` 15158 s). 65 paired
+cells each, scored per sample and paired by `doc_id` on identical seeds, so every
+number below is a within-item difference and not two independent means.
+
+**The registered free replicate passed.** vk `niah_multikey_3` @65536 n=50 =
+1.000, reproducing `c521vk2-mk3` exactly. The one quality figure ever quoted for
+this arm is now a pair.
+
+**`ruler_cwe` regresses, monotonically in context length.**
+
+    len     dsa      vk     paired diff      t      samples changed
+     4k    1.000   0.998      -0.002      -1.00          1/50
+     8k    0.982   0.938      -0.044      -2.00          6/50
+    16k    1.000   0.938      -0.062      -2.41         10/50
+    32k    0.998   0.860      -0.138      -3.86         26/50
+    64k    0.960   0.758      -0.202      -5.62         37/50
+
+t = -5.62 at 64k. Five lengths, all negative, magnitude and the count of
+perturbed samples both rising with length (1 -> 37 of 50). This is not the ~0.02
+noise band and it is not one cell: it is a dose-response in exactly the direction
+sparser selection predicts, since top-2048 is half the sequence at 4k and 3% of
+it at 64k.
+
+**Why cwe and nothing else.** `ruler_cwe` is the only task here that needs BROAD
+coverage rather than a needle: it asks which words recur most across the whole
+list. The carried-threshold rule is built to hold a selection stable, which is
+right for a needle and wrong for an aggregate -- the q=0 fixed-point derivation
+asked whether the threshold is self-consistent, never whether the set it
+stabilises covers a flat, spread-out target. The needle tasks agree:
+`niah_multikey_*`, `multiquery`, `multivalue` and `ruler_vt` all sit at or within
+0.02 of DSA.
+
+Nothing else reaches significance. `ruler_fwe` is negative at all five lengths
+but |t| <= 1.80 with large se; `qa_squad` and `qa_hotpot` straddle zero;
+`niah_single_3` loses 1-2 samples per cell (|t| <= 1.43).
+
+**The grand mean is 0.9509 -> 0.9390, and quoting it would be the same error this
+line already made once.** The acceptance registered before the data said
+per-cell, and here the mean actively understates: it dilutes a -0.202 collapse
+across 37 cells that sat at ceiling on DSA and could never have moved.
+
+**Two of my own predictions were wrong.** I wrote that the discriminating rows
+would be `fwe`/`qa_squad`/`qa_hotpot` because they sit off ceiling. The
+discriminating row is `cwe`, which sat AT ceiling on DSA and therefore had room to
+fall rather than rise -- "off ceiling" identifies where a gain could show, not
+where a loss will. And my first two extractions of the per-sample scores were
+wrong because I guessed the schema instead of reading it: lm-eval writes
+`metrics: ['4096', <the sample's real length>]` with `s['4096']` a sentinel on
+every non-4k sample, which yielded an impossible mean of -0.600.
+
+**Standing on `glm-line-order-and-paper-rule`: the crossover is NOT established.**
+1.0058x end-to-end comes with -0.202 at 64k on an aggregation task. The defensible
+claim is a speed/quality trade with a workload dependence, not a free win over
+DSA. Whether that is worth the paper is the user's call, not a measurement.
