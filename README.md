@@ -5690,3 +5690,67 @@ rows against the 2048 budget, 1.6%, and it touches neither the O(G) compare pass
 nor the emit, so the 1.0058x is untouched by construction. The acceptance is the
 cwe cell against the five-draw vk range 0.702-0.784 and DSA's 0.920-0.960, plus
 a multikey draw to show the needle did not regress.
+
+## c521rec4: the decay profile, and W=1 removes 6.9% of the deficit
+
+R=32 (128 tokens), 11 layers, n=1213 per layer, 64k, decode graphs off.
+
+      j   tokens back   deficit    sel    dsa
+      0       0-3        +0.172   0.783  0.955
+      1       4-7        +0.171   0.772  0.944
+      2       8-11       +0.145   0.813  0.958
+      4      16-19       +0.145   0.796  0.941
+      7      28-31       +0.116   0.838  0.954
+     11      44-47       +0.085   0.777  0.862
+     15      60-63       +0.064   0.677  0.740
+     19      76-79       +0.050   0.574  0.624
+     23      92-95       +0.043   0.462  0.505
+     31     124-127      +0.022   0.249  0.271
+
+    peak +0.172 at j=0, half-peak at j=11 (~44 tokens back)
+
+    a window of W groups removes the deficit for j<W:
+      W= 1 (  4 tok)    6.9%
+      W= 4 ( 16 tok)   25.5%
+      W= 8 ( 32 tok)   46.3%
+      W=16 ( 64 tok)   73.9%
+      W=25 (100 tok)   91.6%
+
+**So exempting only the newest group is not viable: 6.9%.** Two independent
+reasons, and the second is the stronger. Statically the deficit barely decays over
+the first 32 tokens (+0.172 -> +0.116). Dynamically a group is newest for exactly
+`pool_size`=4 tokens, while the failure is repeating an item emitted tens of
+tokens earlier -- so W=1 grants access during the 4 tokens when the model plainly
+still has the item and withdraws it exactly when it starts to matter.
+
+**What the longer window also shows: dsa_frac decays too** (0.955 at j=0 to 0.271
+at j=31). Older content genuinely is not top-512 material even for an exact
+selector, so the deficit's decay is partly the task and not only the rule. The
+actionable region is j=0..15, where dsa_frac is still 0.74-0.96 while sel_frac is
+0.68-0.84: that is starvation of rows an exact selector would take. Past j~24
+there is little to recover because DSA would not take them either.
+
+**Indicated W = 16** (64 tokens, 73.9% of the deficit, 64 rows of a 2048 budget =
+3.1%), or 25 for 91.6% at 4.9%. Either is far below the measurement noise of the
+latency arm, and the window touches neither the O(G) compare nor the emit.
+
+**A correctness constraint on ANY W, found in the kernel rather than assumed.**
+`next_thr` is the minimum score over ALL emitted groups:
+
+      for (int i = tid; i < n_sel; ...) { g = s_sel[i];
+        if (g >= 0) { v = sc_row[g + row_start]; if (v < local) local = v; } }
+
+Force-including a low-scoring recent group therefore drags the published threshold
+down to that score; next step everything above it fires, n_cand explodes into the
+overflow tier (1.48x), and the bitonic cut may drop the recent group anyway. The
+exemption MUST exclude forced groups from the threshold reduction -- they ride
+along but do not define the cut. The naive "append them to the selection" version
+is self-defeating.
+
+**And a limit that no W fixes.** A fixed window is a heuristic sized to the
+self-reference span, not a guarantee: cwe needs ~25 groups, but a 124k-token
+decode run has 31k groups of self-output, far beyond any budget. The rule has no
+concept of "the model's own output is special". The structural answer is the
+length-segmented design, where the newest segment carries its own threshold; its
+hard part is budget allocation across segments, since a fixed budget/S starves
+whichever segment holds the action.
