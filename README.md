@@ -5543,3 +5543,54 @@ generated rows clear the carried threshold. The evidence here is output analysis
 which is strong but indirect. If it holds, the fix is structural and cheap: exempt
 the newest rows from the threshold, which is what DSA's exact re-rank gives for
 free and what a one-step-stale cut cannot.
+
+## c521rec: does the arm select its own output, or starve it?
+
+The cwe gap is now settled as a magnitude, from the served budget, 5 vk draws and
+4 DSA draws of the same cell:
+
+    ruler_cwe @65536, n=50, seed 0
+      vk   0.758  0.702  0.712  0.784  0.706     mean 0.7324  sd 0.0366
+      dsa  0.960  0.956  0.920  0.954            mean 0.9475  sd 0.0185
+      gap 0.2151, se 0.0188, t 11.44, 95% CI 0.172 .. 0.258
+      every vk draw below every DSA draw -- separation is complete
+
+So the original single-run -0.202 was inside the interval, but the paired se of
+0.036 I first quoted understated it: pairing by doc_id sees within-run sampling
+only, and the run-to-run sd is 0.037 (vk) / 0.019 (dsa). The honest figure is
+**0.215 +- 0.043**. Also retracted: "the replicate noise lives on the vk side" --
+that was read off two concordant DSA draws before the third came in at 0.920.
+
+**The cause, under test.** Nothing exempts recent rows: the only unconditional
+ones are `seq_lens % pool_size`, the 0-3 leftover tokens that have no pooled group
+to score, so the model's own output is threshold-gated the moment it completes a
+group of 4. A 10-item enumeration is >25 complete groups, all competing against a
+cut set by the previous selection's minimum, which prompt rows dominate.
+
+`c521rec-vk` installs SGLANG_DSA_VK_SELECT_TELEMETRY and logs per layer, by how
+recent a group is: `sel_frac` (the rule selected it), `dsa_frac` (an exact rank
+top-k would have, SAME step, same score row), `above_frac`, `mean_margin`.
+
+    {"args": {"lengths": "4096,65536", "n": 10, "seed": 0, "tasks": "ruler_cwe,niah_multikey_3"}, "arm": "baseline", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "SGLANG_DSA_VK_SELECT_TELEMETRY": "1", "VK_JOB": "c521rec-vk"}, "id": "c521rec-vk", "probe": false}
+
+**Both lengths, deliberately.** The mechanism predicts recency is selected at 4k,
+where the budget is 50% of the sequence and excess derailment measured ZERO
+(0/50 against DSA's 2/50), and starved at 64k, where it is 3.1% and derailment is
+18/50. A dose-response across those two cells is the test; a single low `sel_frac`
+at 64k would not distinguish starvation from recency simply never scoring well.
+
+`dsa_frac` is why no second arm is needed: it is the exact-rank answer on the same
+step from the same score row, so the contrast carries none of the cross-run
+nondeterminism that the five vk draws above just quantified.
+
+**Read in advance.** sel_frac low AND dsa_frac high at 64k, with both high at 4k,
+confirms starvation and the fix is to exempt the newest rows from the threshold --
+three lines, and the thing DSA's exact re-rank gives for free. sel_frac low AND
+dsa_frac ALSO low means recent rows genuinely do not score well, the rule is not
+at fault, and the repetition has another cause entirely; the exemption would then
+be wrong and the length-segmented redesign would be built on a refuted mechanism.
+That is the whole reason this job runs before any fix.
+
+n=10 not 50: the counters accumulate over every layer-step of every request, so
+one job is thousands of observations per recency slot. This measures the rule, not
+the score.
