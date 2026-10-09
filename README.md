@@ -5999,3 +5999,48 @@ attention-mass oracle (0.1969), while random is 0.0068.
 
 sigma was NOT part of the Nemotron GQA work: that ran an SVD of K and a norm
 prune rate, and neither uses it.
+
+### Correction: GLM-5.3 has NO vestigial sidecar, and the KV arithmetic above is wrong
+
+From the served configs:
+
+                       kv_lora_rank  qk_rope_head_dim  qk_nope_head_dim  num_kv_heads
+      Kimi-Linear-48B        512            64               128             32
+      GLM-5.3-Flash          512             0               256             64
+      Nemotron-3-Nano         --             --               --              2
+
+**`qk_rope_head_dim = 0` on GLM-5.3.** The MLA cache row is
+`[kv_lora_rank + qk_rope_head_dim]` and the sidecar IS that tail, so GLM has no
+sidecar at all -- the 64-dim un-roped branch this project is named for exists on
+Kimi-Linear and not on GLM. That is exactly why
+kappa-was-tuned-on-the-other-arms-signal says "dsa sigma runs on DSA's index-k,
+NOT the mla sidecar": on GLM there is nothing else for it to run on.
+
+So the method's precondition is a **spare, non-positional, low-dimensional branch
+that is not carrying the attention content**, and the three models have three
+different answers:
+
+      Kimi-Linear    qk_rope_head_dim=64   the vestigial RoPE channel, which NoPE
+                                           training repurposes into salience
+      GLM-5.3        none                  borrows DSA's index-k (33 B/token),
+                                           a different spare branch -- one trained
+                                           to BE SCORED by the indexer
+      Nemotron GQA   none                  nothing. K is the main KV attention
+                                           consumes, so it must carry content and
+                                           cannot specialise into salience
+
+**This is the structural reason the GQA result came out negative**, and it is
+stronger than the CV(||r||) ~ 0.1 observation recorded above -- the low CV is a
+symptom, not the cause. A norm/sigma screen needs a channel that is free to become
+a salience signal, and a GQA model has no such channel by construction. The same
+reasoning retires the earlier "use low-rank as the original RoPE channel" idea
+more cleanly than the spectral measurement did: in GQA there is no RoPE channel to
+stand in for, because RoPE applies across the whole head.
+
+**And the KV arithmetic in the Nemotron entry is wrong.** Correctly:
+
+      GLM-5.3    11 attn layers x (512 + 0) x 2B = 11264 B/token  + index-k 33 B
+      Nemotron    6 attn layers x (2 x 2 x 128) x 2B =  6144 B/token
+
+Nemotron's cache is 0.55x GLM's, not "~equal". The entry's "~12.3 kB against
+~12.7 kB" double-counted on both sides.
