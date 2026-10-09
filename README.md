@@ -5754,3 +5754,92 @@ concept of "the model's own output is special". The structural answer is the
 length-segmented design, where the newest segment carries its own threshold; its
 hard part is budget allocation across segments, since a fixed budget/S starves
 whichever segment holds the action.
+
+## Nemotron-3-Nano: fully NoPE, GQA -- and its K cache is NOT low-rank
+
+**The model qualifies on the code.** `nemotron_h.py` is unconditionally NoPE, by
+three independent facts rather than a config field: zero rope/rotary references in
+1190 lines; `NemotronHAttention.forward(self, hidden_states, forward_batch)` takes
+**no `positions` argument**, so it structurally cannot apply RoPE; and the
+attention decoder layer's `_forward_mixer` drops `positions` even though the model
+forward receives it. This is a stronger form of NoPE than GLM-5.3 / Kimi-Linear,
+which pass `skip_rope=True` into an attention that still HAS rope machinery, gated
+off. It is also GQA (`RadixAttention(num_kv_heads=...)`), not MLA.
+
+This corrects nope-model-survey. Its rule -- "identify NoPE by skip_rope" -- missed
+Nemotron-H entirely, because the strongest case has no marker at all: it never
+implements RoPE. The rule needs the negative form too: no rope machinery AND no
+positions argument.
+
+Served config: 52 layers, pattern `MEMEM*EMEMEM*EMEMEM*EMEMEM*EMEMEM*EMEMEMEM*EMEMEMEME`,
+**6 attention layers at [5,12,19,26,33,42]**, 2 KV heads x 128, 262144 context,
+NVFP4. Total KV ~12.3 kB/token against GLM-5.3's ~12.7 kB/token.
+
+**Result: there is no latent to find.** Effective rank of K per KV head (dim 128),
+18514 tokens of natural text, 90%/99% of energy:
+
+    layer head |  natural raw   natural ctr |   shuf raw    shuf ctr
+        5    0 |    76/119        93/122    |   63/114       84/120
+       12    0 |    67/118        78/120    |   51/113       70/118
+       19    1 |    65/118        75/120    |   43/109       60/115
+       26    0 |    45/113        63/118    |   22/89        41/108
+       33    0 |     7/87         72/118    |    1/58        59/111
+       42    0 |     1/68         71/117    |    1/53        63/115
+
+Centered, 90% of the energy needs **63-93 of 128 dimensions** and 99% needs
+108-122. That is near-isotropic: no compressible subspace exists to project onto,
+so the MLA-style latent cannot be fitted post-hoc on this model. The direction is
+closed on the measurement, not on an argument.
+
+**The centering control earned its place, and it would have produced a spurious
+result without it.** At layers 33 and 42 the RAW 90% rank is 7 and 1 -- a
+rank-ONE KV cache, which read naively is a 128x compression. It is entirely the
+mean offset: `||mu|| / mean||k||` is 0.92 and 0.95 at those layers. A constant
+offset is exactly rank-1 and is INVISIBLE to attention, because every logit shifts
+by the same `q.mu` and softmax is shift-invariant. So that energy is not
+compressible information. Centered, the same cells read 72 and 71.
+
+**Natural text is HIGHER rank than the shuffled control at every cell** (e.g.
+layer 26 head 0: 63 centered vs 41). So on this model natural text makes the cache
+LESS compressible, which is the opposite direction to the reading of
+nope-spectral-property-is-the-core that motivated the check.
+
+### Why norm screening does not follow, even after centering
+
+The idea was to subtract a constant vector so the residual is isotropic and then
+screen on `||k||`, with `|q.r| <= ||q|| ||r||` as a sound bound.
+
+    layer head  ||mu||/mean||k||   CV ||k||   CV ||k-mu||   ratio
+        5    0        0.652         0.0960      0.1055      1.1x
+       19    0        0.543         0.1047      0.0849      0.8x
+       33    0        0.922         0.0631      0.0983      1.6x
+       42    0        0.953         0.0381      0.1347      3.5x
+
+Centering does remove the common mode, and in the late layers it widens the norm
+spread 3.0-3.5x, which is the mechanism
+sound-pruning-needs-a-weight-constraint records ("k_norm's large bias is why the
+key norms are uninformative"). But the residual norms are still concentrated:
+**CV 0.085-0.139**, i.e. nearly every key's bound sits within ~10% of every
+other's. A Cauchy-Schwarz screen at that spread cannot discriminate -- it keeps
+almost everything or drops almost everything, at any threshold.
+
+**Isotropy is the enemy of norm screening, not its goal.** Perfect isotropy means
+every residual has the same norm and the bound has zero discriminative power. This
+sharpens norm-bound-cannot-prune-the-indexer ("norm is below random as a
+selector"): the obstacle is not only the bias direction, it is that after the bias
+is removed the residuals are near-equinorm.
+
+**Not tested:** this measures `||k||` and `||k-mu||`, not the attention scores
+`q.k`, so the prune rate is inferred from the norm spread rather than measured. A
+direct test needs q dumped alongside k.
+
+### Two operational notes from the attempt
+
+  - **TP=2 hangs on this box at parallel init.** Nemotron-3-Nano stalls after
+    "sglang is using nccl==2.29.7" with 945 MiB resident and every process in S,
+    reproducibly, under both the default (flashinfer) and triton attention
+    backends. TP=1 serves it fine in ~7 minutes. TP=1 is also the better design
+    here: with 2 KV heads, TP=2 gives each rank ONE head, so every dump file would
+    be a partial K row.
+  - The attention backend still has to be triton on SM120 (register line 1106:
+    trtllm has no FMHA kernel for SM120), but that was not the cause of the hang.
