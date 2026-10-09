@@ -5843,3 +5843,61 @@ direct test needs q dumped alongside k.
     be a partial K row.
   - The attention backend still has to be triton on SM120 (register line 1106:
     trtllm has no FMHA kernel for SM120), but that was not the cause of the hang.
+
+### Measured prune rate: the method does not apply on NoPE GQA, in either form
+
+q dumped alongside k (same env knob, `_maybe_dump_k(k, q)`), 18514 tokens of
+natural text, 6 attention layers, 24 query positions over the sequence tail, every
+4th q head, GQA mapping q head j -> kv head j // 16.
+
+    layer      K  sound prune %  t/(||q||E||r||)  norm-sel recall  CV||r||
+        5    512        0.0000%           0.1730          0.0294   0.1241
+        5   2048        0.0000%           0.1004          0.1239   0.1241
+       12   2048        0.0000%           0.1348          0.1092   0.0925
+       19   2048        0.0000%           0.1356          0.0990   0.0934
+       26   2048        0.0000%           0.1386          0.0979   0.0950
+       33   2048        0.0000%           0.1226          0.0947   0.0983
+       42   2048        0.0000%           0.1132          0.0680   0.1295
+       42   4096        0.0000%           0.0576          0.1843   0.1295
+
+**Sound screen: exactly 0.0000%, every layer, every budget.** With k = mu + r, all
+logits carry the same q.mu so the ranking is set by q.r and the top-K cut t is
+positive by construction -- which is what removes the obstacle
+norm-bound-cannot-prune-the-indexer recorded ("the top-2048 threshold is negative,
+so no non-negative bound can reach it"). The obstacle is removed and the screen
+still prunes nothing, for a different and more basic reason.
+
+**The reason is dimensional, not a property of this model.** The cut sits at
+t/(||q||E||r||) = 0.058-0.237, so a key is prunable only if its ||r_i|| is 4.5x
+(K=512) to 15.6x (K=4096) BELOW the mean residual norm. At the measured CV of
+0.105 that is **7.4 to 8.9 standard deviations** below the mean. It never happens,
+hence exactly zero rather than nearly zero.
+
+At K=2048 the measured ratio is 0.113-0.139 against 1/sqrt(128) = 0.0884: the
+Cauchy-Schwarz bound is loose by ~sqrt(d), because in 128 dimensions a query and a
+residual are nearly orthogonal so |q.r| ~ ||q|| ||r|| / sqrt(d). **Any** cache
+whose residuals are near-equinorm in d=128 defeats this screen, whatever the
+model.
+
+**Heuristic screen: at or below random.** Ranking by ||r_i|| and measuring overlap
+with the true top-K:
+
+        K    random   measured        verdict
+      512    0.0277   0.0090-0.0294   at/below random
+     2048    0.1106   0.0680-0.1239   at/below random
+     4096    0.2212   0.1843-0.2581   at/below random
+
+So centered norm is not a weak selector, it is **not a selector**. This is the
+version norm-bound-cannot-prune-the-indexer never tested -- that result measured
+raw norms, where the k_norm bias dominates. Centering was the right fix for the
+diagnosis and does not change the verdict.
+
+**Both failures are the same fact as the spectral result.** Centered effective
+rank 63-93 of 128 means the residuals are near-isotropic; near-isotropic implies
+near-equinorm, which is exactly what kills both the sound bound and the heuristic.
+One property closes the low-rank latent and the norm screen together.
+
+**The reframing that follows:** isotropy was the stated goal ("保证各向尽量同性"),
+and it is the obstacle. A norm screen needs residual norms that SPAN a range --
+more than sqrt(d) ~ 11x here -- so what would license it is strong anisotropy in
+the norm distribution, not isotropy. Nothing in this cache provides it.
