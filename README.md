@@ -5950,3 +5950,52 @@ in three independent runs, and the window must not disturb it.
 Latency is NOT measured here. cwe is a ruler job and rule 3 says cost claims come
 only from decode-only stream jobs. If the quality moves, the 4-replicate stream
 measurement against the n=6 floor (91.8617 +- 0.0322 tok/s) is a separate batch.
+
+### Two corrections to the Nemotron norm-screen entry above
+
+**1. The sqrt(d) obstacle was already this line's result, not a new one.**
+`mexp/glm53/sigma_conditions.py` carries it in its own docstring: "The
+Cauchy-Schwarz slack measured at ~1/sqrt(d) is what makes the SOUND sigma screen
+vacuous", and "the tension to settle: isotropy is what makes
+E[(Q_perp l)_t^2] = sigma_t^2/d exact AND what makes the bound loose by sqrt(d).
+Both cannot be had." It even lists as candidate 1 "are the index-k keys
+normalised? If ||k_g|| is near-constant the norm carries no information by
+construction, which would explain its below-random precision" -- which is exactly
+what the Nemotron measurement found (CV 0.105, below-random precision). The
+Nemotron result is a CONFIRMATION in a new setting, and I presented the sqrt(d)
+argument and the isotropy reframing as mine without having found this first.
+
+**2. "Any cache whose residuals are near-equinorm defeats this screen" is true as
+written and overstated in implication.** Near-equinorm is not generic. On GLM's
+index-k the same transformation works:
+
+                         raw norm   centred norm   random
+      GLM index-k, m=32    0.1406       0.6825     0.1234    precision vs DSA top-2048
+      Nemotron-H K, K=512      --    0.0090-0.0294 0.0277    recall of true top-K
+
+Centring lifts GLM's index-k from barely-above-random to 0.6825 and does nothing
+on Nemotron's K. So the difference is not NoPE and not GQA -- it is the norm
+distribution of that particular cache. DSA's index-k is a 33 B/token side signal
+trained to BE scored; Nemotron's K is the main KV that attention consumes
+directly. A norm screen is a property of the signal it runs on, and index-k
+having it does not transfer to a model's own K.
+
+That also means the Nemotron verdict does not generalise to "norm screening is
+dead", only to "it is dead on a cache with CV(||r||) ~ 0.1". The quantity to
+measure first on any new model is CV(||r||) and t/(||q||E||r||), not the idea.
+
+### sigma's selection target, for the record
+
+Two criteria, which rank schemes differently -- and conflating them is what the
+retraction in sigma-is-orthogonal-to-dsas-selection was about (a set criterion
+20x too large):
+
+  precision   how much of sigma's picked set lands inside DSA's own top-2048
+  mass        how much real softmax mass the picked set holds
+
+At m=32 a query-FREE sigma k=1 captures 0.1578 of real attention mass against
+0.1446 for a per-query oracle over DSA's indexer score, i.e. 80% of the
+attention-mass oracle (0.1969), while random is 0.0068.
+
+sigma was NOT part of the Nemotron GQA work: that ran an SVD of K and a norm
+prune rate, and neither uses it.
