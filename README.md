@@ -6103,3 +6103,64 @@ Cost of the error: one 3-job batch, ~50 min of GPU.
 
 Re-queued as `c521w16b-r{1,2,3}-vk`, unchanged in design: cwe + multikey at 65536,
 n=50, three draws, read against vk at W=0 (0.702-0.784) and DSA (0.920-0.960).
+
+## c521ph2: phase probe -- a bounded null, and the probe has no range
+
+arXiv:2609.36322 reports up to 40.2 points of retrieval difference across
+compression phases on models that pool consecutive tokens at a fixed stride, and
+concludes that evaluation must measure across phases because averages conceal it.
+Our pooling is exactly that structure, confirmed in code:
+
+    first_pos     = seq_len - q_len
+    assert ...      "index_kpool_compress extend requires kpool-aligned chunk starts"
+    pool_start_id = first_pos // kpool          # kpool = 4
+    n_pools       = q_len // kpool
+
+so **phase(p) = p % 4** and group = `p // 4`, globally aligned to position 0. No
+script in mexp/glm53 had ever controlled or reported it.
+
+`mexp/glm53/phase_needle.py` places the needle's first token at an EXACT absolute
+position by sending `input_ids` rather than text -- re-tokenising a decoded string
+shifts positions and silently destroys the variable under test. The value is
+chosen to be exactly 4 tokens, so at phase 0 it sits inside ONE group and at
+phases 1-3 it straddles two: the sharpest contrast the structure allows. The
+prefix LENGTH is solved for directly rather than padded after the fact, and the
+placement is asserted per trial (`start % kpool == phase`).
+
+    ctx 65536, depth 0.5, n=30 per phase, paired, seed 0
+
+      phase        0        1        2        3
+      DSA      1.0000   1.0000   1.0000   1.0000
+      vk       1.0000   1.0000   1.0000   1.0000
+
+**What this establishes.** Every cell is 30/30, so the one-sided 95% upper bound
+on a per-phase miss rate is 9.5% and any phase gap on either arm is **under ~10
+points at this difficulty**. The paper's 40-point magnitude is excluded here.
+
+**What it does not establish, and this is a flaw in my design.** Both arms are AT
+CEILING, so the probe has **no range**: a 5-point gap would read 30/30 against
+28.5/30 and be invisible at n=30. I chose a difficulty where the measurement
+cannot resolve the effect it was built for -- the same class of error as the
+device test whose fixed score tensor made the fault unreachable. 240 requests
+bought a bound, not a measurement.
+
+**Why ceiling was predictable and I should have predicted it.** multikey_3 @64k
+already reads 1.000 on both arms in three independent runs, and I had even argued
+two turns earlier that "a 40-point phase gap cannot hide under a 1.000". A
+single-needle exact-match probe at depth 0.5 is EASIER than multikey_3, so
+starting there guaranteed saturation.
+
+**To get range the task has to come off ceiling first, with position still
+controlled.** The cells that have room are `ruler_qa_hotpot` (0.68-0.78),
+`ruler_qa_squad` (0.757-0.843) and `ruler_fwe` (0.773-0.927), none of which offer
+token-level placement. Candidates, cheapest first: many same-form distractor
+values so the model must disambiguate rather than recall; depth sweep to find
+where accuracy breaks; a value long enough to straddle 2-3 groups at every phase.
+Each needs a difficulty calibration run BEFORE the phase sweep -- find the setting
+where accuracy sits near 0.6-0.8, then vary phase at that setting.
+
+Also worth stating: a phase gap in DSA's pooling would be inherited by BOTH arms
+and cancel in the paired comparison. What our rule could add on top is the
+rank-vs-threshold asymmetry -- an absolute cut punishes a systematically
+suppressed phase where a rank top-k does not -- and that is the quantity the
+paired design exists to isolate.

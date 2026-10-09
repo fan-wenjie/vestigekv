@@ -66,7 +66,8 @@ def client_pids():
     out = subprocess.run(["ps", "-eo", "pid,comm,args"], capture_output=True, text=True).stdout
     return [int(l.split()[0]) for l in out.splitlines()[1:]
             if l.split()[1].startswith("python")
-            and any(k in l for k in ("run_ruler.py", "sglang.benchmark.serving", "needle.py", "replay_prompts.py"))]
+            and any(k in l for k in ("run_ruler.py", "sglang.benchmark.serving", "needle.py",
+                                     "replay_prompts.py", "phase_needle.py"))]
 
 
 def server_pids():
@@ -203,7 +204,14 @@ def run_client(job, port):
     env.pop("HF_HUB_OFFLINE", None)  # RULER pulls its corpora from the Hub
     env["CUDA_VISIBLE_DEVICES"] = ""  # clients are HTTP only; no CUDA context next to the server
     os.makedirs(RESULTS, exist_ok=True)
-    if client == "ruler":
+    if client == "phase":
+        cmd = [PY, os.path.join(ROOT, "mexp", "glm53", "phase_needle.py"), "--arm", arm,
+               "--port", port, "--model", MODEL, "--n", str(args.get("n", 30)),
+               "--ctx", str(args.get("ctx", 65536)), "--seed", str(args.get("seed", 0)),
+               "--depth", str(args.get("depth", 0.5)), "--tag", job["id"],
+               "--out", os.path.join(RESULTS, "phase")]
+        out = os.path.join(RESULTS, f"phase_{arm}_{job['id']}.log")
+    elif client == "ruler":
         cmd = [PY, os.path.join(ROOT, "mexp", "glm53", "run_ruler.py"), "--arm", arm, "--port", port,
                "--model", MODEL, "--n", str(args.get("n", 10)), "--out", os.path.join(RESULTS, "ruler")]
         if "lengths" in args:
