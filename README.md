@@ -6044,3 +6044,62 @@ stand in for, because RoPE applies across the whole head.
 
 Nemotron's cache is 0.55x GLM's, not "~equal". The entry's "~12.3 kB against
 ~12.7 kB" double-counted on both sides.
+
+### c521w16 FAILED on my bug, diagnosed, fixed, confirmed by bisect
+
+The arm served `niah_multikey_3` 0.000 (from 1.000 in three prior runs) and
+`ruler_cwe` 0.046 / 0.056 / 0.058 (from 0.702-0.784), with **zero errors and no
+traceback**. The multikey canary in the job was the only detector -- the
+byte-counters-cannot-see-wrong-rows shape, for the second time on this line.
+
+Three hypotheses, each refuted by measurement rather than argued away:
+
+  threshold ratchet    refuted: with EVOLVING scores over 12 steps W=16 tracks
+                       W=0 (recall vs DSA 0.867-0.902 against 0.883-0.912,
+                       n_sel steady at 512, no drift)
+  duplicate rows       refuted: dup_groups=0, dup_rows=0 at G=16384 with
+                       spilling confirmed
+  FFI argument order   refuted by reading the diff; all three recent_w sites are
+                       inside VkDsaSelectKernel and match the kernel signature
+
+The actual cause, two bugs:
+
+1. **The collect used `recent_w` unclamped** while the emit clamps it. For a row
+   with `len < recent_w`, `idx >= len - recent_w` is true for EVERY idx, so
+   nothing becomes a candidate.
+
+2. **`next_thr` keyed on `n_sel` instead of `n_fired`** -- and this silently
+   removed a recovery property that existed before the window:
+
+        before:  next_thr = n_sel   > 0 ? s_red[0] : -INFINITY
+        mine:    the window makes n_sel nonzero even when n_fired == 0, so the
+                 guard stopped firing, the reduction stayed at the +INFINITY it
+                 starts from, and next_thr became +inf
+
+   `+inf` is an **absorbing state**: no score ever clears it, so the selection
+   became the window alone for the rest of the request. That is exactly the
+   symptom -- needle unreachable (multikey 0.000) while the model could still see
+   the newest 64 tokens (cwe ~0.05). Reachable from ANY step where nothing fires,
+   not only from short rows. Now keyed on `n_fired`.
+
+**Why my device test could not have caught either.** It used a FIXED score tensor
+across steps, so the threshold had no dynamics, at G=4096 -- which equals
+`kCandMax` exactly and therefore NEVER spills. Two of the regimes that matter were
+structurally unreachable in it. That is a sharper failure than "the test was thin":
+the parameters were chosen such that the faulty paths could not execute.
+
+Fixed in engine d3ac113872. In-situ bisect at 16k, n=5, multikey, ~4 min per cell:
+
+      A  W=0            1.000   control
+      B  W=16 pre-fix   0.000   failure reproduced
+      C  W=16 post-fix  1.000   fix confirmed
+
+The new registered case drives `length <= recent_w` at G in (8,16,64) over 4 steps
+and asserts the threshold never latches positive and no group is dropped. It FAILS
+on the pre-fix kernel -- verified by reverting the kernel alone and keeping the
+test -- and passes on the fix. 23 files, 139 cases.
+
+Cost of the error: one 3-job batch, ~50 min of GPU.
+
+Re-queued as `c521w16b-r{1,2,3}-vk`, unchanged in design: cwe + multikey at 65536,
+n=50, three draws, read against vk at W=0 (0.702-0.784) and DSA (0.920-0.960).
