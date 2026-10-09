@@ -6164,3 +6164,51 @@ and cancel in the paired comparison. What our rule could add on top is the
 rank-vs-threshold asymmetry -- an absolute cut punishes a systematically
 suppressed phase where a rank top-k does not -- and that is the quantity the
 paired design exists to isolate.
+
+### c521cal: the distractor knob does not create range either -- and I made the same mistake twice
+
+Calibration on the DSA arm, phase 0, n=20, depth 0.5, sweeping same-form decoy
+passcodes under other labels:
+
+      distractors     4      16      64     256
+      accuracy    1.0000  1.0000  1.0000  1.0000
+
+**256 decoys and it is still 20/20.** Decoys do not make this task harder,
+because disambiguation is by a unique LABEL and label matching is easy; adding
+same-form values never turns a single exact lookup into a hard one. So the
+distractor knob produces no range, and the phase probe still cannot resolve
+anything on this model.
+
+**The root cause is mine and it repeated.** The non-ceiling cells were in hand the
+whole time:
+
+      ruler_qa_hotpot  0.68-0.78     natural-language multi-hop QA
+      ruler_qa_squad   0.757-0.843   natural-language QA
+      ruler_fwe        0.773-0.927   frequent-word extraction   AGGREGATION
+      ruler_cwe        0.920-0.960 DSA / 0.668-0.784 vk         AGGREGATION
+      every niah_*     1.000 on BOTH arms                       saturated
+
+Twice I built a probe in the saturated family instead of the family with measured
+range. The first time the lesson was "both arms are at ceiling"; the second time I
+tried to fix it with a knob that does not move the thing that is saturated. 320
+requests and ~2 h of GPU for two bounded nulls.
+
+**What this does establish, and it is worth having.** On GLM-5.3-Flash, needle
+retrieval at 64k is saturated against distractor load up to 256 and across all
+four compression phases. So the paper's 40-point phase gap does NOT reproduce here
+on needle lookup at any difficulty this knob reaches -- a real difference from
+DeepSeek-V4, and a bound rather than a measurement.
+
+**What a probe with range has to look like.** The tasks with range are
+AGGREGATION and natural-language QA, not lookup. The phase-controlled version of
+an aggregation task is the right build: in a cwe-style prompt, place EVERY
+occurrence of the target word at the same phase phi, and compare phi = 0..3. That
+targets `ruler_cwe`, where the vk arm sits at 0.668-0.784 with 0.25 of headroom
+and the paired gap is already established at 0.215 +- 0.043. A single-token target
+at a controlled phase is also exactly the paper's mechanism -- where inside the
+compression window the token sits -- rather than the straddling effect the
+4-token value tested.
+
+Not building it autonomously. Two probes have now failed the same way, and the
+right judgment after that is to get the design reviewed rather than trust the
+third instinct from the same source.

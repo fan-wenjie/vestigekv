@@ -1,0 +1,13 @@
+{
+  "arm": "baseline",
+  "ctx": 65536,
+  "n": 20,
+  "kpool": 4,
+  "depth": 0.5,
+  "seed": 0,
+  "val_tokens": 4,
+  "distractors": 4,
+  "by_phase": {
+    "0": 1.0
+  }
+}

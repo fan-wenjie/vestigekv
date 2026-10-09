@@ -1,0 +1,6 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[transformers] You are using a model of type `glm5_next` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+value pool: 80 values, each exactly 4 tokens
+  phase 0: start=32768 (start%4=0) val=948924 got='948924. Remember it. The passcode for Ba' ok=True
+PHASE 0: 20/20 = 1.0000
+PHASEDONE {"0": 1.0}

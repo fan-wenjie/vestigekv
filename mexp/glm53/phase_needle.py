@@ -40,6 +40,12 @@ def main():
     ap.add_argument("--kpool", type=int, default=4)
     ap.add_argument("--depth", type=float, default=0.5, help="needle depth in the context")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--distractors", type=int, default=0,
+                    help="same-form decoy passcodes under other labels; the knob "
+                         "that takes the task off ceiling without losing position "
+                         "control of the TARGET")
+    ap.add_argument("--phases", default="0,1,2,3",
+                    help="which phases to run; calibration uses one")
     ap.add_argument("--tag", default="")
     ap.add_argument("--out", default="results/glm53/phase")
     a = ap.parse_args()
@@ -51,9 +57,14 @@ def main():
     filler = ("The grass was still wet from the morning rain and the market "
               "stalls had not yet opened along the narrow street. ")
     f_ids = tok(filler, add_special_tokens=False)["input_ids"]
-    lead_ids = tok("The special passcode is ", add_special_tokens=False)["input_ids"]
+    LABELS = ["Aurora", "Basalt", "Cinder", "Dapple", "Ember", "Fathom", "Girder",
+              "Harrow", "Ingot", "Jetty", "Kelvin", "Lintel", "Mortise", "Nimbus",
+              "Oxbow", "Plinth", "Quarry", "Runnel", "Sconce", "Tundra"]
+    target_label = LABELS[0]
+    lead_ids = tok(f"The passcode for {target_label} is ", add_special_tokens=False)["input_ids"]
     tail_ids = tok(". Remember it.", add_special_tokens=False)["input_ids"]
-    q_ids = tok("\n\nQuestion: what is the special passcode? Answer with the passcode only.\nAnswer:",
+    q_ids = tok(f"\n\nQuestion: what is the passcode for {target_label}? "
+                "Answer with the passcode only.\nAnswer:",
                 add_special_tokens=False)["input_ids"]
 
     rng = random.Random(a.seed)
@@ -66,8 +77,18 @@ def main():
             vals.append((v, ids))
     print(f"value pool: {len(vals)} values, each exactly {VAL_TOKENS} tokens", flush=True)
 
+    def decoy_ids(rng2, k):
+        """Same-form statements under OTHER labels, so the model must disambiguate
+        by label rather than recall the only number-shaped thing in the context."""
+        out = []
+        for j in range(k):
+            lab = LABELS[1 + (j % (len(LABELS) - 1))]
+            v = "".join(rng2.choice("0123456789") for _ in range(7))
+            out += tok(f" The passcode for {lab} is {v}. ", add_special_tokens=False)["input_ids"]
+        return out
+
     res = {}
-    for phase in range(a.kpool):
+    for phase in [int(x) for x in a.phases.split(",")]:
         hits = 0
         for k in range(a.n):
             v, v_ids = vals[phase * a.n + k]
@@ -81,6 +102,11 @@ def main():
             assert start % a.kpool == phase, (start, phase, L)
 
             ids = pre + lead_ids + v_ids + tail_ids
+            if a.distractors:
+                # decoys AFTER the target, so the target's absolute position (and
+                # therefore its phase) is untouched by the difficulty knob
+                ids += decoy_ids(random.Random(a.seed * 1000 + phase * 97 + k),
+                                 a.distractors)
             while len(ids) < a.ctx - len(q_ids):
                 ids += f_ids
             ids = ids[: a.ctx - len(q_ids)] + q_ids
@@ -101,7 +127,7 @@ def main():
     with open(os.path.join(a.out, name + ".json"), "w") as f:
         json.dump({"arm": a.arm, "ctx": a.ctx, "n": a.n, "kpool": a.kpool,
                    "depth": a.depth, "seed": a.seed, "val_tokens": VAL_TOKENS,
-                   "by_phase": res}, f, indent=2)
+                   "distractors": a.distractors, "by_phase": res}, f, indent=2)
     print("PHASEDONE", json.dumps(res))
 
 

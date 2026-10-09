@@ -209,6 +209,8 @@ def run_client(job, port):
                "--port", port, "--model", MODEL, "--n", str(args.get("n", 30)),
                "--ctx", str(args.get("ctx", 65536)), "--seed", str(args.get("seed", 0)),
                "--depth", str(args.get("depth", 0.5)), "--tag", job["id"],
+               "--distractors", str(args.get("distractors", 0)),
+               "--phases", str(args.get("phases", "0,1,2,3")),
                "--out", os.path.join(RESULTS, "phase")]
         out = os.path.join(RESULTS, f"phase_{arm}_{job['id']}.log")
     elif client == "ruler":
