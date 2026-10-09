@@ -5901,3 +5901,52 @@ One property closes the low-rank latent and the norm screen together.
 and it is the obstacle. A norm screen needs residual norms that SPAN a range --
 more than sqrt(d) ~ 11x here -- so what would license it is strong anisotropy in
 the norm distribution, not isotropy. Nothing in this cache provides it.
+
+## c521w16: the recency-window exemption, W=16
+
+Implemented in engine 02b4b012e2. `SGLANG_DSA_VK_SELECT_RECENT_W=16` emits the
+newest 16 groups (64 tokens) unconditionally, and two properties are not optional:
+
+  - **The window does not define the cut.** `next_thr` is the MINIMUM over the
+    emitted groups, so a low-scoring recent group feeding it would drag the
+    threshold into the bulk, fire everything above it next step, and spill into
+    the overflow tier (1.48x) where the bitonic cut could drop that group again.
+    `vk_collect_kernel` therefore excludes the window from CANDIDACY and the
+    reduction runs over the fired part alone. Excluding it from candidacy also
+    removes the need to dedup: a group emitted twice is attended twice and
+    silently reweights the softmax.
+  - **It is paid out of the budget**, not added: 512 -> 496 fired + 16 window, so
+    the row count and `dst_token_indices` / `out_cols` / `token_topk` are
+    byte-identical and the 1.0058x cannot be charged for extra rows.
+
+W=16 is read off the measured decay (c521rec4): the deficit peaks at +0.172 and
+halves only by ~44 tokens back, so 16 groups covers 73.9% of it against W=1's
+6.9%.
+
+Verified on device before queueing -- window emitted 16/16 every step against
+0/16 with W=0; threshold stays at +1.008 instead of collapsing toward the
+window's -8; n_sel exactly 512; no duplicate when the window would also have
+fired on score. Two registered cases guard the collapse and the duplicate.
+
+    {"args": {"lengths": "65536", "n": 50, "seed": 0, "tasks": "ruler_cwe,niah_multikey_3"}, "arm": "baseline", "client": "ruler", "env": {"CHUNK": "1024", "CTX": "73728", "CUDA_HOME": "/usr/local/cuda", "ENGINE": "/home/user/vestigekv-wt/engine-glm521", "GRAPH_BS": "4", "MAMBA_SLOTS": "4", "MAX_REQS": "4", "MEM_FRAC": "0.955", "SGLANG_DSA_VK_SELECT": "1", "SGLANG_DSA_VK_SELECT_Q": "0.0", "SGLANG_DSA_VK_SELECT_RECENT_W": "16", "VK_JOB": "c521w16-r1-vk"}, "id": "c521w16-r1-vk", "probe": false}
+    (r2, r3 identical but for VK_JOB)
+
+**Acceptance, against the measured ranges rather than a single number.** Three
+draws, because the cwe cell's run-to-run sd is 0.037:
+
+    vk at W=0   0.758 0.702 0.712 0.784 0.706   mean 0.7324
+    DSA         0.960 0.956 0.920 0.954         mean 0.9475
+    gap 0.215, 95% CI 0.172-0.258, complete separation
+
+If W=16 recovers, the draws land above 0.784 and ideally inside the DSA range. If
+they land inside 0.702-0.784 the mechanism is confirmed but the window is the
+wrong actuator, and the honest next step is the length-segmented design rather
+than a larger W -- because W=25 only buys 91.6% of a deficit that W=16 already
+takes 73.9% of, so a null at 16 will not be rescued at 25.
+
+`niah_multikey_3` rides along as the regression check: it reads 1.000 on this arm
+in three independent runs, and the window must not disturb it.
+
+Latency is NOT measured here. cwe is a ruler job and rule 3 says cost claims come
+only from decode-only stream jobs. If the quality moves, the 4-replicate stream
+measurement against the n=6 floor (91.8617 +- 0.0322 tok/s) is a separate batch.
